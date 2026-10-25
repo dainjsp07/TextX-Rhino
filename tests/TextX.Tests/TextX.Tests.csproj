@@ -4,7 +4,8 @@
     Core test-suite (no Rhino needed): Unicode bidi conformance, Arabic shaping, translation
     engine, metadata, provider response parsing.
 
-      dotnet run -c Release -- <folder containing BidiTest.txt and BidiCharacterTest.txt>
+      dotnet run -c Release followed by the folder that contains BidiTest.txt and BidiCharacterTest.txt
+      (put the folder after a double dash; tools\build.ps1 does this for you)
 
     The two Unicode data files are published at https://www.unicode.org/Public/UCD/latest/ucd/
     (BidiTest.txt, BidiCharacterTest.txt). Without them only the unit tests run.
