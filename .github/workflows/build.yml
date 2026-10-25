@@ -8,6 +8,7 @@ on:
     branches: [main, master]
     tags: ['v*']
   pull_request:
+  workflow_dispatch:   # "Run workflow" button on the Actions tab
 
 permissions:
   contents: write
@@ -31,7 +32,20 @@ jobs:
 
       - name: Build, test and package
         shell: pwsh
-        run: ./tools/build.ps1 -UseRhinoNuGet
+        run: |
+          # Keep the output so that a failure can be shown on the run's summary page.
+          $ok = $true
+          try { ./tools/build.ps1 -UseRhinoNuGet *>&1 | Tee-Object -FilePath build.log }
+          catch { $ok = $false; "ERROR: $_" | Tee-Object -FilePath build.log -Append }
+          if ($ok -and $LASTEXITCODE -ne 0) { $ok = $false }
+          if (-not $ok) {
+            $esc = { param($t) $t.Replace('%', '%25').Replace("`r", '').Replace("`n", '%0A') }
+            $fails = Get-Content build.log | Where-Object { $_ -match '\bFAIL\b|error [A-Z]+[0-9]+|ERROR:' } | Select-Object -First 15
+            foreach ($f in $fails) { Write-Output ("::error title=Build::" + (& $esc $f)) }
+            $tail = (Get-Content build.log -Tail 40 | ForEach-Object { if ($_.Length -gt 220) { $_.Substring(0, 220) } else { $_ } }) -join "`n"
+            Write-Output ("::error title=Last lines of the build log::" + (& $esc $tail))
+            exit 1
+          }
 
       - uses: actions/upload-artifact@v4
         with:

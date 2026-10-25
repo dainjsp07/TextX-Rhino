@@ -350,6 +350,10 @@ namespace TextX.Integration
         /// For RTL text in Visual mode, Rhino's own word-wrap is replaced by explicit line breaks
         /// (Rhino would otherwise wrap the reversed string from the wrong end).
         /// </summary>
+        /// <param name="ann">The text or leader to write into.</param>
+        /// <param name="rec">The object's source text and translation.</param>
+        /// <param name="state">Which text to show (screen or print).</param>
+        /// <param name="cfg">Right-to-left rendering settings.</param>
         /// <param name="wrapRequest">null = keep the current wrap configuration; otherwise the wanted wrap width (0 = off).</param>
         public static void ComposeInto(AnnotationBase ann, TranslationRecord rec, TextState state, RenderConfig cfg, double? wrapRequest)
         {
