@@ -65,8 +65,11 @@ to **Logical**.
   TRAbout show "1.2.1 is installed, restart Rhino"; with `manifest.txt` reset, TRUpdate offered the update, asked,
   and re-installed it over the existing folder. Rhino's start-up log shows its package manager removing inactive
   versions named by `manifest.txt`, the mechanism the update relies on.
-* Not run live: the download from a published GitHub release (checked separately once the release exists) and
-  Rhino actually starting the new version after a restart (that step is Rhino's own package loading).
+* Published release v1.2.0 (GitHub Actions): `latest.json` resolves from the built-in address, its SHA-256 matches
+  the `.yak`, and the zip contains the same `.yak`. End to end in Rhino 8 (Safe Mode): an older copy (1.1.9) with
+  default settings found 1.2.0 on GitHub at start-up, downloaded and installed it by itself; the installed
+  TextX.rhp is identical to the released one.
+* Not run live: Rhino starting the new version after a restart (that step is Rhino's own package loading).
 
 **1.1.0** (2026-10-23)
 * Automated: BidiTest.txt 770 241 cases and BidiCharacterTest.txt 91 670 cases, 0 failures; 165 unit assertions passed.
