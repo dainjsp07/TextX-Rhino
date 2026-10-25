@@ -1,0 +1,30 @@
+# Sample English -> Hebrew glossary for architectural drawings (title blocks, plans).
+# Review the terms against your office standard before importing:
+#   Translator > Settings > Glossary > Import CSV...
+# Format: sourceLang,targetLang,source,target   (or just source,target)
+# A line with a single value is added to the "never translate" list.
+en,he,Project,פרויקט
+en,he,Client,מזמין
+en,he,Architect,אדריכל
+en,he,Sheet,גיליון
+en,he,Scale,קנה מידה
+en,he,Date,תאריך
+en,he,Drawn by,שורטט ע״י
+en,he,Checked by,נבדק ע״י
+en,he,Approved by,אושר ע״י
+en,he,Revision,גרסה
+en,he,Ground floor,קומת קרקע
+en,he,Ground floor plan,תכנית קומת קרקע
+en,he,First floor plan,תכנית קומה א׳
+en,he,Basement,מרתף
+en,he,Roof plan,תכנית גג
+en,he,Floor plan,תכנית קומה
+en,he,Section,חתך
+en,he,Elevation,חזית
+en,he,North elevation,חזית צפונית
+en,he,South elevation,חזית דרומית
+en,he,East elevation,חזית מזרחית
+en,he,West elevation,חזית מערבית
+en,he,Detail,פרט
+en,he,North,צפון
+en,he,Not to scale,ללא קנה מידה

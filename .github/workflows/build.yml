@@ -1,0 +1,52 @@
+# Builds and tests every push; publishes a GitHub release when a version tag (v1.2.0) is pushed.
+# The release contains the .yak package, the shareable zip and latest.json (the update feed that
+# installed copies of Text X check).
+name: build
+
+on:
+  push:
+    branches: [main, master]
+    tags: ['v*']
+  pull_request:
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '8.0.x'
+
+      - name: Check that the tag matches VERSION
+        if: startsWith(github.ref, 'refs/tags/v')
+        shell: pwsh
+        run: |
+          $v = (Get-Content VERSION -Raw).Trim()
+          if ("v$v" -ne "${{ github.ref_name }}") { throw "Tag ${{ github.ref_name }} does not match VERSION ($v)." }
+
+      - name: Build, test and package
+        shell: pwsh
+        run: ./tools/build.ps1 -UseRhinoNuGet
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: textx-package
+          path: dist/**
+
+      - name: Publish the release
+        if: startsWith(github.ref, 'refs/tags/v')
+        uses: softprops/action-gh-release@v2
+        with:
+          name: Text X ${{ github.ref_name }}
+          body_path: dist/${{ github.ref_name }}/release-notes.md
+          prerelease: ${{ contains(github.ref_name, '-') }}
+          files: |
+            dist/${{ github.ref_name }}/*.yak
+            dist/${{ github.ref_name }}/*.zip
+            dist/${{ github.ref_name }}/latest.json
+            dist/${{ github.ref_name }}/SHA256SUMS.txt

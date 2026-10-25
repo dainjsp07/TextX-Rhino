@@ -1,0 +1,36 @@
+<Project>
+  <!--
+    Text X - product identity and version.
+    This file and VERSION are the only places to edit when releasing:
+      * VERSION                 the release number (semantic versioning: MAJOR.MINOR.PATCH)
+      * the properties below    name, author and where updates are published
+    tools/release.ps1 bumps VERSION and CHANGELOG.md for you.
+  -->
+  <PropertyGroup>
+    <TextXVersion>$([System.IO.File]::ReadAllText('$(MSBuildThisFileDirectory)VERSION').Trim())</TextXVersion>
+
+    <TextXProductName>Text X</TextXProductName>
+    <!-- Package id used by Rhino's package manager (.yak). Lower case, no spaces. Never change after the first release. -->
+    <TextXPackageName>textx</TextXPackageName>
+    <TextXAuthors>Dain Joseph</TextXAuthors>
+    <TextXDescription>Translate Rhino text and leaders (English to Hebrew and 40+ languages) with correct right-to-left rendering. Keeps English on screen and prints or exports the translation to PDF.</TextXDescription>
+
+    <!--
+      Where releases are published, as "owner/repository" on GitHub (for example "dain/textx").
+      When set, Text X checks https://github.com/<owner>/<repository>/releases/latest/download/latest.json
+      once a day and tells users when a newer version is available. Leave empty to disable update checks.
+    -->
+    <TextXGitHubRepo></TextXGitHubRepo>
+    <!-- Optional: any other URL that serves latest.json (overrides the GitHub location). -->
+    <TextXUpdateFeedUrl></TextXUpdateFeedUrl>
+    <!-- Optional: home page shown in TRAbout and the package manager. -->
+    <TextXWebsite></TextXWebsite>
+  </PropertyGroup>
+
+  <!-- Derived values (do not edit) -->
+  <PropertyGroup>
+    <TextXVersionNumeric>$([System.Text.RegularExpressions.Regex]::Match('$(TextXVersion)', '^\d+\.\d+\.\d+').Value)</TextXVersionNumeric>
+    <TextXUpdateFeedUrl Condition="'$(TextXUpdateFeedUrl)' == '' And '$(TextXGitHubRepo)' != ''">https://github.com/$(TextXGitHubRepo)/releases/latest/download/latest.json</TextXUpdateFeedUrl>
+    <TextXWebsite Condition="'$(TextXWebsite)' == '' And '$(TextXGitHubRepo)' != ''">https://github.com/$(TextXGitHubRepo)</TextXWebsite>
+  </PropertyGroup>
+</Project>

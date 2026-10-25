@@ -1,0 +1,48 @@
+{PRODUCT} {VERSION} for Rhino 8 (Windows)
+==========================================
+
+Text X translates Rhino text and leaders (English to Hebrew by default, 40+ languages)
+with correct right-to-left rendering. English stays on screen; the translation is used
+automatically when you print or export a PDF.
+
+
+INSTALL (1 minute)
+------------------
+1. Start Rhino 8.
+2. Drag the file  {YAK}  from this folder onto the Rhino window.
+   Rhino installs it and asks you to restart.
+3. Restart Rhino.
+4. Type  TR  in the command line and press Enter. The Text X window opens.
+
+If Windows blocked the download: right-click the .yak file > Properties > tick "Unblock" > OK,
+then drag it into Rhino again.
+
+
+UPDATE
+------
+Install a newer .yak file the same way (drag it into Rhino, restart). Your settings,
+glossary and translation memory are kept.
+Text X tells you when a new version is available (if the person who shared it publishes
+updates online). Type TRAbout to see which version you have.
+
+
+UNINSTALL
+---------
+Rhino > Tools > Package Manager > Installed > Text X > Uninstall, then restart Rhino.
+
+
+COMMANDS
+--------
+TR             open the Text X window (TextX does the same)
+TREdit         pick text / leaders and load them into the window
+TRBatch        translate many annotations in one go
+TRPreview      show the print text in the viewports (On / Off / Toggle)
+TRExportPdf    export layouts to PDF with the translations
+TRManage       list all translated objects
+TRSettings     translation service, right-to-left options, glossary, theme, updates
+TRAbout        version and update status
+TRUpdate       check for a new version now
+
+Requirements: Rhino 8 for Windows. An internet connection for machine translation
+(Google free service by default; DeepL, Google Cloud, Azure, Claude or LibreTranslate
+with your own key in TRSettings).

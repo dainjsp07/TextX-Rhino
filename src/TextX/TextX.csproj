@@ -1,0 +1,95 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!--
+    Text X for Rhino 8.
+
+    Build (Windows, .NET SDK 8 or Visual Studio 2022):   dotnet build -c Release
+    Or build, test and package in one step:              powershell -File tools\build.ps1
+
+    Output:
+      bin\Release\net48\TextX.rhp     universal build: runs in Rhino 8 on .NET 8 (default) and .NET Framework (this is the one that is packaged)
+      bin\Release\net8.0\TextX.rhp    native .NET 8 build
+
+    References come from your Rhino 8 installation (RhinoSystemDir). To compile against the
+    RhinoCommon NuGet package instead (build servers):   dotnet build -c Release -p:UseRhinoNuGet=true
+
+    Version, name and update location come from ..\..\VERSION and ..\..\Directory.Build.props.
+  -->
+
+  <PropertyGroup>
+    <TargetFrameworks>net48;net8.0</TargetFrameworks>
+    <AssemblyName>TextX</AssemblyName>
+    <RootNamespace>TextX</RootNamespace>
+    <TargetExt>.rhp</TargetExt>
+    <LangVersion>7.3</LangVersion>
+    <Nullable>disable</Nullable>
+    <GenerateDocumentationFile>true</GenerateDocumentationFile>
+    <NoWarn>$(NoWarn);CS1591;NU1701</NoWarn>
+    <Deterministic>true</Deterministic>
+    <CopyLocalLockFileAssemblies>false</CopyLocalLockFileAssemblies>
+    <RhinoSystemDir Condition="'$(RhinoSystemDir)' == ''">C:\Program Files\Rhino 8\System</RhinoSystemDir>
+    <UseRhinoNuGet Condition="'$(UseRhinoNuGet)' == ''">false</UseRhinoNuGet>
+
+    <!-- assembly attributes generated from Directory.Build.props / VERSION -->
+    <GenerateAssemblyInfo>true</GenerateAssemblyInfo>
+    <IncludeSourceRevisionInInformationalVersion>false</IncludeSourceRevisionInInformationalVersion>
+    <AssemblyTitle>$(TextXProductName)</AssemblyTitle>
+    <Product>$(TextXProductName)</Product>
+    <Company>$(TextXAuthors)</Company>
+    <Authors>$(TextXAuthors)</Authors>
+    <Description>$(TextXDescription)</Description>
+    <Copyright>Copyright (c) $(TextXAuthors). MIT License.</Copyright>
+    <Version>$(TextXVersion)</Version>
+    <AssemblyVersion>$(TextXVersionNumeric).0</AssemblyVersion>
+    <FileVersion>$(TextXVersionNumeric).0</FileVersion>
+    <InformationalVersion>$(TextXVersion)</InformationalVersion>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <AssemblyMetadata Include="TextX.PackageName" Value="$(TextXPackageName)" />
+    <AssemblyMetadata Include="TextX.UpdateFeedUrl" Value="$(TextXUpdateFeedUrl)" />
+    <AssemblyMetadata Include="TextX.Website" Value="$(TextXWebsite)" />
+    <AssemblyMetadata Include="TextX.GitHubRepo" Value="$(TextXGitHubRepo)" />
+    <AssemblyMetadata Include="TextX.BuildDate" Value="$([System.DateTime]::UtcNow.ToString('yyyy-MM-dd'))" />
+  </ItemGroup>
+
+  <!-- RhinoCommon from NuGet (optional, used by the CI build) -->
+  <ItemGroup Condition="'$(UseRhinoNuGet)' == 'true'">
+    <PackageReference Include="RhinoCommon" Version="8.*" ExcludeAssets="runtime" />
+  </ItemGroup>
+
+  <!-- RhinoCommon from the local Rhino 8 installation (default) -->
+  <ItemGroup Condition="'$(UseRhinoNuGet)' != 'true' And '$(TargetFramework)' == 'net48'">
+    <Reference Include="RhinoCommon">
+      <HintPath>$(RhinoSystemDir)\RhinoCommon.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+    <Reference Include="Rhino.UI">
+      <HintPath>$(RhinoSystemDir)\Rhino.UI.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+    <Reference Include="Eto">
+      <HintPath>$(RhinoSystemDir)\Eto.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+  </ItemGroup>
+  <ItemGroup Condition="'$(UseRhinoNuGet)' != 'true' And '$(TargetFramework)' == 'net8.0'">
+    <Reference Include="RhinoCommon">
+      <HintPath>$(RhinoSystemDir)\netcore\RhinoCommon.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+    <Reference Include="Rhino.UI">
+      <HintPath>$(RhinoSystemDir)\netcore\Rhino.UI.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+    <Reference Include="Eto">
+      <HintPath>$(RhinoSystemDir)\Eto.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+  </ItemGroup>
+
+  <ItemGroup Condition="'$(TargetFramework)' == 'net48'">
+    <Reference Include="System.Net.Http" />
+  </ItemGroup>
+
+</Project>

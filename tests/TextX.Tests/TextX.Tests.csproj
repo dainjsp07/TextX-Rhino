@@ -1,0 +1,26 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!--
+    Core test-suite (no Rhino needed): Unicode bidi conformance, Arabic shaping, translation
+    engine, metadata, provider response parsing.
+
+      dotnet run -c Release -- <folder containing BidiTest.txt and BidiCharacterTest.txt>
+
+    The two Unicode data files are published at https://www.unicode.org/Public/UCD/latest/ucd/
+    (BidiTest.txt, BidiCharacterTest.txt). Without them only the unit tests run.
+  -->
+
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net8.0</TargetFramework>
+    <LangVersion>7.3</LangVersion>
+    <Nullable>disable</Nullable>
+    <AssemblyName>TextX.Tests</AssemblyName>
+    <StartupObject>TextX.Tests.Program</StartupObject>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <Compile Include="..\..\src\TextX\Core\**\*.cs" Link="Core\%(RecursiveDir)%(Filename)%(Extension)" />
+  </ItemGroup>
+
+</Project>
