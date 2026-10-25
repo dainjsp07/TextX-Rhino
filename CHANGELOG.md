@@ -12,6 +12,21 @@ into a dated section when you release.
 
 ## [Unreleased]
 
+## [1.2.0] - 2026-10-25
+
+### Added
+- **Automatic updates.** Once a day Text X checks for a new version on GitHub. When there is one, it downloads it,
+  checks that the download is complete and genuine (SHA-256), and installs it. The new version is used the next
+  time you start Rhino; your settings, glossary and translation memory are kept.
+  This works for copies installed from the `.yak` package (dragged into Rhino).
+- **Install update** button in the Text X window and in TRAbout; **TRUpdate** now installs the update too.
+- TRSettings > Appearance and updates: *Install new versions automatically* (on by default).
+- The update location can also be a `latest.json` file in a shared folder, for offices that share Text X on a
+  network drive.
+
+### Changed
+- Updates are published at https://github.com/dainjsp07/TextX-Rhino.
+
 ## [1.1.0] - 2026-10-23
 
 ### Added

@@ -63,6 +63,16 @@ namespace TextX
             }
         }
 
+        /// <summary>Full path of the loaded TextX.rhp.</summary>
+        public static string AssemblyPath
+        {
+            get
+            {
+                try { return Asm.Location ?? string.Empty; }
+                catch { return string.Empty; }
+            }
+        }
+
         public static string InstallFolder
         {
             get

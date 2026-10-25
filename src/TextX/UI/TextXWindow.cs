@@ -95,6 +95,7 @@ namespace TextX.UI
         private Control[] _pages;
         private Control _updateBar;
         private Label _updateText;
+        private FlatButton _updateInstall, _updateDownload, _updateNotes, _updateLater;
 
         private readonly FormatPanel _format = new FormatPanel();
 
@@ -294,18 +295,53 @@ namespace TextX.UI
         private Control BuildUpdateBar()
         {
             _updateText = Ui.Label(_scope, string.Empty, 12.5f, false, p => p.Text);
-            var download = new FlatButton("Download", IconKind.Download, ButtonKind.Primary, 28) { Backdrop = p => p.AccentSoft };
-            download.Click += (s, e) =>
+            _updateInstall = new FlatButton("Install update", IconKind.Download, ButtonKind.Primary, 28) { Backdrop = p => p.AccentSoft };
+            _updateInstall.Click += (s, e) => InstallUpdateNow();
+            _updateDownload = new FlatButton("Download", IconKind.Download, ButtonKind.Primary, 28) { Backdrop = p => p.AccentSoft };
+            _updateDownload.Click += (s, e) =>
             {
                 var latest = UpdateService.Instance.Latest;
                 if (latest != null) UpdateService.OpenUrl(latest.BestUrl);
             };
-            var later = new FlatButton("Later", IconKind.None, ButtonKind.Ghost, 28) { Backdrop = p => p.AccentSoft };
-            later.Click += (s, e) => UpdateService.Instance.Dismiss();
-            var row = Ui.Row(8, _updateText, Ui.Spring(), download, later);
+            _updateNotes = new FlatButton("What's new", IconKind.None, ButtonKind.Ghost, 28) { Backdrop = p => p.AccentSoft };
+            _updateNotes.Click += (s, e) =>
+            {
+                var latest = UpdateService.Instance.Latest;
+                var url = latest != null && !string.IsNullOrEmpty(latest.PageUrl) ? latest.PageUrl : BuildInfo.Website;
+                UpdateService.OpenUrl(url);
+            };
+            _updateLater = new FlatButton("Later", IconKind.None, ButtonKind.Ghost, 28) { Backdrop = p => p.AccentSoft };
+            _updateLater.Click += (s, e) => UpdateService.Instance.Dismiss();
+            var row = Ui.Row(8, _updateText, Ui.Spring(), _updateInstall, _updateDownload, _updateNotes, _updateLater);
             var card = new Card(row, new Padding(12, 6), p => p.AccentSoft, p => p.AccentLine, 8f);
             _updateBar = new Panel { Content = card, Padding = new Padding(14, 10, 14, 0), Visible = false };
             return _scope.Bind((Panel)_updateBar, (x, p) => x.BackgroundColor = p.Window);
+        }
+
+        private void InstallUpdateNow()
+        {
+            var svc = UpdateService.Instance;
+            var latest = svc.Latest;
+            if (latest == null || svc.IsInstalling) return;
+            svc.InstallAsync(latest, System.Threading.CancellationToken.None).ContinueWith(t =>
+            {
+                Application.Instance.AsyncInvoke(() =>
+                {
+                    if (t.IsFaulted)
+                    {
+                        var ex = t.Exception == null ? null : t.Exception.GetBaseException();
+                        var msg = ex == null ? "unknown error" : ex.Message;
+                        _status.Set("Update failed: " + msg, StatusText.Level.Error);
+                        RhinoApp.WriteLine("{0}: the update could not be installed - {1}.", BuildInfo.ProductName, msg);
+                    }
+                    else
+                    {
+                        RhinoApp.WriteLine("{0} {1} has been installed. Restart Rhino to start using it.", BuildInfo.ProductName, latest.Version);
+                    }
+                    UpdateUpdateBar();
+                });
+            });
+            UpdateUpdateBar();
         }
 
         private Control BuildTextPage()
@@ -753,8 +789,21 @@ namespace TextX.UI
         private void UpdateUpdateBar()
         {
             var svc = UpdateService.Instance;
-            bool show = svc.ShouldNotify;
-            if (show) _updateText.Text = BuildInfo.ProductName + " " + svc.Latest.Version + " is available (you have " + BuildInfo.VersionText + ").";
+            bool installing = svc.IsInstalling;
+            bool available = svc.ShouldNotify;
+            bool restart = !available && svc.ShouldShowRestartNotice;
+            bool show = installing || available || restart;
+            if (installing)
+                _updateText.Text = "Downloading and installing " + BuildInfo.ProductName + " " + (svc.Latest != null ? svc.Latest.Version.ToString() : string.Empty) + "...";
+            else if (available)
+                _updateText.Text = BuildInfo.ProductName + " " + svc.Latest.Version + " is available (you have " + BuildInfo.VersionText + ").";
+            else if (restart)
+                _updateText.Text = BuildInfo.ProductName + " " + svc.PendingVersion + " is installed. Restart Rhino to start using it.";
+            _updateInstall.Visible = available && !installing && svc.CanInstallLatest;
+            _updateDownload.Visible = available && !installing && !svc.CanInstallLatest;
+            _updateNotes.Visible = restart && !installing;
+            _updateLater.Visible = !installing;
+            _updateLater.Text = restart ? "OK" : "Later";
             _updateBar.Visible = show;
         }
 

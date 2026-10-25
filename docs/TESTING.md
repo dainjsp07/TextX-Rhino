@@ -54,6 +54,20 @@ to **Logical**.
 
 ## Recorded results
 
+**1.2.0** (2026-10-25)
+* Automated: BidiTest.txt 770 241 cases and BidiCharacterTest.txt 91 670 cases, 0 failures; 192 unit assertions
+  passed (new: package install into a version folder, manifest.txt switch, wrong name / version refused, running
+  version never overwritten, re-install over a left-over folder, feed checksum and relative links).
+* API check: all 566 RhinoCommon / Eto / Rhino.UI member references resolve against Rhino 8.
+* Rhino 8 (Windows, Safe Mode), Text X loaded from a test package folder (`…\packages\textx\1.2.0`) with a local
+  feed offering 1.2.1: the daily check downloaded, verified (SHA-256) and installed 1.2.1 by itself
+  (`…\textx\1.2.1\` created, `manifest.txt` = `1.2.1`, running version untouched); the window banner, TRUpdate and
+  TRAbout show "1.2.1 is installed, restart Rhino"; with `manifest.txt` reset, TRUpdate offered the update, asked,
+  and re-installed it over the existing folder. Rhino's start-up log shows its package manager removing inactive
+  versions named by `manifest.txt`, the mechanism the update relies on.
+* Not run live: the download from a published GitHub release (checked separately once the release exists) and
+  Rhino actually starting the new version after a restart (that step is Rhino's own package loading).
+
 **1.1.0** (2026-10-23)
 * Automated: BidiTest.txt 770 241 cases and BidiCharacterTest.txt 91 670 cases, 0 failures; 165 unit assertions passed.
 * API check: all 564 RhinoCommon / Eto / Rhino.UI member references of `TextX.rhp` resolve against Rhino 8.35 (8.35.26251.13001).

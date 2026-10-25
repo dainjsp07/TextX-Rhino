@@ -260,6 +260,13 @@ namespace TextX.Integration
             set { _s.SetBool("IncludePreReleases", value); }
         }
 
+        /// <summary>Download and install new versions by itself (used from the next Rhino start).</summary>
+        public bool InstallUpdatesAutomatically
+        {
+            get { return _s.GetBool("InstallUpdatesAutomatically", true); }
+            set { _s.SetBool("InstallUpdatesAutomatically", value); }
+        }
+
         /// <summary>Overrides the update feed built into the plug-in (empty = use the built-in one).</summary>
         public string UpdateFeedOverride
         {

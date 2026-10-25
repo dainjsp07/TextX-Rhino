@@ -52,12 +52,8 @@ namespace TextX.UI
             _status.Width = 420;
             var check = new FlatButton("Check for updates", IconKind.Refresh, ButtonKind.Secondary, 32);
             check.Click += (s, e) => CheckNow();
-            _download = new FlatButton("Download update", IconKind.Download, ButtonKind.Primary, 32) { Visible = false };
-            _download.Click += (s, e) =>
-            {
-                var latest = UpdateService.Instance.Latest;
-                if (latest != null) UpdateService.OpenUrl(latest.BestUrl);
-            };
+            _download = new FlatButton("Install update", IconKind.Download, ButtonKind.Primary, 32) { Visible = false };
+            _download.Click += (s, e) => InstallOrDownload();
             var website = new FlatButton("Website", IconKind.None, ButtonKind.Ghost, 32) { Visible = !string.IsNullOrEmpty(BuildInfo.Website) };
             website.Click += (s, e) => UpdateService.OpenUrl(BuildInfo.Website);
             var close = new FlatButton("Close", IconKind.None, ButtonKind.Ghost, 32);
@@ -73,6 +69,35 @@ namespace TextX.UI
             Content = layout;
             AbortButton = null;
             ShowStatus();
+            EventHandler changed = (s, e) => Application.Instance.AsyncInvoke(ShowStatus);
+            UpdateService.Instance.Changed += changed;
+            Closed += (s, e) => UpdateService.Instance.Changed -= changed;
+        }
+
+        private void InstallOrDownload()
+        {
+            var svc = UpdateService.Instance;
+            var latest = svc.Latest;
+            if (latest == null) return;
+            if (!svc.CanInstallLatest)
+            {
+                UpdateService.OpenUrl(latest.BestUrl);
+                return;
+            }
+            svc.InstallAsync(latest, CancellationToken.None).ContinueWith(t =>
+            {
+                Application.Instance.AsyncInvoke(() =>
+                {
+                    if (t.IsFaulted)
+                    {
+                        var ex = t.Exception == null ? null : t.Exception.GetBaseException();
+                        _status.Text = "The update could not be installed: " + (ex == null ? "unknown error" : ex.Message) + ".";
+                        return;
+                    }
+                    ShowStatus();
+                });
+            });
+            ShowStatus();
         }
 
         private void ShowStatus()
@@ -84,17 +109,35 @@ namespace TextX.UI
                 _download.Visible = false;
                 return;
             }
+            if (svc.IsInstalling)
+            {
+                _status.Text = "Downloading and installing " + BuildInfo.ProductName + " " + (svc.Latest != null ? svc.Latest.Version.ToString() : string.Empty) + "...";
+                _download.Visible = false;
+                return;
+            }
             if (svc.UpdateAvailable)
             {
-                _status.Text = BuildInfo.ProductName + " " + svc.Latest.Version + " is available. Download it, drag the .yak file into Rhino and restart Rhino.";
+                _status.Text = svc.CanInstallLatest
+                    ? BuildInfo.ProductName + " " + svc.Latest.Version + " is available. Install it now; it will be used the next time you start Rhino."
+                    : BuildInfo.ProductName + " " + svc.Latest.Version + " is available. Download it, drag the .yak file into Rhino and restart Rhino.";
+                _download.Text = svc.CanInstallLatest ? "Install update" : "Download update";
                 _download.Visible = true;
                 return;
             }
             _download.Visible = false;
+            var pending = svc.PendingVersion;
+            if (pending != null)
+            {
+                _status.Text = BuildInfo.ProductName + " " + pending + " is installed. Restart Rhino to start using it.";
+                return;
+            }
             var last = svc.LastCheckUtc;
-            _status.Text = last == DateTime.MinValue
+            var auto = svc.CanInstall
+                ? (TextXPlugIn.Instance.Options.InstallUpdatesAutomatically ? " New versions install themselves." : " Automatic installs are off (TRSettings).")
+                : " This copy was not installed from a .yak package, so new versions must be installed by hand.";
+            _status.Text = (last == DateTime.MinValue
                 ? "Updates have not been checked yet."
-                : "You have the latest version (last checked " + last.ToLocalTime().ToString("d MMM yyyy, HH:mm") + ").";
+                : "You have the latest version (last checked " + last.ToLocalTime().ToString("d MMM yyyy, HH:mm") + ").") + auto;
         }
 
         private void CheckNow()

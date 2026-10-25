@@ -15,13 +15,23 @@ Nothing else is needed: no source code, no .NET installation, no administrator r
 
 ## Update
 
-* Text X checks once a day whether a newer version has been published (when the build has an update
-  location, see RELEASING.md). The window then shows *"Text X 1.2.0 is available"* with a **Download** button,
-  and the command line mentions it at start-up. `TRUpdate` checks immediately.
-* Install the new `.yak` the same way (drag it into Rhino, restart). Settings, API keys, glossary and
-  translation memory are kept.
-* `TRAbout` shows the installed version, its folder and the update status. Rhino's
-  *Tools > Package Manager > Installed* also lists the version.
+Updates are automatic:
+
+* Once a day, when Rhino starts, Text X checks https://github.com/dainjsp07/TextX-Rhino for a newer version.
+* If there is one, it downloads it in the background, checks it (SHA-256) and installs it. The command line
+  says *"Text X 1.3.0 has been downloaded and installed. It will be used the next time you start Rhino."* and the
+  window shows *"Restart Rhino to start using it"*.
+* The next time Rhino starts, the new version is used. Settings, API keys, glossary and translation memory are kept.
+
+`TRUpdate` checks and installs immediately; the **Install update** button in the window and in `TRAbout` does the
+same. To be asked first, untick *TRSettings > Appearance and updates > Install new versions automatically*.
+
+Automatic installing needs Text X to have been installed from the `.yak` (as above). A copy registered some
+other way only shows *"Text X 1.3.0 is available"* with a **Download** button; drag that `.yak` into Rhino once and
+it updates itself from then on.
+
+`TRAbout` shows the installed version, its folder and the update status. Rhino's
+*Tools > Package Manager > Installed* also lists the version.
 
 ## Uninstall
 

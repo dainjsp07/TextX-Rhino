@@ -16,6 +16,14 @@ namespace TextX.Core.Updates
         public string Published = string.Empty;
         /// <summary>Lowest Rhino version the release supports ("8.0"), if stated.</summary>
         public string MinRhino = string.Empty;
+        /// <summary>SHA-256 of the package download (lower-case hex), if stated.</summary>
+        public string Sha256 = string.Empty;
+
+        /// <summary>True when the download is a Rhino package that can be installed directly.</summary>
+        public bool HasPackage
+        {
+            get { return !string.IsNullOrEmpty(DownloadUrl) && DownloadUrl.Split('?')[0].EndsWith(".yak", StringComparison.OrdinalIgnoreCase); }
+        }
 
         /// <summary>The best link to send the user to.</summary>
         public string BestUrl
@@ -31,9 +39,58 @@ namespace TextX.Core.Updates
     /// <c>{"name":"Text X","version":"1.2.0","released":"2026-11-02","download":"…/textx-1.2.0-rh8_0-win.yak","page":"…","notes":"…","minRhino":"8.0"}</c></item>
     /// <item>A GitHub "latest release" API response (<c>tag_name</c>, <c>html_url</c>, <c>body</c>, <c>assets</c>).</item>
     /// </list>
+    /// The feed can also be a file in a shared folder; links in it may then be relative to that folder.
     /// </summary>
     public static class ReleaseFeed
     {
+        /// <summary>Reads a feed and resolves relative links against <paramref name="feedLocation"/> (URL or file path).</summary>
+        public static ReleaseInfo Parse(string json, string feedLocation)
+        {
+            var info = Parse(json);
+            info.DownloadUrl = Resolve(feedLocation, info.DownloadUrl);
+            info.PageUrl = Resolve(feedLocation, info.PageUrl);
+            return info;
+        }
+
+        /// <summary>True for a local or network file location (C:\…, \\server\…, file://…), false for web addresses.</summary>
+        public static bool IsFileLocation(string location, out string path)
+        {
+            path = null;
+            if (string.IsNullOrWhiteSpace(location)) return false;
+            location = location.Trim();
+            if (location.StartsWith("http://", StringComparison.OrdinalIgnoreCase) || location.StartsWith("https://", StringComparison.OrdinalIgnoreCase)) return false;
+            Uri uri;
+            if (location.StartsWith("file:", StringComparison.OrdinalIgnoreCase) && Uri.TryCreate(location, UriKind.Absolute, out uri) && uri.IsFile)
+            {
+                path = uri.LocalPath;
+                return true;
+            }
+            bool rooted = location.StartsWith("\\\\") || location.StartsWith("/") ||
+                          (location.Length > 2 && char.IsLetter(location[0]) && location[1] == ':' && (location[2] == '\\' || location[2] == '/'));
+            if (!rooted) return false;
+            path = location;
+            return true;
+        }
+
+        /// <summary>Makes <paramref name="link"/> absolute, relative to the feed's location.</summary>
+        public static string Resolve(string feedLocation, string link)
+        {
+            if (string.IsNullOrWhiteSpace(link) || string.IsNullOrWhiteSpace(feedLocation)) return link ?? string.Empty;
+            string ignored;
+            Uri absolute;
+            if (IsFileLocation(link, out ignored) || (Uri.TryCreate(link, UriKind.Absolute, out absolute) && absolute.Scheme.Length > 1)) return link;
+            string feedPath;
+            if (IsFileLocation(feedLocation, out feedPath))
+            {
+                var dir = feedPath.Substring(0, Math.Max(0, feedPath.Replace('/', '\\').LastIndexOf('\\')));
+                var sep = feedPath.IndexOf('/') >= 0 && feedPath.IndexOf('\\') < 0 ? "/" : "\\";
+                return dir + sep + link.Replace(sep == "/" ? '\\' : '/', sep[0]);
+            }
+            Uri baseUri;
+            if (Uri.TryCreate(feedLocation, UriKind.Absolute, out baseUri)) return new Uri(baseUri, link).ToString();
+            return link;
+        }
+
         public static ReleaseInfo Parse(string json)
         {
             object root;
@@ -70,6 +127,7 @@ namespace TextX.Core.Updates
             info.Notes = Json.GetString(root, "notes") ?? string.Empty;
             info.Published = Json.GetString(root, "released") ?? string.Empty;
             info.MinRhino = Json.GetString(root, "minRhino") ?? string.Empty;
+            info.Sha256 = (Json.GetString(root, "sha256") ?? string.Empty).Trim().ToLowerInvariant();
             return info;
         }
 

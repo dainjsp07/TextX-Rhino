@@ -20,10 +20,10 @@ then drag it into Rhino again.
 
 UPDATE
 ------
-Install a newer .yak file the same way (drag it into Rhino, restart). Your settings,
-glossary and translation memory are kept.
-Text X tells you when a new version is available (if the person who shared it publishes
-updates online). Type TRAbout to see which version you have.
+Automatic. Once a day Text X checks for a new version, downloads it and installs it.
+The new version is used the next time you start Rhino; your settings, glossary and
+translation memory are kept. TRUpdate checks immediately. Type TRAbout to see which
+version you have.
 
 
 UNINSTALL
@@ -41,7 +41,7 @@ TRExportPdf    export layouts to PDF with the translations
 TRManage       list all translated objects
 TRSettings     translation service, right-to-left options, glossary, theme, updates
 TRAbout        version and update status
-TRUpdate       check for a new version now
+TRUpdate       check for a new version now and install it
 
 Requirements: Rhino 8 for Windows. An internet connection for machine translation
 (Google free service by default; DeepL, Google Cloud, Azure, Claude or LibreTranslate

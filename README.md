@@ -11,6 +11,7 @@ Type **`TR`** in Rhino's command line to open it.
 | Version | see [`VERSION`](VERSION) and [`CHANGELOG.md`](CHANGELOG.md) |
 | Requires | Rhino 8 for Windows |
 | Package | `textx-<version>-rh8_0-win.yak` (Rhino package) |
+| Download | [Latest release](https://github.com/dainjsp07/TextX-Rhino/releases/latest) |
 | Licence | MIT |
 
 ---
@@ -21,8 +22,8 @@ Type **`TR`** in Rhino's command line to open it.
 2. Restart Rhino.
 3. Type **`TR`**.
 
-Updating works the same way: drag in the newer `.yak` and restart Rhino. Settings, glossary and
-translation memory are kept. To uninstall: *Tools > Package Manager > Installed > Text X > Uninstall*.
+Updates are automatic: Text X checks for a new version once a day, installs it in the background and uses
+it from the next Rhino start. Settings, glossary and translation memory are kept. To uninstall: *Tools > Package Manager > Installed > Text X > Uninstall*.
 Full guide, including troubleshooting: [docs/INSTALL.md](docs/INSTALL.md).
 
 ## Using Text X
@@ -68,7 +69,7 @@ landing). **Print / PDF** sets the print alignment and holds the PDF and recover
 | `TRSettings` | Translation service and keys, right-to-left options, print switching, glossary, theme, updates |
 | `TRRtlTest` | Places right-to-left test samples (run once after a Rhino update) |
 | `TRAbout` | Version, install folder, update status |
-| `TRUpdate` | Check for a newer version now |
+| `TRUpdate` | Check for a newer version now and install it |
 
 ### Translation services
 

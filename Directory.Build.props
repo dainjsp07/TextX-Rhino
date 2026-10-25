@@ -16,11 +16,11 @@
     <TextXDescription>Translate Rhino text and leaders (English to Hebrew and 40+ languages) with correct right-to-left rendering. Keeps English on screen and prints or exports the translation to PDF.</TextXDescription>
 
     <!--
-      Where releases are published, as "owner/repository" on GitHub (for example "dain/textx").
-      When set, Text X checks https://github.com/<owner>/<repository>/releases/latest/download/latest.json
-      once a day and tells users when a newer version is available. Leave empty to disable update checks.
+      Where releases are published, as "owner/repository" on GitHub. The repository must be public.
+      Text X checks https://github.com/<owner>/<repository>/releases/latest/download/latest.json once a day
+      and installs newer versions by itself. Leave empty to disable update checks.
     -->
-    <TextXGitHubRepo></TextXGitHubRepo>
+    <TextXGitHubRepo>dainjsp07/TextX-Rhino</TextXGitHubRepo>
     <!-- Optional: any other URL that serves latest.json (overrides the GitHub location). -->
     <TextXUpdateFeedUrl></TextXUpdateFeedUrl>
     <!-- Optional: home page shown in TRAbout and the package manager. -->

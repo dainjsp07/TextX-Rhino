@@ -20,7 +20,8 @@ if (-not $OutDir) { $OutDir = Join-Path $root 'artifacts/bin/net48' }
 $info = Join-Path $root 'artifacts/obj/TextX.AssemblyInfo.g.cs'
 New-TextXAssemblyInfo -Product $product -Path $info
 
-$refs = @('mscorlib.dll', 'System.dll', 'System.Core.dll', 'System.Drawing.dll', 'System.Net.Http.dll', 'System.Xml.dll', 'System.Runtime.Serialization.dll') |
+$refs = @('mscorlib.dll', 'System.dll', 'System.Core.dll', 'System.Drawing.dll', 'System.Net.Http.dll', 'System.Xml.dll', 'System.Runtime.Serialization.dll',
+  'System.IO.Compression.dll', 'System.IO.Compression.FileSystem.dll') |
   ForEach-Object { Join-Path $NetFxRefDir $_ }
 $refs += @('RhinoCommon.dll', 'Rhino.UI.dll', 'Eto.dll') | ForEach-Object { Join-Path $RhinoSystemDir $_ }
 

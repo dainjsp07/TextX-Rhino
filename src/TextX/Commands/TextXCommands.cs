@@ -720,7 +720,7 @@ namespace TextX.Commands
         }
     }
 
-    /// <summary>TRUpdate: checks for a newer release now and opens its download page.</summary>
+    /// <summary>TRUpdate: checks for a newer release now and installs it (or opens its download page).</summary>
     [Guid("2d0d6d3e-5a63-4c51-9f0f-6a1d4a7b9e10")]
     public class TrUpdateCommand : Command
     {
@@ -738,9 +738,7 @@ namespace TextX.Commands
             Core.Updates.ReleaseInfo latest;
             try
             {
-                var task = System.Threading.Tasks.Task.Run(() => updates.CheckAsync(System.Threading.CancellationToken.None));
-                while (!task.IsCompleted) RhinoApp.Wait();
-                latest = task.GetAwaiter().GetResult();
+                latest = Wait(() => updates.CheckAsync(System.Threading.CancellationToken.None));
             }
             catch (Exception ex)
             {
@@ -749,15 +747,45 @@ namespace TextX.Commands
             }
             if (!updates.UpdateAvailable)
             {
-                RhinoApp.WriteLine("{0} {1} is the latest version.", BuildInfo.ProductName, BuildInfo.VersionText);
+                var pending = updates.PendingVersion;
+                if (pending != null)
+                    RhinoApp.WriteLine("{0} {1} is installed and will be used the next time you start Rhino.", BuildInfo.ProductName, pending);
+                else
+                    RhinoApp.WriteLine("{0} {1} is the latest version.", BuildInfo.ProductName, BuildInfo.VersionText);
                 return Result.Success;
             }
             RhinoApp.WriteLine("{0} {1} is available (you have {2}).", BuildInfo.ProductName, latest.Version, BuildInfo.VersionText);
+
+            if (updates.CanInstallLatest)
+            {
+                if (mode == RunMode.Interactive)
+                {
+                    var answer = Rhino.UI.Dialogs.ShowMessage(
+                        BuildInfo.ProductName + " " + latest.Version + " is available (you have " + BuildInfo.VersionText + ").\n\n" +
+                        "Download and install it now? It will be used the next time you start Rhino.",
+                        BuildInfo.ProductName + " update", Rhino.UI.ShowMessageButton.YesNo, Rhino.UI.ShowMessageIcon.Information);
+                    if (answer != Rhino.UI.ShowMessageResult.Yes) return Result.Cancel;
+                }
+                RhinoApp.WriteLine("{0}: downloading and installing {1}...", BuildInfo.ProductName, latest.Version);
+                try
+                {
+                    Wait(() => updates.InstallAsync(latest, System.Threading.CancellationToken.None));
+                }
+                catch (Exception ex)
+                {
+                    RhinoApp.WriteLine("{0}: the update could not be installed - {1}.", BuildInfo.ProductName, ex.GetBaseException().Message);
+                    return Result.Failure;
+                }
+                RhinoApp.WriteLine("{0} {1} has been installed. Restart Rhino to start using it.", BuildInfo.ProductName, latest.Version);
+                return Result.Success;
+            }
+
             if (mode == RunMode.Interactive)
             {
                 var answer = Rhino.UI.Dialogs.ShowMessage(
                     BuildInfo.ProductName + " " + latest.Version + " is available (you have " + BuildInfo.VersionText + ").\n\n" +
-                    "Open the download page now?\n\nTo install: drag the downloaded .yak file into Rhino, then restart Rhino.",
+                    "Open the download page now?\n\nTo install: drag the downloaded .yak file into Rhino, then restart Rhino. " +
+                    "Copies installed that way update themselves from then on.",
                     BuildInfo.ProductName + " update", Rhino.UI.ShowMessageButton.YesNo, Rhino.UI.ShowMessageIcon.Information);
                 if (answer == Rhino.UI.ShowMessageResult.Yes) UpdateService.OpenUrl(latest.BestUrl);
             }
@@ -766,6 +794,14 @@ namespace TextX.Commands
                 RhinoApp.WriteLine("Download: {0}", latest.BestUrl);
             }
             return Result.Success;
+        }
+
+        /// <summary>Runs a task while keeping Rhino responsive.</summary>
+        private static T Wait<T>(Func<System.Threading.Tasks.Task<T>> start)
+        {
+            var task = System.Threading.Tasks.Task.Run(start);
+            while (!task.IsCompleted) RhinoApp.Wait();
+            return task.GetAwaiter().GetResult();
         }
     }
 }

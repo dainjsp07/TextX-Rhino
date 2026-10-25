@@ -69,6 +69,7 @@ namespace TextX.UI
         private readonly DropDown _theme = new DropDown();
         private readonly CheckBox _checkUpdates = new CheckBox { Text = "Check for new versions automatically (once a day)" };
         private readonly CheckBox _preReleases = new CheckBox { Text = "Include test versions (pre-releases)" };
+        private readonly CheckBox _autoInstall = new CheckBox { Text = "Install new versions automatically (they are used the next time Rhino starts)" };
         private readonly TextBox _feed = new TextBox();
         private readonly Label _updateResult = new Label { Wrap = WrapMode.Word };
 
@@ -237,6 +238,8 @@ namespace TextX.UI
             _theme.SelectedIndex = theme == "dark" ? 1 : (theme == "light" ? 2 : 0);
             _checkUpdates.Checked = _s.CheckForUpdates;
             _preReleases.Checked = _s.IncludePreReleases;
+            _autoInstall.Checked = _s.InstallUpdatesAutomatically;
+            _autoInstall.Enabled = UpdateService.Instance.CanInstall;
             _feed.Text = _s.UpdateFeedOverride;
             _provider.SelectedKey = _s.ProviderId;
             if (_provider.SelectedIndex < 0) _provider.SelectedIndex = 0;
@@ -367,9 +370,12 @@ namespace TextX.UI
             l.AddRow(new Label { Text = "Installed version" }, new Label { Text = BuildInfo.DisplayName + (string.IsNullOrEmpty(BuildInfo.BuildDate) ? string.Empty : "  (built " + BuildInfo.BuildDate + ")") });
             l.AddRow(new Label { Text = "Installed in" }, new Label { Text = BuildInfo.InstallFolder, Wrap = WrapMode.Character });
             l.AddRow(null, _checkUpdates);
+            l.AddRow(null, _autoInstall);
+            if (!UpdateService.Instance.CanInstall)
+                l.AddRow(null, new Label { Text = "This copy was not installed from a .yak package, so it cannot install new versions itself. Install the .yak once (drag it into Rhino) to get automatic updates.", Wrap = WrapMode.Word });
             l.AddRow(null, _preReleases);
             l.AddRow(new Label { Text = "Update location" }, _feed);
-            l.AddRow(null, new Label { Text = "Leave empty to use the location built into this version. It must serve latest.json (see RELEASING.md).", Wrap = WrapMode.Word });
+            l.AddRow(null, new Label { Text = "Leave empty to use the location built into this version. It can also be a latest.json file in a shared folder (see RELEASING.md).", Wrap = WrapMode.Word });
             l.AddRow(null, TableLayout.Horizontal(6, check, new TableCell(_updateResult, true)));
             l.Add(null);
             return l;
@@ -396,9 +402,12 @@ namespace TextX.UI
                         _updateResult.Text = "Could not check: " + (ex == null ? "unknown error" : ex.Message);
                         return;
                     }
+                    var pending = svc.PendingVersion;
                     _updateResult.Text = svc.UpdateAvailable
-                        ? BuildInfo.ProductName + " " + t.Result.Version + " is available. Run TRUpdate or use the Download button in the window."
-                        : "You have the latest version (" + BuildInfo.VersionText + ").";
+                        ? BuildInfo.ProductName + " " + t.Result.Version + " is available. Run TRUpdate or use the button in the Text X window."
+                        : pending != null
+                            ? BuildInfo.ProductName + " " + pending + " is installed and will be used the next time you start Rhino."
+                            : "You have the latest version (" + BuildInfo.VersionText + ").";
                 });
             });
         }
@@ -409,6 +418,7 @@ namespace TextX.UI
             _s.ThemeMode = _theme.SelectedIndex == 1 ? "Dark" : (_theme.SelectedIndex == 2 ? "Light" : "Auto");
             _s.CheckForUpdates = _checkUpdates.Checked == true;
             _s.IncludePreReleases = _preReleases.Checked == true;
+            _s.InstallUpdatesAutomatically = _autoInstall.Checked == true;
             _s.UpdateFeedOverride = _feed.Text;
             foreach (var kv in _providerSettings) _s.SetProviderSettings(kv.Key, kv.Value);
             _s.ProviderId = _provider.SelectedKey ?? ProviderIds.GoogleFree;

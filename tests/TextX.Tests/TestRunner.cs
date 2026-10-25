@@ -77,6 +77,7 @@ namespace TextX.Tests
                 CoreTests.ProviderParsing,
                 CoreTests.Versions,
                 CoreTests.UpdateFeed,
+                CoreTests.PackageInstall,
             })
             {
                 try { t(); }

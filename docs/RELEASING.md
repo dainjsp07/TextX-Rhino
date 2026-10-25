@@ -27,8 +27,9 @@ the Package Manager use them to recognise Text X as the same product across vers
 
 ## One-time setup: where updates are published
 
-Installed copies learn about new versions from a small file, **`latest.json`**, published with each release.
-The simplest free host is GitHub:
+Installed copies learn about new versions from a small file, **`latest.json`**, published with each release,
+and then download and install the `.yak` themselves (the SHA-256 in `latest.json` is checked first).
+This project publishes on GitHub (`dainjsp07/TextX-Rhino`, public). To set it up for another repository:
 
 1. Create a GitHub repository (for example `textx`) and push this folder to it.
 2. In `Directory.Build.props` set `<TextXGitHubRepo>your-name/textx</TextXGitHubRepo>`.
@@ -39,7 +40,9 @@ Copies built **before** this setting was made have no update location and cannot
 so set it before you share the first build widely. (Users can also paste the address in
 *TRSettings > Appearance and updates > Update location*.)
 
-Prefer not to use GitHub? Put `latest.json` on any web server and set `<TextXUpdateFeedUrl>` instead.
+Prefer not to use GitHub? Put `latest.json` and the `.yak` on any web server, or in a shared network folder
+(`\\server\share\TextX\latest.json`), and set `<TextXUpdateFeedUrl>` (or *TRSettings > Update location*) to it.
+The `download` link in `latest.json` may be relative to the file, e.g. `textx-1.3.0-rh8_0-win.yak`.
 
 ## Making a release
 
@@ -66,8 +69,8 @@ Prefer not to use GitHub? Put `latest.json` on any web server and set `<TextXUpd
      tick **Publish a release** and click **Run workflow**. GitHub builds and tests the version in `VERSION`,
      creates the tag `v<version>` and publishes the release with the `.yak`, the zip and `latest.json`.
      (Pushing a tag yourself does the same: run the command above with `-Publish`, or `git tag v<version>`
-     and `git push --follow-tags`.) When the repository is public, every installed copy then shows
-     *"Text X <version> is available"* within a day.
+     and `git push --follow-tags`.) Every copy installed from a `.yak` then installs the new version by itself
+     at its next daily check and uses it from the following Rhino start.
    * **Directly:** send `TextX-<version>-Windows.zip` to your friends (e-mail, WhatsApp, Drive).
    * **Rhino package server** (optional, makes Text X searchable in Rhino's Package Manager, which then also
      offers updates): with a free Rhino account,
