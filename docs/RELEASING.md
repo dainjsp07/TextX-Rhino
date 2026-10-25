@@ -62,9 +62,12 @@ Prefer not to use GitHub? Put `latest.json` on any web server and set `<TextXUpd
 
 3. Test the `.yak` on your own Rhino (drag it in, restart, `TRAbout` shows the new version).
 4. Publish – one of:
-   * **GitHub (recommended):** run the same command with `-Publish`, or commit, `git tag v<version>` and
-     `git push --follow-tags`. GitHub Actions builds the release and attaches the `.yak`, the zip and
-     `latest.json`. From then on every installed copy shows *"Text X <version> is available"* within a day.
+   * **GitHub (recommended):** commit and push the changes, then on GitHub open **Actions > build > Run workflow**,
+     tick **Publish a release** and click **Run workflow**. GitHub builds and tests the version in `VERSION`,
+     creates the tag `v<version>` and publishes the release with the `.yak`, the zip and `latest.json`.
+     (Pushing a tag yourself does the same: run the command above with `-Publish`, or `git tag v<version>`
+     and `git push --follow-tags`.) When the repository is public, every installed copy then shows
+     *"Text X <version> is available"* within a day.
    * **Directly:** send `TextX-<version>-Windows.zip` to your friends (e-mail, WhatsApp, Drive).
    * **Rhino package server** (optional, makes Text X searchable in Rhino's Package Manager, which then also
      offers updates): with a free Rhino account,
