@@ -35,7 +35,7 @@ namespace TextX.UI.Theming
                 catch { dark = true; }
             }
             var changed = _current == null || _current.IsDark != dark;
-            if (changed) _current = dark ? ThemeColors.GraphiteDeepNavy() : ThemeColors.LightDeepNavy();
+            if (changed) _current = dark ? ThemeColors.Charcoal() : ThemeColors.Paper();
             return changed;
         }
 
@@ -43,6 +43,25 @@ namespace TextX.UI.Theming
         public static Font UiFont(float px, bool bold = false)
         {
             return GetFont("Segoe UI", px, bold);
+        }
+
+        /// <summary>Large titles: a heavier face when Windows has it.</summary>
+        public static Font DisplayFont(float px)
+        {
+            return GetFont("Segoe UI Semibold", px, false);
+        }
+
+        /// <summary>Small labels in capitals with open letter spacing ("R E C E N T").</summary>
+        public static string Spaced(string text)
+        {
+            var t = (text ?? string.Empty).ToUpperInvariant();
+            var sb = new System.Text.StringBuilder(t.Length * 2);
+            for (int i = 0; i < t.Length; i++)
+            {
+                sb.Append(t[i]);
+                if (i < t.Length - 1 && t[i] != ' ' && t[i + 1] != ' ') sb.Append('\u200A');
+            }
+            return sb.ToString();
         }
 
         public static Font GetFont(string family, float px, bool bold = false, bool italic = false)

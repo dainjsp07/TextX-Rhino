@@ -22,12 +22,20 @@ namespace TextX.UI.Theming
         public Color Muted;       // secondary text, inactive tabs
         public Color Subtle;      // text on tinted backgrounds
 
-        public Color Accent;      // fill of the main button (deep navy)
+        public Color Accent;      // fill of the main button (signal orange)
         public Color OnAccent;    // text on Accent
         public Color AccentInk;   // accent used for text, icons, outlines (readable on Window)
         public Color AccentSoft;  // selected rows / options background
         public Color AccentLine;  // outline of selected rows
         public Color AccentEdge;  // outline of the main button
+
+        public Color Strong;      // filled chips and active segments (ink on paper, paper on charcoal)
+        public Color OnStrong;    // text on Strong
+        public Color Rail;        // navigation rail
+        public Color RailIcon;    // inactive rail icons
+        public Color Stage;       // behind document pages
+        public Color Hero;        // the large feature card
+        public Color OnHero;      // text on Hero
 
         public Color SheetBg;     // sheet preview paper
         public Color SheetText;
@@ -62,81 +70,100 @@ namespace TextX.UI.Theming
             return new Color(c.R, c.G, c.B, alpha);
         }
 
-        /// <summary>Option A, "Graphite and Deep Navy".</summary>
-        public static ThemeColors GraphiteDeepNavy()
+        /// <summary>
+        /// Dark theme: charcoal surfaces, warm paper text and one strong accent (signal orange),
+        /// after the reference palette #FF6A00 #111111 #333333 #777777 #C9BCA7 #E8E4DB #F6F4E9.
+        /// </summary>
+        public static ThemeColors Charcoal()
         {
             var p = new ThemeColors { Name = "Dark", IsDark = true };
-            p.Window = Hex("#1E1F22");
-            p.Surface = Hex("#2A2B2F");
-            p.Field = Hex("#232428");
-            p.Border = Hex("#3A3C41");
-            p.Divider = Hex("#2E3034");
-            p.Footer = Hex("#1A1B1E");
-            p.Item = Hex("#26272B");
-            p.ItemHover = Hex("#2D2E33");
-            p.IconBox = Hex("#34363B");
-            p.Text = Hex("#ECECEE");
-            p.Muted = Hex("#A3A6AD");
-            p.Subtle = Hex("#C9CBD1");
+            p.Window = Hex("#111111");
+            p.Surface = Hex("#1B1B1B");
+            p.Field = Hex("#161616");
+            p.Border = Hex("#2C2C2C");
+            p.Divider = Hex("#242424");
+            p.Footer = Hex("#1B1B1B");
+            p.Item = Hex("#1B1B1B");
+            p.ItemHover = Hex("#252525");
+            p.IconBox = Hex("#2A2A2A");
+            p.Text = Hex("#F6F4E9");
+            p.Muted = Hex("#A19C92");
+            p.Subtle = Hex("#C9BCA7");
 
-            p.Accent = Hex("#132D52");
-            p.OnAccent = Hex("#FFFFFF");
-            p.AccentInk = Hex("#9EC0F0");
-            p.AccentSoft = Mix(p.Item, p.Accent, 0.65f);
-            p.AccentLine = WithAlpha(p.AccentInk, 0.35f);
-            p.AccentEdge = WithAlpha(p.AccentInk, 0.45f);
+            p.Accent = Hex("#FF6A00");
+            p.OnAccent = Hex("#111111");
+            p.AccentInk = Hex("#FF7F24");
+            p.AccentSoft = Mix(p.Surface, p.Accent, 0.16f);
+            p.AccentLine = WithAlpha(p.Accent, 0.55f);
+            p.AccentEdge = Hex("#FF6A00");
 
-            p.SheetBg = Mix(Hex("#121316"), p.Accent, 0.25f);
-            p.SheetText = Hex("#FFFFFF");
-            p.SheetLabel = Hex("#C9CBD1");
-            p.SheetDash = WithAlpha(p.AccentInk, 0.45f);
+            p.Strong = Hex("#F6F4E9");
+            p.OnStrong = Hex("#111111");
+            p.Rail = Hex("#1B1B1B");
+            p.RailIcon = Hex("#8E897F");
+            p.Stage = Hex("#161616");
+            p.Hero = Hex("#1B1B1B");
+            p.OnHero = Hex("#F6F4E9");
+
+            p.SheetBg = Hex("#161616");
+            p.SheetText = Hex("#F6F4E9");
+            p.SheetLabel = Hex("#C9BCA7");
+            p.SheetDash = WithAlpha(p.Accent, 0.55f);
 
             p.Success = Hex("#4ADE80");
-            p.SuccessSoft = Hex("#23382B");
+            p.SuccessSoft = Hex("#1F2E24");
             p.SuccessText = Hex("#86EFAC");
-            p.Warning = Hex("#FBBF24");
-            p.WarningSoft = Hex("#3A3120");
+            p.Warning = Hex("#FACC15");
+            p.WarningSoft = Hex("#2F2A16");
             p.Error = Hex("#F87171");
-            p.ErrorSoft = Hex("#3B2224");
+            p.ErrorSoft = Hex("#352022");
             return p;
         }
 
-        /// <summary>The same design for Rhino's light mode.</summary>
-        public static ThemeColors LightDeepNavy()
+        /// <summary>Light theme: warm paper background, white cards, charcoal ink and the same orange.</summary>
+        public static ThemeColors Paper()
         {
             var p = new ThemeColors { Name = "Light", IsDark = false };
-            p.Window = Hex("#F3F4F6");
+            p.Window = Hex("#F6F4E9");
             p.Surface = Hex("#FFFFFF");
-            p.Field = Hex("#F7F8FA");
-            p.Border = Hex("#D5D9E0");
-            p.Divider = Hex("#E1E4E9");
-            p.Footer = Hex("#EBEDF1");
+            p.Field = Hex("#FBFAF5");
+            p.Border = Hex("#E8E4DB");
+            p.Divider = Hex("#E8E4DB");
+            p.Footer = Hex("#FFFFFF");
             p.Item = Hex("#FFFFFF");
-            p.ItemHover = Hex("#F0F2F6");
-            p.IconBox = Hex("#E7EAF0");
-            p.Text = Hex("#1A1B1E");
-            p.Muted = Hex("#5B606B");
-            p.Subtle = Hex("#3D424C");
+            p.ItemHover = Hex("#F4F1E8");
+            p.IconBox = Hex("#F0ECE2");
+            p.Text = Hex("#111111");
+            p.Muted = Hex("#6B665C");
+            p.Subtle = Hex("#333333");
 
-            p.Accent = Hex("#132D52");
-            p.OnAccent = Hex("#FFFFFF");
-            p.AccentInk = Hex("#1E3A8A");
-            p.AccentSoft = Hex("#E3EAF5");
-            p.AccentLine = WithAlpha(p.AccentInk, 0.40f);
-            p.AccentEdge = Hex("#132D52");
+            p.Accent = Hex("#FF6A00");
+            p.OnAccent = Hex("#111111");
+            p.AccentInk = Hex("#C2410C");
+            p.AccentSoft = Hex("#FFEBDC");
+            p.AccentLine = WithAlpha(Hex("#FF6A00"), 0.6f);
+            p.AccentEdge = Hex("#F26300");
 
-            p.SheetBg = Hex("#EEF2F8");
-            p.SheetText = Hex("#10213D");
-            p.SheetLabel = Hex("#4B5563");
-            p.SheetDash = WithAlpha(p.AccentInk, 0.45f);
+            p.Strong = Hex("#111111");
+            p.OnStrong = Hex("#F6F4E9");
+            p.Rail = Hex("#111111");
+            p.RailIcon = Hex("#C9BCA7");
+            p.Stage = Hex("#E8E4DB");
+            p.Hero = Hex("#111111");
+            p.OnHero = Hex("#F6F4E9");
 
-            p.Success = Hex("#16A34A");
-            p.SuccessSoft = Hex("#DCFCE7");
+            p.SheetBg = Hex("#F6F4E9");
+            p.SheetText = Hex("#111111");
+            p.SheetLabel = Hex("#6B665C");
+            p.SheetDash = WithAlpha(Hex("#FF6A00"), 0.6f);
+
+            p.Success = Hex("#15803D");
+            p.SuccessSoft = Hex("#E3F4E8");
             p.SuccessText = Hex("#166534");
-            p.Warning = Hex("#B45309");
-            p.WarningSoft = Hex("#FEF3C7");
+            p.Warning = Hex("#A16207");
+            p.WarningSoft = Hex("#FBF1D3");
             p.Error = Hex("#DC2626");
-            p.ErrorSoft = Hex("#FEE2E2");
+            p.ErrorSoft = Hex("#FDE4E4");
             return p;
         }
     }

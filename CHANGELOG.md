@@ -44,6 +44,14 @@ into a dated section when you release.
   text is read and translated. **Speak**: Windows voice typing with live translation. **Check writing**:
   spelling and grammar suggestions from LanguageTool's free service.
 - The Text X window accepts text from Studio, ready to place as text or a leader.
+- **Drawings with outlined text** (CAD exports whose words are shapes, not text) are read with OCR, next to
+  the real text on the page.
+
+### Changed
+- **New look**, in light and dark: a charcoal and warm-paper palette with one signal-orange accent, an icon
+  rail for navigation, large rounded cards, pill buttons and chips, round icon buttons, and the document page
+  as the centre of the Document view with a floating page bar. The Text X window uses the same colours,
+  buttons and tabs.
 
 ## [1.2.0] - 2026-10-25
 

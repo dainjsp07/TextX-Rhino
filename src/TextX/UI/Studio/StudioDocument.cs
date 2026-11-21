@@ -39,51 +39,52 @@ namespace TextX.UI.Studio
         private Control BuildDocument()
         {
             _docTitle = Ui.Label(_scope, "No document open", 15f, true);
-            _docInfo = Ui.Label(_scope, "Open a PDF to translate it.", 12f, false, p => p.Muted);
-            _checkPill = new Pill(string.Empty, p => p.WarningSoft, p => p.Text) { Visible = false, Backdrop = p => p.Window };
+            _docInfo = Ui.Label(_scope, "Open a PDF to translate it.", 12.5f, false, p => p.Muted);
+            _checkPill = new Pill(string.Empty, p => p.WarningSoft, p => p.Warning) { Visible = false, Backdrop = p => p.Window };
 
-            _translate = new FlatButton("Translate", IconKind.Translate, ButtonKind.Primary, 34) { ToolTip = "Translate the whole document into the language chosen at the top" };
+            _translate = new FlatButton("Translate", IconKind.Translate, ButtonKind.Primary, 38) { ToolTip = "Translate the whole document into the language chosen at the top" };
             _translate.Click += (s, e) => TranslateDocument(false);
-            var export = new FlatButton("Save as", IconKind.Download, ButtonKind.Secondary, 34) { ToolTip = "Save the translation as PDF (same layout), Word or text" };
+            var export = new FlatButton("Save as", IconKind.Download, ButtonKind.Strong, 38) { ToolTip = "Save the translation as PDF (same layout), Word or text" };
             export.Click += (s, e) => ShowExportMenu(export);
-            var summary = new FlatButton("Summary", IconKind.Info, ButtonKind.Secondary, 34) { ToolTip = "Key points, contents and figures of the document" };
+            var summary = new FlatButton("Summary", IconKind.Info, ButtonKind.Secondary, 38) { ToolTip = "Key points, contents and figures of the document" };
             summary.Click += (s, e) => ShowSummary();
-            var check = new FlatButton("Check", IconKind.Check, ButtonKind.Secondary, 34) { ToolTip = "Look for changed numbers, missing text, glossary terms and more" };
+            var check = new FlatButton("Check", IconKind.Check, ButtonKind.Secondary, 38) { ToolTip = "Look for changed numbers, missing text, glossary terms and more" };
             check.Click += (s, e) => ShowCheckMenu(check);
-            var schedule = new FlatButton("Schedule", IconKind.Format, ButtonKind.Secondary, 34) { ToolTip = "Read product codes, materials and finishes into schedules" };
+            var schedule = new FlatButton("Schedule", IconKind.Grid, ButtonKind.Secondary, 38) { ToolTip = "Read product codes, materials and finishes into schedules" };
             schedule.Click += (s, e) => { ShowTab(SchedulesTab); if (_schedules == null) ReadSchedules(); };
 
-            var titleBlock = new TableLayout { Spacing = new Size(0, 2) };
-            titleBlock.Rows.Add(new TableRow(Ui.Row(8, _docTitle, _checkPill)));
-            titleBlock.Rows.Add(new TableRow(_docInfo));
             var toolbar = new TableLayout { Spacing = new Size(8, 0) };
-            toolbar.Rows.Add(new TableRow(new TableCell(titleBlock, true), new TableCell(Ui.Row(8, _translate, export, summary, check, schedule), false)));
+            toolbar.Rows.Add(new TableRow(new TableCell(Ui.Row(10, _docInfo, _checkPill), true), new TableCell(Ui.Row(8, summary, check, schedule, export, _translate), false)));
 
-            // page navigation and view mode
-            var prev = new FlatButton("Previous", IconKind.None, ButtonKind.Secondary, 28) { ToolTip = "Previous page (Page Up)" };
+            // the page is the hero: a stage card with the page(s) and a floating pill toolbar
+            var prev = new FlatButton(string.Empty, IconKind.Prev, ButtonKind.Secondary, 34) { ToolTip = "Previous page (Page Up)", Backdrop = p => p.Surface };
             prev.Click += (s, e) => GoToPage(_pageIndex - 1);
-            var next = new FlatButton("Next", IconKind.None, ButtonKind.Secondary, 28) { ToolTip = "Next page (Page Down)" };
+            var next = new FlatButton(string.Empty, IconKind.Next, ButtonKind.Secondary, 34) { ToolTip = "Next page (Page Down)", Backdrop = p => p.Surface };
             next.Click += (s, e) => GoToPage(_pageIndex + 1);
-            _pageLabel = Ui.Label(_scope, string.Empty, 12.5f);
-            _viewMode.Width = 320;
+            _pageLabel = Ui.Label(_scope, string.Empty, 12.5f, true);
+            _viewMode.Width = 330;
+            _viewMode.Backdrop = p => p.Surface;
             _viewMode.SelectedIndexChanged += (s, e) => LayoutViewer();
-            var nav = Ui.Row(8, prev, _pageLabel, next, Ui.Spring(), _viewMode);
+            var pager = new Card(Ui.Row(10, prev, _pageLabel, next, new Panel { Width = 6 }, _viewMode), new Padding(6, 5, 6, 5), p => p.Surface, p => p.Border, 22f) { Backdrop = p => p.Stage };
+            var pagerRow = new TableLayout { Spacing = new Size(0, 0) };
+            pagerRow.Rows.Add(new TableRow(new TableCell(null, true), new TableCell(pager, false), new TableCell(null, true)));
 
             _viewer = new TableLayout { Spacing = new Size(10, 0) };
             _viewerHost = new Panel { Content = _viewer };
-            _scope.Bind(_viewerHost, (x, p) => x.BackgroundColor = p.Window);
+            _scope.Bind(_viewerHost, (x, p) => x.BackgroundColor = p.Stage);
             _originalView.BlockClicked += (s, b) => SelectBlock(b, true);
             _translatedView.BlockClicked += (s, b) => SelectBlock(b, true);
             LayoutViewer();
 
-            var left = new TableLayout { Spacing = new Size(0, 10) };
-            left.Rows.Add(new TableRow(nav));
-            left.Rows.Add(new TableRow(_viewerHost) { ScaleHeight = true });
+            var stageBody = new TableLayout { Spacing = new Size(0, 10) };
+            stageBody.Rows.Add(new TableRow(_viewerHost) { ScaleHeight = true });
+            stageBody.Rows.Add(new TableRow(pagerRow));
+            var stage = new Card(stageBody, new Padding(12, 12, 12, 12), p => p.Stage, null, 24f);
 
-            var body = new TableLayout { Spacing = new Size(14, 0) };
-            body.Rows.Add(new TableRow(new TableCell(left, true), new TableCell(BuildBlockPanel(), false)) { ScaleHeight = true });
+            var body = new TableLayout { Spacing = new Size(16, 0) };
+            body.Rows.Add(new TableRow(new TableCell(stage, true), new TableCell(BuildBlockPanel(), false)) { ScaleHeight = true });
 
-            var layout = new TableLayout { Spacing = new Size(0, 12), Padding = new Padding(16, 12, 16, 12) };
+            var layout = new TableLayout { Spacing = new Size(0, 14), Padding = new Padding(10, 4, 24, 6) };
             layout.Rows.Add(new TableRow(toolbar));
             layout.Rows.Add(new TableRow(body) { ScaleHeight = true });
             KeyDown += (s, e) =>
@@ -116,6 +117,7 @@ namespace TextX.UI.Studio
                 DataCell = new TextBoxCell { Binding = Binding.Delegate<DocBlock, string>(b => IssueText(b)) },
                 Editable = false, Resizable = true, Width = 90,
             });
+            _scope.Bind(_blocks, (x, p) => NativeTheme.StyleGrid(x, p));
             _blocks.SelectionChanged += (s, e) =>
             {
                 var b = _blocks.SelectedItem as DocBlock;
@@ -135,24 +137,26 @@ namespace TextX.UI.Studio
             _editOriginal.Height = 58;
             _editTranslation = Ui.TextArea(_scope, 13f);
             _editTranslation.Height = 76;
-            var save = new FlatButton("Save change", IconKind.Check, ButtonKind.Primary, 28) { ToolTip = "Use your text for this paragraph (also for identical paragraphs)" };
+            var save = new FlatButton("Save", IconKind.Check, ButtonKind.Primary, 30) { ToolTip = "Use your text for this paragraph (also for identical paragraphs)", Backdrop = p => p.Surface };
             save.Click += (s, e) => SaveEditor();
-            var again = new FlatButton("Translate again", IconKind.Refresh, ButtonKind.Secondary, 28) { ToolTip = "Translate the selected paragraph again (your edit is replaced)" };
+            var again = new FlatButton("Again", IconKind.Refresh, ButtonKind.Secondary, 30) { ToolTip = "Translate the selected paragraph again (your edit is replaced)", Backdrop = p => p.Surface };
             again.Click += (s, e) => RetranslateSelected();
-            var keep = new FlatButton("Keep original", IconKind.Undo, ButtonKind.Secondary, 28) { ToolTip = "Leave the selected text untranslated" };
+            var keep = new FlatButton("Keep original", IconKind.Undo, ButtonKind.Secondary, 30) { ToolTip = "Leave the selected text untranslated", Backdrop = p => p.Surface };
             keep.Click += (s, e) => KeepSelected();
-            var term = new FlatButton("Glossary", IconKind.Plus, ButtonKind.Ghost, 28) { ToolTip = "Always translate a word or phrase your way" };
+            var term = new FlatButton("Glossary", IconKind.Plus, ButtonKind.Soft, 30) { ToolTip = "Always translate a word or phrase your way", Backdrop = p => p.Surface };
             term.Click += (s, e) => AddGlossaryTerm();
 
-            var panel = new TableLayout { Spacing = new Size(0, 6) };
+            var panel = new TableLayout { Spacing = new Size(0, 8) };
             panel.Rows.Add(new TableRow(_blocksTitle));
             panel.Rows.Add(new TableRow(_blocks) { ScaleHeight = true });
+            panel.Rows.Add(new TableRow(new Panel { Height = 4 }));
             panel.Rows.Add(new TableRow(Ui.Section(_scope, "Original")));
             panel.Rows.Add(new TableRow(Ui.FieldBox(_editOriginal)));
             panel.Rows.Add(new TableRow(Ui.Section(_scope, "Translation")));
             panel.Rows.Add(new TableRow(Ui.FieldBox(_editTranslation)));
             panel.Rows.Add(new TableRow(Ui.Row(6, save, again, keep, Ui.Spring(), term)));
-            return new Panel { Content = panel, Width = 420 };
+            var card = new Card(panel, new Padding(16, 16, 16, 14), p => p.Surface, p => p.Border, 24f);
+            return new Panel { Content = card, Width = 440 };
         }
 
         private static string Short(string s)
@@ -174,7 +178,7 @@ namespace TextX.UI.Studio
             if (_viewer == null) return;
             var row = new TableRow { ScaleHeight = true };
             int mode = Math.Max(0, _viewMode.SelectedIndex);
-            _viewer = new TableLayout { Spacing = new Size(10, 0) };
+            _viewer = new TableLayout { Spacing = new Size(12, 0) };
             _originalView.Visible = mode != 1;
             _translatedView.Visible = mode != 2;
             if (mode == 0) { row.Cells.Add(new TableCell(_originalView, true)); row.Cells.Add(new TableCell(_translatedView, true)); }
@@ -328,13 +332,14 @@ namespace TextX.UI.Studio
             string src = string.IsNullOrEmpty(project.SourceLang) ? "language detected when translating" : Languages.EnglishName(project.SourceLang);
             int pct = project.TotalBlocks == 0 ? 0 : (int)Math.Round(100.0 * project.TranslatedBlocks / project.TotalBlocks);
             _docInfo.Text = project.PageCount + (project.PageCount == 1 ? " page" : " pages") + (scanned > 0 ? " (" + scanned + " scanned)" : string.Empty) +
-                            "  •  " + src + " → " + Languages.EnglishName(project.TargetLang) +
-                            "  •  " + (project.IsTranslated ? "translated" : pct > 0 ? pct + "% translated" : "not translated yet");
+                            "   ·   " + src + " → " + Languages.EnglishName(project.TargetLang) +
+                            "   ·   " + (project.IsTranslated ? "translated" : pct > 0 ? pct + "% translated" : "not translated yet");
             _translate.Text = project.TranslatedBlocks > 0 && project.TargetLang == TargetLang ? (project.IsTranslated ? "Translate again" : "Continue") : "Translate";
             _checkPill.Text = _issues.Count + " to check";
             _checkPill.Visible = _issues.Count > 0;
             _pageIndex = Math.Max(0, Math.Min(_pageIndex, Math.Max(0, project.PageCount - 1)));
-            _pageLabel.Text = "Page " + (_pageIndex + 1) + " of " + project.PageCount;
+            _pageLabel.Text = (_pageIndex + 1) + " / " + project.PageCount;
+            if (_pageTitle != null && _tabs.SelectedIndex == DocumentTab) _pageTitle.Text = project.Name;
             RefreshBlockList();
             RenderPages();
         }
@@ -346,7 +351,7 @@ namespace TextX.UI.Studio
             var list = page == null ? new List<DocBlock>() : page.InReadingOrder.ToList();
             _blocks.DataStore = list;
             if (selected != null && list.Contains(selected)) _blocks.SelectedRow = list.IndexOf(selected);
-            _blocksTitle.Text = ("Text on page " + (_pageIndex + 1) + (page != null && page.Scanned ? " (read by OCR)" : string.Empty)).ToUpperInvariant();
+            _blocksTitle.Text = Theme.Spaced("Text on page " + (_pageIndex + 1)) + (page != null && (page.Scanned || page.OutlinedText) ? "   " + Theme.Spaced("read by OCR") : string.Empty);
             var flagged = new HashSet<DocBlock>(list.Where(b => _issues.ContainsKey(b) || b.State == BlockState.Failed));
             _translatedView.Flagged.Clear();
             foreach (var b in flagged) _translatedView.Flagged.Add(b);
@@ -368,7 +373,7 @@ namespace TextX.UI.Studio
             index = Math.Max(0, Math.Min(p.PageCount - 1, index));
             if (index == _pageIndex) return;
             _pageIndex = index;
-            _pageLabel.Text = "Page " + (_pageIndex + 1) + " of " + p.PageCount;
+            _pageLabel.Text = (_pageIndex + 1) + " / " + p.PageCount;
             RefreshBlockList();
             RenderPages();
         }

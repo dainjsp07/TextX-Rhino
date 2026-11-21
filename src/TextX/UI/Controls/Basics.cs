@@ -130,13 +130,13 @@ namespace TextX.UI.Controls
             var box = new RectangleF(1, (Height - 15) / 2f, 15, 15);
             if (_checked)
             {
-                FillRound(g, box, 4, Enabled ? p.AccentInk : p.Muted);
-                Icons.Draw(g, IconKind.Check, new RectangleF(box.X + 1.5f, box.Y + 1.5f, 12, 12), p.IsDark ? p.Window : p.OnAccent, 3f);
+                FillRound(g, box, 5, Enabled ? p.Accent : p.Muted);
+                Icons.Draw(g, IconKind.Check, new RectangleF(box.X + 1.5f, box.Y + 1.5f, 12, 12), p.OnAccent, 3f);
             }
             else
             {
-                FillRound(g, box, 4, p.Field);
-                StrokeRound(g, box, 4, IsHover ? p.AccentInk : ThemeColors.Mix(p.Border, p.Muted, 0.5f), 1.2f);
+                FillRound(g, box, 5, p.Field);
+                StrokeRound(g, box, 5, IsHover ? p.Accent : ThemeColors.Mix(p.Border, p.Muted, 0.5f), 1.2f);
             }
             DrawLine(g, Theme.UiFont(_fontPx), Enabled ? p.Text : p.Muted, new RectangleF(23, 0, Width - 23, Height), _text);
             if (ShowFocus) StrokeRound(g, new RectangleF(box.X - 2, box.Y - 2, box.Width + 4, box.Height + 4), 6, p.AccentInk, 1.2f);
@@ -149,7 +149,7 @@ namespace TextX.UI.Controls
         private readonly List<KeyValuePair<string, string>> _items = new List<KeyValuePair<string, string>>();
         private int _selected = -1;
         private int _hover = -1;
-        private const int RowH = 36, Gap = 6;
+        private const int RowH = 38, Gap = 6;
 
         public event EventHandler<EventArgs> SelectedIndexChanged;
 
@@ -227,23 +227,23 @@ namespace TextX.UI.Controls
             {
                 var r = new RectangleF(0.5f, i * (RowH + Gap) + 0.5f, Width - 1, RowH - 1);
                 bool sel = i == _selected;
-                FillRound(g, r, 8, sel ? p.AccentSoft : (i == _hover ? p.ItemHover : p.Surface));
-                StrokeRound(g, r, 8, sel ? p.AccentInk : p.Border);
-                var dot = new RectangleF(r.X + 11, r.Y + (RowH - 14) / 2f, 14, 14);
-                using (var pen = new Pen(sel ? p.AccentInk : ThemeColors.Mix(p.Border, p.Muted, 0.6f), 1.5f))
+                FillRound(g, r, RowH / 2f, sel ? p.AccentSoft : (i == _hover ? p.ItemHover : p.Surface));
+                StrokeRound(g, r, RowH / 2f, sel ? p.Accent : p.Border, sel ? 1.4f : 1f);
+                var dot = new RectangleF(r.X + 13, r.Y + (RowH - 14) / 2f, 14, 14);
+                using (var pen = new Pen(sel ? p.Accent : ThemeColors.Mix(p.Border, p.Muted, 0.6f), 1.5f))
                     g.DrawEllipse(pen, dot);
-                if (sel) g.FillEllipse(p.AccentInk, new RectangleF(dot.X + 3.5f, dot.Y + 3.5f, 7, 7));
+                if (sel) g.FillEllipse(p.Accent, new RectangleF(dot.X + 3.5f, dot.Y + 3.5f, 7, 7));
                 var note = _items[i].Value;
                 float noteW = string.IsNullOrEmpty(note) ? 0 : Measure(Theme.UiFont(11), note).Width + 12;
-                DrawLine(g, Theme.UiFont(13, sel), p.Text, new RectangleF(r.X + 34, r.Y, r.Width - 44 - noteW, RowH), _items[i].Key);
-                if (noteW > 0) DrawLine(g, Theme.UiFont(11), sel ? p.Subtle : p.Muted, new RectangleF(r.Right - noteW - 4, r.Y, noteW, RowH), note);
+                DrawLine(g, Theme.UiFont(13, sel), p.Text, new RectangleF(r.X + 36, r.Y, r.Width - 48 - noteW, RowH), _items[i].Key);
+                if (noteW > 0) DrawLine(g, Theme.UiFont(11), sel ? p.AccentInk : p.Muted, new RectangleF(r.Right - noteW - 8, r.Y, noteW, RowH), note);
             }
             if (ShowFocus && _selected >= 0)
-                StrokeRound(g, new RectangleF(0, _selected * (RowH + Gap) - 1, Width, RowH + 2), 9, p.AccentInk, 1.5f);
+                StrokeRound(g, new RectangleF(0, _selected * (RowH + Gap) - 1, Width, RowH + 2), RowH / 2f + 1, p.AccentInk, 1.5f);
         }
     }
 
-    /// <summary>A row of mutually exclusive segments (print alignment).</summary>
+    /// <summary>A row of mutually exclusive segments drawn as chips; the chosen one is filled with ink.</summary>
     public sealed class SegmentedControl : ThemedDrawable
     {
         private readonly string[] _items;
@@ -308,25 +308,18 @@ namespace TextX.UI.Controls
         {
             var p = P;
             var outer = new RectangleF(0.5f, 0.5f, Width - 1, Height - 1);
-            FillRound(g, outer, 9, p.Field);
-            StrokeRound(g, outer, 9, p.Border);
+            FillRound(g, outer, Height / 2f, p.Field);
+            StrokeRound(g, outer, Height / 2f, p.Border);
             float segW = (Width - 6f) / _items.Length;
             for (int i = 0; i < _items.Length; i++)
             {
                 var r = new RectangleF(3 + i * segW, 3, segW - (i < _items.Length - 1 ? 3 : 0), Height - 6);
                 bool sel = i == _selected;
-                if (sel)
-                {
-                    FillRound(g, r, 7, p.AccentSoft);
-                    StrokeRound(g, r, 7, p.AccentLine);
-                }
-                else if (i == _hover)
-                {
-                    FillRound(g, r, 7, p.ItemHover);
-                }
-                DrawLine(g, Theme.UiFont(12.5f, sel), sel ? p.AccentInk : p.Muted, r, _items[i], FormattedTextAlignment.Center);
+                if (sel) FillRound(g, r, r.Height / 2f, p.Strong);
+                else if (i == _hover) FillRound(g, r, r.Height / 2f, p.ItemHover);
+                DrawLine(g, Theme.UiFont(12.5f, sel), sel ? p.OnStrong : (i == _hover ? p.Text : p.Muted), r, _items[i], FormattedTextAlignment.Center);
             }
-            DrawFocus(g, outer, 9);
+            DrawFocus(g, outer, Height / 2f);
         }
     }
 

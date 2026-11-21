@@ -25,7 +25,7 @@ namespace TextX.UI.Controls
         /// <summary>Small upper-case section heading ("OBJECTS", "DISPLAY").</summary>
         public static Label Section(ThemeScope scope, string text)
         {
-            return Label(scope, (text ?? string.Empty).ToUpperInvariant(), 11f, true, p => p.Muted);
+            return Label(scope, Theme.Spaced(text), 10.5f, true, p => p.Muted);
         }
 
         public static Panel HLine(ThemeScope scope)
@@ -60,13 +60,13 @@ namespace TextX.UI.Controls
         /// <summary>Rounded frame around a text box.</summary>
         public static Card FieldBox(Control content)
         {
-            return new Card(content, new Padding(10, 7), p => p.Field, p => p.Border, 8f) { Backdrop = p => p.Surface };
+            return new Card(content, new Padding(12, 8), p => p.Field, p => p.Border, 12f) { Backdrop = p => p.Surface };
         }
 
-        /// <summary>A surface card (rounded, outlined) on the window background.</summary>
+        /// <summary>A surface card (large radius, hairline outline) on the window background.</summary>
         public static Card SurfaceCard(Control content, Padding padding)
         {
-            return new Card(content, padding, p => p.Surface, p => p.Border, 10f);
+            return new Card(content, padding, p => p.Surface, p => p.Border, 18f);
         }
 
         /// <summary>Applies theme text colours to native labels and check boxes inside a page.</summary>

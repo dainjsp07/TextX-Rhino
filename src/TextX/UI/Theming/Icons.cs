@@ -26,6 +26,15 @@ namespace TextX.UI.Theming
         Info,
         Download,
         Close,
+        Home,
+        Grid,
+        Sparkle,
+        ArrowUpRight,
+        Picture,
+        Mic,
+        Prev,
+        Next,
+        Search,
     }
 
     /// <summary>
@@ -172,6 +181,56 @@ namespace TextX.UI.Theming
                     poly(new float[] { 6, 6, 18, 18 });
                     poly(new float[] { 18, 6, 6, 18 });
                     break;
+                case IconKind.Home:
+                    poly(new float[] { 3, 11, 12, 3.5f, 21, 11 });
+                    poly(new float[] { 5.5f, 9, 5.5f, 20, 18.5f, 20, 18.5f, 9 });
+                    poly(new float[] { 10, 20, 10, 14.5f, 14, 14.5f, 14, 20 });
+                    break;
+                case IconKind.Grid:
+                    closedPoly(new float[] { 3.5f, 4, 20.5f, 4, 20.5f, 20, 3.5f, 20 });
+                    poly(new float[] { 3.5f, 9.5f, 20.5f, 9.5f });
+                    poly(new float[] { 3.5f, 14.8f, 20.5f, 14.8f });
+                    poly(new float[] { 9.5f, 4, 9.5f, 20 });
+                    break;
+                case IconKind.Sparkle:
+                    closedPoly(new float[] { 12, 3, 13.8f, 10.2f, 21, 12, 13.8f, 13.8f, 12, 21, 10.2f, 13.8f, 3, 12, 10.2f, 10.2f });
+                    break;
+                case IconKind.ArrowUpRight:
+                    poly(new float[] { 7, 17, 17, 7 });
+                    poly(new float[] { 8.5f, 7, 17, 7, 17, 15.5f });
+                    break;
+                case IconKind.Picture:
+                    closedPoly(new float[] { 3, 5, 21, 5, 21, 19, 3, 19 });
+                    circle(8.5f, 9.5f, 1.6f);
+                    poly(new float[] { 3, 17, 9, 12, 13, 15.5f, 16, 13, 21, 17 });
+                    break;
+                case IconKind.Mic:
+                    {
+                        // capsule
+                        path.StartFigure();
+                        var top = P(9, 3);
+                        path.AddArc(top.X, top.Y, 6 * s, 6 * s, 180, 180);
+                        path.AddLine(P(15, 6), P(15, 12));
+                        var bottom = P(9, 9);
+                        path.AddArc(bottom.X, bottom.Y, 6 * s, 6 * s, 0, 180);
+                        path.CloseFigure();
+                        // stand
+                        path.StartFigure();
+                        var cup = P(5, 5.5f);
+                        path.AddArc(cup.X, cup.Y, 14 * s, 13 * s, 0, 180);
+                        poly(new float[] { 12, 18.5f, 12, 21.5f });
+                    }
+                    break;
+                case IconKind.Prev:
+                    poly(new float[] { 15, 5, 8, 12, 15, 19 });
+                    break;
+                case IconKind.Next:
+                    poly(new float[] { 9, 5, 16, 12, 9, 19 });
+                    break;
+                case IconKind.Search:
+                    circle(10.5f, 10.5f, 6.5f);
+                    poly(new float[] { 15.5f, 15.5f, 21, 21 });
+                    break;
             }
 
             using (var pen = new Pen(color, Math.Max(1f, strokePx * s)))
@@ -186,7 +245,6 @@ namespace TextX.UI.Theming
             path.Dispose();
         }
 
-        /// <summary>The Text X window / package icon: the translate symbol on a deep-navy tile.</summary>
         /// <summary>
         /// Gives a window the Text X title-bar icon. The icon is built from PNG data: on Rhino's WPF
         /// platform an Eto icon made directly from a bitmap has no native image, so the window would
@@ -213,21 +271,17 @@ namespace TextX.UI.Theming
 
         public static Bitmap CreateAppIcon(int size)
         {
-            var p = ThemeColors.GraphiteDeepNavy();
+            var p = ThemeColors.Charcoal();
             var bmp = new Bitmap(size, size, PixelFormat.Format32bppRgba);
             using (var g = new Graphics(bmp))
             {
                 g.AntiAlias = true;
-                float r = size * 0.22f;
+                float r = size * 0.5f - 0.5f;
                 var rect = new RectangleF(0.5f, 0.5f, size - 1f, size - 1f);
-                using (var tile = GraphicsPath.GetRoundRect(rect, r))
-                {
-                    g.FillPath(p.Accent, tile);
-                    g.DrawPath(ThemeColors.WithAlpha(p.AccentInk, 0.55f), tile);
-                }
-                float inset = size * 0.18f;
-                Draw(g, IconKind.Translate, new RectangleF(inset, inset, size - 2 * inset, size - 2 * inset), p.AccentInk,
-                    size >= 48 ? 2.2f : 2.6f);
+                using (var tile = GraphicsPath.GetRoundRect(rect, r)) g.FillPath(p.Accent, tile);
+                float inset = size * 0.22f;
+                Draw(g, IconKind.Translate, new RectangleF(inset, inset, size - 2 * inset, size - 2 * inset), p.OnAccent,
+                    size >= 48 ? 2.4f : 2.8f);
             }
             return bmp;
         }

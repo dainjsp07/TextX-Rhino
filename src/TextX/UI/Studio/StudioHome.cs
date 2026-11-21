@@ -20,52 +20,82 @@ namespace TextX.UI.Studio
 
         private Control BuildHome()
         {
-            // drop area
-            var dropTitle = Ui.Label(_scope, "Drop a PDF, a drawing or a picture here", 18f, true);
-            var dropText = Ui.Label(_scope, "Translate documents keeping their layout, make product schedules from drawings, or read the text in a picture.", 13f, false, p => p.Muted, true);
-            var open = new FlatButton("Open a file...", IconKind.File, ButtonKind.Primary, 38) { Backdrop = p => p.Surface };
+            // hero: what Studio does, in two lines, and the two ways in
+            var kicker = Ui.Label(_scope, Theme.Spaced("Text X Studio"), 10.5f, true, p => p.Accent);
+            var line1 = new Label { Text = "Translate anything.", Font = Theme.DisplayFont(34f) };
+            _scope.Bind(line1, (x, p) => x.TextColor = p.OnHero);
+            var line2 = new Label { Text = "Keep every layout.", Font = Theme.DisplayFont(34f) };
+            _scope.Bind(line2, (x, p) => x.TextColor = p.Accent);
+            var heroText = Ui.Label(_scope, "Drop a PDF, a drawing or a picture anywhere on this window. Documents keep their layout, drawings become product schedules, pictures become text. No account, nothing to set up.",
+                13f, false, p => ThemeColors.WithAlpha(p.OnHero, 0.72f), true);
+            var open = new FlatButton("Open a file", IconKind.Plus, ButtonKind.Primary, 40) { Backdrop = p => p.Hero };
             open.Click += (s, e) => OpenFileDialog();
-            var paste = new FlatButton("Paste a picture", IconKind.Download, ButtonKind.Secondary, 38) { Backdrop = p => p.Surface, ToolTip = "Read the text of a picture or screenshot on the clipboard" };
+            var paste = new FlatButton("Paste a picture", IconKind.Picture, ButtonKind.Secondary, 40) { Backdrop = p => p.Hero, ToolTip = "Read the text of a picture or screenshot on the clipboard" };
             paste.Click += (s, e) => { ShowTab(ToolsTab); PastePicture(); };
-            var dropBody = new TableLayout { Spacing = new Size(0, 10) };
-            dropBody.Rows.Add(new TableRow(dropTitle));
-            dropBody.Rows.Add(new TableRow(dropText));
-            dropBody.Rows.Add(new TableRow(Ui.Row(10, open, paste, Ui.Spring())));
-            var drop = new Card(dropBody, new Padding(28, 24), p => p.Surface, p => p.AccentLine, 14f);
+            var heroBody = new TableLayout { Spacing = new Size(0, 6) };
+            heroBody.Rows.Add(new TableRow(kicker));
+            heroBody.Rows.Add(new TableRow(line1));
+            heroBody.Rows.Add(new TableRow(line2));
+            heroBody.Rows.Add(new TableRow(new Panel { Height = 4 }));
+            heroBody.Rows.Add(new TableRow(heroText));
+            heroBody.Rows.Add(new TableRow(new Panel { Height = 8 }));
+            heroBody.Rows.Add(new TableRow(Ui.Row(10, open, paste, Ui.Spring())));
+            heroBody.Rows.Add(new TableRow { ScaleHeight = true });
+            var heroRow = new TableLayout { Spacing = new Size(16, 0) };
+            heroRow.Rows.Add(new TableRow(new TableCell(heroBody, true), new TableCell(new HeroArt { Width = 230 }, false)) { ScaleHeight = true });
+            var hero = new Card(heroRow, new Padding(30, 26, 22, 24), p => p.Hero, p => p.IsDark ? p.Border : p.Hero, 26f) { Height = 352 };
 
             // what can be done
-            var tiles = new TableLayout { Spacing = new Size(12, 12) };
-            tiles.Rows.Add(new TableRow(
-                new TableCell(Tile(IconKind.Translate, "Translate a PDF", "Any language, layout kept. Preview side by side, edit, then save as PDF, Word or text.", () => { if (_project != null) ShowTab(DocumentTab); else OpenFileDialog(); }), true),
-                new TableCell(Tile(IconKind.Format, "Product schedule", "Codes, products, materials, finishes, sizes and title-block details from drawings, to Excel, PDF or Rhino.", () => { ShowTab(SchedulesTab); if (_project == null) OpenFileDialog(); }), true)));
-            tiles.Rows.Add(new TableRow(
-                new TableCell(Tile(IconKind.Eye, "Picture or screenshot", "Take a screenshot or open a picture: its text is read and translated.", () => { ShowTab(ToolsTab); ShowTool(0); }), true),
-                new TableCell(Tile(IconKind.Text, "Speak or check writing", "Dictate and see the translation as you speak; fix spelling and grammar.", () => { ShowTab(ToolsTab); ShowTool(1); }), true)));
+            var translate = new BentoTile(IconKind.Translate, "Translate a PDF", "Any language, layout kept. Compare side by side, edit, save as PDF, Word or text.", "Documents") { Featured = true };
+            translate.Click += (s, e) => { if (_project != null) ShowTab(DocumentTab); else OpenFileDialog(); };
+            var schedule = new BentoTile(IconKind.Grid, "Product schedule", "Codes, products, materials, finishes and title blocks from drawings, to Excel, PDF or Rhino.", "Drawings");
+            schedule.Click += (s, e) => { ShowTab(SchedulesTab); if (_project == null) OpenFileDialog(); };
+            var picture = new BentoTile(IconKind.Picture, "Picture or screenshot", "Take a screenshot or open a picture: its text is read and translated.", "Pictures");
+            picture.Click += (s, e) => { ShowTab(ToolsTab); ShowTool(0); };
+            var speak = new BentoTile(IconKind.Mic, "Speak or check writing", "Dictate and see the translation as you speak; fix spelling and grammar.", "Words");
+            speak.Click += (s, e) => { ShowTab(ToolsTab); ShowTool(1); };
 
-            // history
-            _history = new StackLayout { Orientation = Orientation.Vertical, Spacing = 8, HorizontalContentAlignment = HorizontalAlignment.Stretch };
-            _historyEmpty = Ui.Label(_scope, "Documents you open appear here, with their translations and edits.", 12.5f, false, p => p.Muted);
-            var historyHeader = Ui.Row(8, Ui.Section(_scope, "Recent documents"), Ui.Spring());
+            var side = new TableLayout { Spacing = new Size(0, 16) };
+            side.Rows.Add(new TableRow(translate));
+            side.Rows.Add(new TableRow(schedule));
+            var top = new TableLayout { Spacing = new Size(16, 0) };
+            top.Rows.Add(new TableRow(new TableCell(hero, true), new TableCell(new Panel { Content = side, Width = 340 }, false)));
+            var second = new TableLayout { Spacing = new Size(16, 0) };
+            second.Rows.Add(new TableRow(new TableCell(picture, true), new TableCell(speak, true), new TableCell(BuildHistoryCard(), true)));
 
-            var layout = new TableLayout { Spacing = new Size(0, 16), Padding = new Padding(24, 18, 24, 24) };
-            layout.Rows.Add(new TableRow(drop));
-            layout.Rows.Add(new TableRow(tiles));
-            layout.Rows.Add(new TableRow(historyHeader));
-            layout.Rows.Add(new TableRow(_historyEmpty));
-            layout.Rows.Add(new TableRow(_history));
+            var layout = new TableLayout { Spacing = new Size(0, 16), Padding = new Padding(10, 6, 24, 16) };
+            layout.Rows.Add(new TableRow(top));
+            layout.Rows.Add(new TableRow(second));
+            layout.Rows.Add(new TableRow(_historyList));
             layout.Rows.Add(new TableRow { ScaleHeight = true });
             var scroll = new Scrollable { Content = layout, Border = BorderType.None, ExpandContentWidth = true, ExpandContentHeight = false };
             return _scope.Bind(scroll, (x, p) => x.BackgroundColor = p.Window);
         }
 
-        private Control Tile(IconKind icon, string title, string text, Action click)
+        private Control _historyList;
+        private Label _historyCount;
+
+        /// <summary>The "recent" tile (a count and the last document) and, below the tiles, the list itself.</summary>
+        private Control BuildHistoryCard()
         {
-            var button = new FlatButton(title, icon, ButtonKind.Ghost, 34) { Backdrop = p => p.Surface, FontPx = 14f };
-            button.Click += (s, e) => click();
-            var body = new TableLayout { Spacing = new Size(0, 4) };
-            body.Rows.Add(new TableRow(button));
-            body.Rows.Add(new TableRow(new Panel { Content = Ui.Label(_scope, text, 12.5f, false, p => p.Muted, true), Padding = new Padding(8, 0, 8, 4) }));
-            return new Card(body, new Padding(10, 10), p => p.Surface, p => p.Border, 12f);
+            _history = new StackLayout { Orientation = Orientation.Vertical, Spacing = 8, HorizontalContentAlignment = HorizontalAlignment.Stretch };
+            _historyEmpty = Ui.Label(_scope, "Documents you open appear here, with their translations and edits.", 12.5f, false, p => p.Muted, true);
+            var listHeader = Ui.Row(8, Ui.Section(_scope, "Recent documents"), Ui.Spring());
+            var list = new TableLayout { Spacing = new Size(0, 10) };
+            list.Rows.Add(new TableRow(listHeader));
+            list.Rows.Add(new TableRow(_historyEmpty));
+            list.Rows.Add(new TableRow(_history));
+            _historyList = list;
+
+            _historyCount = new Label { Text = "0", Font = Theme.DisplayFont(44f) };
+            _scope.Bind(_historyCount, (x, p) => x.TextColor = p.Text);
+            var caption = Ui.Label(_scope, "documents in your history", 12.5f, false, p => p.Muted);
+            var body = new TableLayout { Spacing = new Size(0, 2) };
+            body.Rows.Add(new TableRow(Ui.Section(_scope, "Library")));
+            body.Rows.Add(new TableRow { ScaleHeight = true });
+            body.Rows.Add(new TableRow(_historyCount));
+            body.Rows.Add(new TableRow(caption));
+            return new Card(body, new Padding(20, 18), p => p.Surface, p => p.Border, 22f) { Height = 168 };
         }
 
         private void RefreshHistory()
@@ -76,6 +106,7 @@ namespace TextX.UI.Studio
             catch (Exception ex) { Diagnostics.Log("history: " + ex.Message); entries = new System.Collections.Generic.List<LibraryEntry>(); }
             _history.Items.Clear();
             _historyEmpty.Visible = entries.Count == 0;
+            if (_historyCount != null) _historyCount.Text = entries.Count.ToString(CultureInfo.CurrentCulture);
             foreach (var entry in entries.Take(30)) _history.Items.Add(new StackLayoutItem(HistoryRow(entry), HorizontalAlignment.Stretch));
         }
 
@@ -90,19 +121,20 @@ namespace TextX.UI.Studio
             }
             catch (Exception) { thumb = new Panel { Size = new Size(44, 56) }; }
 
-            var name = Ui.Label(_scope, entry.Name, 13.5f, true);
+            var name = Ui.Label(_scope, entry.Name, 14f, true);
             string langs = (string.IsNullOrEmpty(entry.SourceLang) ? "?" : Languages.EnglishName(entry.SourceLang)) + " → " + Languages.EnglishName(entry.TargetLang);
             int pct = entry.TotalBlocks == 0 ? 0 : (int)Math.Round(100.0 * entry.TranslatedBlocks / entry.TotalBlocks);
             string state = entry.TotalBlocks == 0 ? "not read yet" : entry.IsTranslated ? "translated" : pct > 0 ? pct + "% translated" : "not translated";
-            var details = Ui.Label(_scope, entry.PageCount + (entry.PageCount == 1 ? " page" : " pages") + "  •  " + langs + "  •  " + state + "  •  " +
+            var details = Ui.Label(_scope, entry.PageCount + (entry.PageCount == 1 ? " page" : " pages") + "   ·   " + langs + "   ·   " +
                 entry.Modified.ToLocalTime().ToString("g", CultureInfo.CurrentCulture), 12f, false, p => p.Muted);
             var text = new TableLayout { Spacing = new Size(0, 2) };
             text.Rows.Add(new TableRow(name));
             text.Rows.Add(new TableRow(details));
 
-            var open = new FlatButton("Open", IconKind.None, ButtonKind.Secondary, 30) { Backdrop = p => p.Surface };
+            var badge = new Pill(state, p => entry.IsTranslated ? p.SuccessSoft : p.IconBox, p => entry.IsTranslated ? p.SuccessText : p.Subtle) { Backdrop = p => p.Surface };
+            var open = new FlatButton(string.Empty, IconKind.ArrowUpRight, ButtonKind.Strong, 34) { Backdrop = p => p.Surface, ToolTip = "Open" };
             open.Click += (s, e) => OpenFromHistory(entry);
-            var remove = new FlatButton(string.Empty, IconKind.Close, ButtonKind.Ghost, 30) { Backdrop = p => p.Surface, ToolTip = "Remove from the history (deletes the stored copy, translations and schedules)" };
+            var remove = new FlatButton(string.Empty, IconKind.Close, ButtonKind.Ghost, 34) { Backdrop = p => p.Surface, ToolTip = "Remove from the history (deletes the stored copy, translations and schedules)" };
             remove.Click += (s, e) =>
             {
                 var answer = MessageBox.Show(this, "Remove \"" + entry.Name + "\" from the history?\n\nIts stored copy, translations and schedules are deleted. The original file is not touched.",
@@ -113,9 +145,9 @@ namespace TextX.UI.Studio
                 catch (Exception ex) { SetStatus("Could not remove it: " + ex.Message, StatusText.Level.Error); }
                 RefreshHistory();
             };
-            var row = new TableLayout { Spacing = new Size(12, 0) };
-            row.Rows.Add(new TableRow(new TableCell(thumb, false), new TableCell(text, true), new TableCell(Ui.Row(6, open, remove), false)));
-            return new Card(row, new Padding(10, 8), p => p.Surface, p => p.Border, 10f);
+            var row = new TableLayout { Spacing = new Size(14, 0) };
+            row.Rows.Add(new TableRow(new TableCell(thumb, false), new TableCell(text, true), new TableCell(Ui.Row(8, badge, remove, open), false)));
+            return new Card(row, new Padding(12, 10, 12, 10), p => p.Surface, p => p.Border, 20f);
         }
 
         private void OpenFromHistory(LibraryEntry entry)

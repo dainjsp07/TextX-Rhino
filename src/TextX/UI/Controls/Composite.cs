@@ -10,19 +10,20 @@ using Theme = TextX.UI.Theming.Theme;
 
 namespace TextX.UI.Controls
 {
-    /// <summary>Tabs drawn as text with icons and an accent underline.</summary>
+    /// <summary>Tabs drawn as chips with icons; the chosen tab is filled with ink.</summary>
     public sealed class TabStrip : ThemedDrawable
     {
         private readonly List<KeyValuePair<string, IconKind>> _tabs = new List<KeyValuePair<string, IconKind>>();
         private readonly List<RectangleF> _rects = new List<RectangleF>();
         private int _selected;
         private int _hover = -1;
+        private const float ChipH = 32f;
 
         public event EventHandler<EventArgs> SelectedIndexChanged;
 
         public TabStrip() : base(true)
         {
-            Height = 42;
+            Height = 46;
             Cursor = Cursors.Pointer;
         }
 
@@ -36,11 +37,12 @@ namespace TextX.UI.Controls
         {
             _rects.Clear();
             float x = 12;
+            float y = (Height - ChipH) / 2f;
             foreach (var t in _tabs)
             {
-                float w = 10 + 14 + 6 + Measure(Theme.UiFont(13, true), t.Key).Width + 10;
-                _rects.Add(new RectangleF(x, 0, w, 42));
-                x += w + 2;
+                float w = 14 + 14 + 7 + Measure(Theme.UiFont(13, true), t.Key).Width + 16;
+                _rects.Add(new RectangleF(x, y, w, ChipH));
+                x += w + 6;
             }
             Invalidate();
         }
@@ -91,16 +93,18 @@ namespace TextX.UI.Controls
         protected override void OnDraw(Graphics g)
         {
             var p = P;
-            g.FillRectangle(p.Divider, new RectangleF(0, Height - 1, Width, 1));
             for (int i = 0; i < _tabs.Count; i++)
             {
                 var r = _rects[i];
+                r.Y = (Height - ChipH) / 2f;
                 bool sel = i == _selected;
-                var fg = sel ? p.Text : (i == _hover ? p.Text : p.Muted);
-                Icons.Draw(g, _tabs[i].Value, new RectangleF(r.X + 10, (Height - 14) / 2f, 14, 14), fg, 2f);
-                DrawLine(g, Theme.UiFont(13, sel), fg, new RectangleF(r.X + 30, 0, r.Width - 30, Height), _tabs[i].Key);
-                if (sel) g.FillRectangle(p.AccentInk, new RectangleF(r.X, Height - 2, r.Width, 2));
-                if (sel && ShowFocus) StrokeRound(g, new RectangleF(r.X + 2, 6, r.Width - 4, Height - 12), 6, p.AccentLine, 1.2f);
+                if (sel) FillRound(g, r, ChipH / 2f, p.Strong);
+                else if (i == _hover) FillRound(g, r, ChipH / 2f, p.ItemHover);
+                else StrokeRound(g, r, ChipH / 2f, p.Border);
+                var fg = sel ? p.OnStrong : (i == _hover ? p.Text : p.Muted);
+                Icons.Draw(g, _tabs[i].Value, new RectangleF(r.X + 14, r.Y + (ChipH - 14) / 2f, 14, 14), sel ? p.Accent : fg, 2f);
+                DrawLine(g, Theme.UiFont(13, sel), fg, new RectangleF(r.X + 35, r.Y, r.Width - 40, ChipH), _tabs[i].Key);
+                if (sel && ShowFocus) StrokeRound(g, new RectangleF(r.X - 2, r.Y - 2, r.Width + 4, r.Height + 4), ChipH / 2f + 2, p.AccentInk, 1.2f);
             }
         }
     }
@@ -227,7 +231,7 @@ namespace TextX.UI.Controls
             }
             else if (IsHover)
             {
-                FillRound(g, r, 7, p.ItemHover);
+                FillRound(g, r, Height / 2f, p.ItemHover);
             }
             float x = _chip ? 12 : 10;
             if (_chip && DotColor != null)
@@ -253,7 +257,7 @@ namespace TextX.UI.Controls
                 x += sw + 7;
             }
             Icons.Draw(g, IconKind.Chevron, new RectangleF(x, (Height - 13) / 2f, 13, 13), p.Muted, 2f);
-            DrawFocus(g, r, _chip ? Height / 2f : 7);
+            DrawFocus(g, r, Height / 2f);
         }
     }
 
@@ -277,7 +281,7 @@ namespace TextX.UI.Controls
     /// </summary>
     public sealed class ObjectList : ThemedDrawable
     {
-        private const int RowH = 50, Gap = 6;
+        private const int RowH = 52, Gap = 6;
         private IList<ObjectRow> _rows = new List<ObjectRow>();
         private int _selected = -1;
         private int _hover = -1;
@@ -383,14 +387,14 @@ namespace TextX.UI.Controls
                 var row = _rows[i];
                 var r = new RectangleF(0.5f, i * (RowH + Gap) + 0.5f, Width - 1, RowH - 1);
                 bool sel = i == _selected;
-                FillRound(g, r, 8, sel ? p.AccentSoft : (i == _hover ? p.ItemHover : p.Item));
-                if (sel) StrokeRound(g, r, 8, p.AccentLine);
+                FillRound(g, r, 14, sel ? p.AccentSoft : (i == _hover ? p.ItemHover : p.Item));
+                if (sel) StrokeRound(g, r, 14, p.AccentLine, 1.2f);
                 var dim = row.Included ? 1f : 0.45f;
 
-                var iconBox = new RectangleF(r.X + 9, r.Y + (RowH - 26) / 2f, 26, 26);
-                FillRound(g, iconBox, 6, p.IconBox);
-                Icons.Draw(g, row.IsLeader ? IconKind.Leader : IconKind.Text, new RectangleF(iconBox.X + 6.5f, iconBox.Y + 6.5f, 13, 13),
-                    ThemeColors.WithAlpha(sel ? p.AccentInk : p.Subtle, dim), 2f);
+                var iconBox = new RectangleF(r.X + 9, r.Y + (RowH - 30) / 2f, 30, 30);
+                FillRound(g, iconBox, 15, sel ? p.Accent : p.IconBox);
+                Icons.Draw(g, row.IsLeader ? IconKind.Leader : IconKind.Text, new RectangleF(iconBox.X + 8.5f, iconBox.Y + 8.5f, 13, 13),
+                    ThemeColors.WithAlpha(sel ? p.OnAccent : p.Subtle, dim), 2f);
 
                 float badgeW = 0;
                 var badge = row.Included ? row.Badge : "Skipped";
@@ -409,15 +413,15 @@ namespace TextX.UI.Controls
                     badgeW += 8;
                 }
 
-                float tx = r.X + 44;
-                float tw = r.Width - 44 - 10 - badgeW;
+                float tx = r.X + 48;
+                float tw = r.Width - 48 - 10 - badgeW;
                 DrawLine(g, Theme.UiFont(13), ThemeColors.WithAlpha(p.Text, dim), new RectangleF(tx, r.Y + 6, tw, 19), row.Title);
                 var subColor = row.SubtitleMuted ? p.Muted : (sel ? p.Subtle : p.Muted);
                 DrawLine(g, Theme.UiFont(12), ThemeColors.WithAlpha(subColor, dim), new RectangleF(tx, r.Y + 25, tw, 18), row.Subtitle,
                     row.SubtitleRtl ? FormattedTextAlignment.Right : FormattedTextAlignment.Left);
             }
             if (ShowFocus && _selected >= 0)
-                StrokeRound(g, new RectangleF(0, _selected * (RowH + Gap), Width, RowH), 9, p.AccentInk, 1.2f);
+                StrokeRound(g, new RectangleF(0, _selected * (RowH + Gap), Width, RowH), 15, p.AccentInk, 1.2f);
         }
     }
 
@@ -446,21 +450,21 @@ namespace TextX.UI.Controls
         {
             var p = P;
             var outer = new RectangleF(0.5f, 0.5f, Width - 1, Height - 1);
-            FillRound(g, outer, 10, p.Surface);
-            StrokeRound(g, outer, 10, p.Border);
-            DrawLine(g, Theme.UiFont(11, true), p.Muted, new RectangleF(12, 0, Width - 24, 32), "SHEET PREVIEW");
+            FillRound(g, outer, 16, p.Surface);
+            StrokeRound(g, outer, 16, p.Border);
+            DrawLine(g, Theme.UiFont(10.5f, true), p.Muted, new RectangleF(14, 0, Width - 28, 32), Theme.Spaced("Sheet preview"));
 
             var area = new RectangleF(1, 32, Width - 2, Height - 33);
-            using (var sheet = GraphicsPath.GetRoundRect(area, 0, 0, 9, 9))
+            using (var sheet = GraphicsPath.GetRoundRect(area, 0, 0, 15, 15))
                 g.FillPath(p.SheetBg, sheet);
             float pad = 10, gap = 10;
             float bw = (area.Width - 2 * pad - gap) / 2f;
             var screenBox = new RectangleF(area.X + pad, area.Y + pad, bw, area.Height - 2 * pad);
             var printBox = new RectangleF(screenBox.Right + gap, screenBox.Y, bw, screenBox.Height);
-            StrokeRound(g, screenBox, 6, p.SheetDash, 1f, true);
-            StrokeRound(g, printBox, 6, p.AccentInk, 1f);
-            DrawBox(g, screenBox, "ON SCREEN", p.SheetLabel, ScreenText, ScreenLang);
-            DrawBox(g, printBox, "PRINT / PDF", p.AccentInk, PrintText, PrintLang);
+            StrokeRound(g, screenBox, 10, p.SheetDash, 1f, true);
+            StrokeRound(g, printBox, 10, p.Accent, 1.2f);
+            DrawBox(g, screenBox, Theme.Spaced("On screen"), p.SheetLabel, ScreenText, ScreenLang);
+            DrawBox(g, printBox, Theme.Spaced("Print / PDF"), p.AccentInk, PrintText, PrintLang);
         }
 
         private void DrawBox(Graphics g, RectangleF box, string label, Color labelColor, string text, string lang)

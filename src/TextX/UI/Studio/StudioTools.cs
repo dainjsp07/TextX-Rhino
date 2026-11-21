@@ -40,17 +40,17 @@ namespace TextX.UI.Studio
         private Control BuildTools()
         {
             // input buttons for each mode
-            var openPicture = new FlatButton("Open picture...", IconKind.File, ButtonKind.Secondary, 32);
+            var openPicture = new FlatButton("Open picture", IconKind.Picture, ButtonKind.Secondary, 38);
             openPicture.Click += (s, e) => OpenPictureDialog();
-            var screenshot = new FlatButton("Take a screenshot", IconKind.Target, ButtonKind.Primary, 32) { ToolTip = "Select an area of the screen (Win + Shift + S); its text is read as soon as it is taken" };
+            var screenshot = new FlatButton("Take a screenshot", IconKind.Target, ButtonKind.Primary, 38) { ToolTip = "Select an area of the screen (Win + Shift + S); its text is read as soon as it is taken" };
             screenshot.Click += (s, e) => TakeScreenshot();
-            var paste = new FlatButton("Paste picture", IconKind.Download, ButtonKind.Secondary, 32) { ToolTip = "Read the picture on the clipboard (Ctrl + V)" };
+            var paste = new FlatButton("Paste picture", IconKind.Download, ButtonKind.Secondary, 38) { ToolTip = "Read the picture on the clipboard (Ctrl + V)" };
             paste.Click += (s, e) => PastePicture();
-            var view = new FlatButton("Rhino view", IconKind.Eye, ButtonKind.Secondary, 32) { ToolTip = "Read the text shown in the active Rhino viewport (for example a reference picture)" };
+            var view = new FlatButton("Rhino view", IconKind.Eye, ButtonKind.Secondary, 38) { ToolTip = "Read the text shown in the active Rhino viewport (for example a reference picture)" };
             view.Click += (s, e) => ReadRhinoView();
             var pictureBar = Ui.Row(8, screenshot, paste, openPicture, view, Ui.Spring());
 
-            var speak = new FlatButton("Start speaking", IconKind.Text, ButtonKind.Primary, 32) { ToolTip = "Windows voice typing (Win + H) writes what you say into the box; the translation follows" };
+            var speak = new FlatButton("Start speaking", IconKind.Mic, ButtonKind.Primary, 38) { ToolTip = "Windows voice typing (Win + H) writes what you say into the box; the translation follows" };
             speak.Click += (s, e) => StartSpeaking();
             var speakHint = Ui.Label(_scope, "Speak in the language chosen at the top (or any language with Auto-detect). Windows may ask to allow speech recognition the first time.", 12f, false, p => p.Muted, true);
             var speakBar = new TableLayout { Spacing = new Size(12, 0) };
@@ -58,11 +58,11 @@ namespace TextX.UI.Studio
 
             var typeHint = Ui.Label(_scope, "Type or paste any text — for example a paragraph copied from a PDF or an e-mail. It is translated as you type.", 12f, false, p => p.Muted, true);
 
-            var check = new FlatButton("Check writing", IconKind.Check, ButtonKind.Primary, 32) { ToolTip = "Spelling, grammar and style suggestions" };
+            var check = new FlatButton("Check writing", IconKind.Check, ButtonKind.Primary, 38) { ToolTip = "Spelling, grammar and style suggestions" };
             check.Click += (s, e) => CheckWriting();
-            var fixSelected = new FlatButton("Fix selected", IconKind.None, ButtonKind.Secondary, 32);
+            var fixSelected = new FlatButton("Fix selected", IconKind.None, ButtonKind.Secondary, 38);
             fixSelected.Click += (s, e) => FixWriting(_writingIssues.SelectedItems.OfType<WritingIssue>().ToList());
-            var fixAll = new FlatButton("Fix all", IconKind.None, ButtonKind.Secondary, 32);
+            var fixAll = new FlatButton("Fix all", IconKind.Check, ButtonKind.Strong, 38);
             fixAll.Click += (s, e) => FixWriting(_issuesFound.ToList());
             var writingBar = Ui.Row(8, check, fixSelected, fixAll, Ui.Spring());
             _toolBars = new Control[] { pictureBar, speakBar, typeHint, writingBar };
@@ -79,18 +79,19 @@ namespace TextX.UI.Studio
                 _toolDebounce.Start();
             };
             _toolDebounce.Elapsed += (s, e) => { _toolDebounce.Stop(); TranslateToolText(); };
-            var translateNow = new FlatButton("Translate", IconKind.Translate, ButtonKind.Secondary, 30);
+            var translateNow = new FlatButton("Translate", IconKind.Translate, ButtonKind.Secondary, 34);
             translateNow.Click += (s, e) => TranslateToolText();
-            var copy = new FlatButton("Copy translation", IconKind.None, ButtonKind.Secondary, 30);
+            var copy = new FlatButton("Copy translation", IconKind.None, ButtonKind.Strong, 34);
             copy.Click += (s, e) => CopyText(_toolOutput.Text);
-            var toRhino = new FlatButton("Place in Rhino...", IconKind.Target, ButtonKind.Primary, 30) { ToolTip = "Open the text and its translation in the Text X window to place them as text or a leader" };
+            var toRhino = new FlatButton("Place in Rhino", IconKind.Target, ButtonKind.Primary, 34) { ToolTip = "Open the text and its translation in the Text X window to place them as text or a leader" };
             toRhino.Click += (s, e) => SendToTextX();
-            var clear = new FlatButton("Clear", IconKind.None, ButtonKind.Ghost, 30);
+            var clear = new FlatButton("Clear", IconKind.Close, ButtonKind.Ghost, 34);
             clear.Click += (s, e) => { _toolSuppress = true; _toolInput.Text = string.Empty; _toolOutput.Text = string.Empty; _toolSuppress = false; };
 
-            var columns = new TableLayout { Spacing = new Size(12, 6) };
-            columns.Rows.Add(new TableRow(new TableCell(_toolInputLabel, true), new TableCell(_toolOutputLabel, true)));
-            columns.Rows.Add(new TableRow(new TableCell(Ui.FieldBox(_toolInput), true), new TableCell(Ui.FieldBox(_toolOutput), true)) { ScaleHeight = true });
+            _scope.Bind(_toolInput, (x, p) => x.BackgroundColor = p.Surface);
+            _scope.Bind(_toolOutput, (x, p) => x.BackgroundColor = p.Surface);
+            var columns = new TableLayout { Spacing = new Size(16, 0) };
+            columns.Rows.Add(new TableRow(new TableCell(TextCard(_toolInputLabel, _toolInput, false), true), new TableCell(TextCard(_toolOutputLabel, _toolOutput, true), true)) { ScaleHeight = true });
             var translateLayout = new TableLayout { Spacing = new Size(0, 10) };
             translateLayout.Rows.Add(new TableRow(columns) { ScaleHeight = true });
             translateLayout.Rows.Add(new TableRow(Ui.Row(8, _toolLive, translateNow, Ui.Spring(), clear, copy, toRhino)));
@@ -109,27 +110,41 @@ namespace TextX.UI.Studio
                 try { _writingText.Selection = new Range<int>(issue.Offset, Math.Max(issue.Offset, issue.Offset + issue.Length - 1)); } catch { /* text changed */ }
             };
             _writingIssues.CellDoubleClick += (s, e) => { var i = e.Item as WritingIssue; if (i != null) FixWriting(new List<WritingIssue> { i }); };
-            var writingColumns = new TableLayout { Spacing = new Size(12, 6) };
-            writingColumns.Rows.Add(new TableRow(new TableCell(Ui.Section(_scope, "Your text"), true), new TableCell(Ui.Section(_scope, "Suggestions (double-click to apply)"), true)));
-            writingColumns.Rows.Add(new TableRow(new TableCell(Ui.FieldBox(_writingText), true), new TableCell(_writingIssues, true)) { ScaleHeight = true });
+            _scope.Bind(_writingText, (x, p) => x.BackgroundColor = p.Surface);
+            _scope.Bind(_writingIssues, (x, p) => NativeTheme.StyleGrid(x, p));
+            var writingColumns = new TableLayout { Spacing = new Size(16, 0) };
+            writingColumns.Rows.Add(new TableRow(new TableCell(TextCard(Ui.Section(_scope, "Your text"), _writingText, false), true),
+                new TableCell(TextCard(Ui.Section(_scope, "Suggestions  ·  double-click to apply"), _writingIssues, true), true)) { ScaleHeight = true });
             var writingLayout = new TableLayout { Spacing = new Size(0, 10) };
             writingLayout.Rows.Add(new TableRow(writingColumns) { ScaleHeight = true });
             writingLayout.Rows.Add(new TableRow(_writingInfo));
             _writingBody = writingLayout;
 
-            _toolMode.Width = 560;
+            _toolMode.Width = 600;
+            _toolMode.Height = 40;
             _toolMode.SelectedIndex = 0;
             _toolMode.SelectedIndexChanged += (s, e) => ShowTool(_toolMode.SelectedIndex);
             _scope.Bind(_toolBar, (x, p) => x.BackgroundColor = p.Window);
             _scope.Bind(_toolBody, (x, p) => x.BackgroundColor = p.Window);
             _clipWatch.Elapsed += (s, e) => WatchClipboard();
 
-            var layout = new TableLayout { Spacing = new Size(0, 12), Padding = new Padding(16, 12, 16, 12) };
+            var layout = new TableLayout { Spacing = new Size(0, 14), Padding = new Padding(10, 4, 24, 6) };
             layout.Rows.Add(new TableRow(Ui.Row(8, _toolMode, Ui.Spring())));
             layout.Rows.Add(new TableRow(_toolBar));
             layout.Rows.Add(new TableRow(_toolBody) { ScaleHeight = true });
             ShowTool(0);
             return _scope.Bind(new Panel { Content = layout }, (x, p) => x.BackgroundColor = p.Window);
+        }
+
+        /// <summary>A large card with a small label and a text box (or grid) filling it.</summary>
+        private Control TextCard(Control label, Control content, bool accent)
+        {
+            var dot = new DotMark(p => accent ? p.Accent : p.Muted);
+            var head = Ui.Row(8, dot, label, Ui.Spring());
+            var body = new TableLayout { Spacing = new Size(0, 10) };
+            body.Rows.Add(new TableRow(head));
+            body.Rows.Add(new TableRow(content) { ScaleHeight = true });
+            return new Card(body, new Padding(18, 16, 16, 16), p => p.Surface, p => accent ? p.AccentLine : p.Border, 24f);
         }
 
         private void ShowTool(int index)
@@ -139,14 +154,14 @@ namespace TextX.UI.Studio
             if (_toolMode.SelectedIndex != index) { _toolMode.SelectedIndex = index; return; }
             _toolBar.Content = _toolBars[index];
             _toolBody.Content = index == 3 ? _writingBody : _translateBody;
-            _toolInputLabel.Text = (index == 0 ? "Text found in the picture" : index == 1 ? "What you said" : "Text").ToUpperInvariant();
+            _toolInputLabel.Text = Theme.Spaced(index == 0 ? "Text found in the picture" : index == 1 ? "What you said" : "Text");
             UpdateToolLabels();
         }
 
         private void UpdateToolLabels()
         {
             if (_toolOutputLabel == null) return;
-            _toolOutputLabel.Text = ("Translation — " + Languages.EnglishName(TargetLang)).ToUpperInvariant();
+            _toolOutputLabel.Text = Theme.Spaced("Translation") + "   ·   " + Theme.Spaced(Languages.EnglishName(TargetLang));
         }
 
         private void OnToolLanguagesChanged()

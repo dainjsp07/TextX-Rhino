@@ -19,7 +19,7 @@ namespace TextX.UI.Studio
 {
     public sealed partial class StudioWindow
     {
-        private readonly DropDown _scheduleList = new DropDown { Width = 230 };
+        private readonly KeyPicker _scheduleList = new KeyPicker("Schedule", true) { ShowSecondary = true };
         private readonly SearchBox _scheduleSearch = new SearchBox { PlaceholderText = "Search", Width = 220 };
         private readonly GridView _scheduleGrid = new GridView { AllowMultipleSelection = true, ShowHeader = true, GridLines = GridLines.Both };
         private readonly ToggleCheck _fromTranslation = new ToggleCheck("Read the translation", 12.5f);
@@ -34,36 +34,64 @@ namespace TextX.UI.Studio
             get
             {
                 var set = _schedules;
-                int i = _scheduleList.SelectedIndex;
+                int i = ScheduleIndex;
                 return set != null && i >= 0 && i < set.Schedules.Count ? set.Schedules[i] : null;
             }
         }
 
         public string CurrentDocumentName { get { return _project == null ? string.Empty : _project.Name; } }
 
+        private int ScheduleIndex
+        {
+            get
+            {
+                int i;
+                return int.TryParse(_scheduleList.SelectedKey, NumberStyles.Integer, CultureInfo.InvariantCulture, out i) ? i : -1;
+            }
+        }
+
+        /// <summary>Fills the schedule picker without raising its change event.</summary>
+        private void SetScheduleItems(List<PickerItem> names, int selected)
+        {
+            bool old = _scheduleSuppress;
+            _scheduleSuppress = true;
+            try
+            {
+                _scheduleList.SetItems(names.Count == 0 ? new List<PickerItem> { new PickerItem { Key = "-1", Text = "No schedules yet" } } : names);
+                _scheduleList.SelectedKey = names.Count == 0 ? "-1" : selected.ToString(CultureInfo.InvariantCulture);
+                _scheduleList.Invalidate();
+            }
+            finally
+            {
+                _scheduleSuppress = old;
+            }
+        }
+
         private Control BuildSchedules()
         {
             _scheduleInfo = Ui.Label(_scope, string.Empty, 12f, false, p => p.Muted);
             _scheduleEmpty = Ui.Label(_scope, "Open a drawing or a specification (PDF), then click Read schedules.\nProduct codes, names, materials, finishes, colours, sizes, quantities and title-block details are listed here.", 13f, false, p => p.Muted, true);
 
-            var read = new FlatButton("Read schedules", IconKind.Refresh, ButtonKind.Primary, 32) { ToolTip = "Read the document again into schedules (edited rows are kept)" };
+            var read = new FlatButton("Read schedules", IconKind.Refresh, ButtonKind.Primary, 38) { ToolTip = "Read the document again into schedules (edited rows are kept)" };
             read.Click += (s, e) => ReadSchedules();
-            var add = new FlatButton("Add row", IconKind.Plus, ButtonKind.Secondary, 32);
+            var add = new FlatButton("Add row", IconKind.Plus, ButtonKind.Secondary, 34) { Backdrop = p => p.Surface };
             add.Click += (s, e) => AddScheduleRow();
-            var delete = new FlatButton("Delete", IconKind.Close, ButtonKind.Secondary, 32) { ToolTip = "Delete the selected rows" };
+            var delete = new FlatButton("Delete", IconKind.Close, ButtonKind.Secondary, 34) { ToolTip = "Delete the selected rows", Backdrop = p => p.Surface };
             delete.Click += (s, e) => DeleteScheduleRows();
-            var show = new FlatButton("Show on page", IconKind.Eye, ButtonKind.Secondary, 32) { ToolTip = "Show where the selected row was found" };
+            var show = new FlatButton("Show on page", IconKind.Eye, ButtonKind.Secondary, 34) { ToolTip = "Show where the selected row was found", Backdrop = p => p.Surface };
             show.Click += (s, e) => ShowScheduleRowOnPage();
-            var excel = new FlatButton("Excel", IconKind.Download, ButtonKind.Secondary, 32) { ToolTip = "Save all schedules as an Excel workbook (one sheet each)" };
+            var excel = new FlatButton("Excel", IconKind.Download, ButtonKind.Strong, 34) { ToolTip = "Save all schedules as an Excel workbook (one sheet each)", Backdrop = p => p.Surface };
             excel.Click += (s, e) => ExportSchedulesExcel();
-            var pdf = new FlatButton("PDF", IconKind.Print, ButtonKind.Secondary, 32) { ToolTip = "Save printable schedule sheets" };
+            var pdf = new FlatButton("PDF", IconKind.Print, ButtonKind.Secondary, 34) { ToolTip = "Save printable schedule sheets", Backdrop = p => p.Surface };
             pdf.Click += (s, e) => ExportSchedulesPdf();
-            var csv = new FlatButton("CSV", IconKind.Download, ButtonKind.Ghost, 32) { ToolTip = "Save this schedule as comma separated values" };
+            var csv = new FlatButton("CSV", IconKind.Download, ButtonKind.Ghost, 34) { ToolTip = "Save this schedule as comma separated values", Backdrop = p => p.Surface };
             csv.Click += (s, e) => ExportScheduleCsv();
-            var place = new FlatButton("Place in Rhino", IconKind.Target, ButtonKind.Primary, 32) { ToolTip = "Draw this schedule as a table in the model or a layout (TRPlaceSchedule)" };
+            var place = new FlatButton("Place in Rhino", IconKind.Target, ButtonKind.Primary, 34) { ToolTip = "Draw this schedule as a table in the model or a layout (TRPlaceSchedule)", Backdrop = p => p.Surface };
             place.Click += (s, e) => PlaceSchedule();
 
-            _scheduleList.SelectedIndexChanged += (s, e) => { if (!_scheduleSuppress) { _sortColumn = -1; ShowSchedule(); } };
+            _scheduleList.SelectedKeyChanged += (s, e) => { if (!_scheduleSuppress) { _sortColumn = -1; ShowSchedule(); } };
+            _scope.Bind(_scheduleGrid, (x, p) => NativeTheme.StyleGrid(x, p));
+            _scope.Bind(_scheduleSearch, (x, p) => { x.BackgroundColor = p.Surface; x.TextColor = p.Text; });
             _scheduleSearch.TextChanged += (s, e) => FillScheduleGrid();
             _fromTranslation.Checked = Settings.SchedulesFromTranslation;
             _fromTranslation.CheckedChanged += (s, e) => Settings.SchedulesFromTranslation = _fromTranslation.Checked;
@@ -81,14 +109,17 @@ namespace TextX.UI.Studio
             _scheduleGrid.CellEdited += (s, e) => SaveSchedules();
             _scheduleGrid.CellDoubleClick += (s, e) => { if (e.Column < 0) ShowScheduleRowOnPage(); };
 
-            var top = Ui.Row(8, read, _fromTranslation, Ui.Spring(), _scheduleList, _scheduleSearch);
-            var bottom = Ui.Row(8, add, delete, show, Ui.Spring(), csv, excel, pdf, place);
-            var layout = new TableLayout { Spacing = new Size(0, 10), Padding = new Padding(16, 12, 16, 12) };
+            var top = Ui.Row(10, read, _fromTranslation, Ui.Spring(), _scheduleList, _scheduleSearch);
+            var bottom = Ui.Row(8, add, delete, show, Ui.Spring(), csv, pdf, excel, place);
+            var sheet = new TableLayout { Spacing = new Size(0, 10) };
+            sheet.Rows.Add(new TableRow(_scheduleInfo));
+            sheet.Rows.Add(new TableRow(_scheduleEmpty));
+            sheet.Rows.Add(new TableRow(_scheduleGrid) { ScaleHeight = true });
+            sheet.Rows.Add(new TableRow(bottom));
+            var card = new Card(sheet, new Padding(18, 14, 14, 14), p => p.Surface, p => p.Border, 24f);
+            var layout = new TableLayout { Spacing = new Size(0, 14), Padding = new Padding(10, 4, 24, 6) };
             layout.Rows.Add(new TableRow(top));
-            layout.Rows.Add(new TableRow(_scheduleInfo));
-            layout.Rows.Add(new TableRow(_scheduleEmpty));
-            layout.Rows.Add(new TableRow(_scheduleGrid) { ScaleHeight = true });
-            layout.Rows.Add(new TableRow(bottom));
+            layout.Rows.Add(new TableRow(card) { ScaleHeight = true });
             return _scope.Bind(new Panel { Content = layout }, (x, p) => x.BackgroundColor = p.Window);
         }
 
@@ -97,11 +128,11 @@ namespace TextX.UI.Studio
             if (_scheduleInfo == null) return;
             var set = _schedules;
             _scheduleSuppress = true;
-            int keep = _scheduleList.SelectedIndex;
-            _scheduleList.Items.Clear();
+            int keep = ScheduleIndex;
+            var names = new List<PickerItem>();
             if (set != null)
-                foreach (var s in set.Schedules) _scheduleList.Items.Add(s.Title + "  (" + s.Rows.Count + ")");
-            _scheduleList.SelectedIndex = set == null || set.Schedules.Count == 0 ? -1 : Math.Max(0, Math.Min(keep, set.Schedules.Count - 1));
+                for (int k = 0; k < set.Schedules.Count; k++) names.Add(new PickerItem { Key = k.ToString(CultureInfo.InvariantCulture), Text = set.Schedules[k].Title, Secondary = set.Schedules[k].Rows.Count.ToString(CultureInfo.CurrentCulture) });
+            SetScheduleItems(names, set == null || set.Schedules.Count == 0 ? -1 : Math.Max(0, Math.Min(keep, set.Schedules.Count - 1)));
             _scheduleSuppress = false;
             _scheduleEmpty.Visible = set == null;
             _scheduleGrid.Visible = set != null;
@@ -218,10 +249,10 @@ namespace TextX.UI.Studio
             var set = _schedules;
             if (set == null) return;
             _scheduleSuppress = true;
-            int i = _scheduleList.SelectedIndex;
-            for (int k = 0; k < set.Schedules.Count && k < _scheduleList.Items.Count; k++)
-                _scheduleList.Items[k].Text = set.Schedules[k].Title + "  (" + set.Schedules[k].Rows.Count + ")";
-            _scheduleList.SelectedIndex = i;
+            int i = ScheduleIndex;
+            var names = new List<PickerItem>();
+            for (int k = 0; k < set.Schedules.Count; k++) names.Add(new PickerItem { Key = k.ToString(CultureInfo.InvariantCulture), Text = set.Schedules[k].Title, Secondary = set.Schedules[k].Rows.Count.ToString(CultureInfo.CurrentCulture) });
+            SetScheduleItems(names, i);
             _scheduleSuppress = false;
         }
 

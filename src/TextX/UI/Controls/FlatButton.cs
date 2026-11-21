@@ -18,6 +18,8 @@ namespace TextX.UI.Controls
         Dashed,
         /// <summary>Accent-tinted fill with accent text (swap, small accent actions).</summary>
         Soft,
+        /// <summary>Filled with the ink colour (charcoal on paper, paper on charcoal): active chips.</summary>
+        Strong,
     }
 
     /// <summary>A themed push button with an optional line icon.</summary>
@@ -44,8 +46,8 @@ namespace TextX.UI.Controls
             _height = height;
             Kind = kind;
             FontPx = height <= 26 ? 12f : 13f;
-            Radius = 8f;
-            PaddingX = string.IsNullOrEmpty(_text) ? 0 : (height <= 26 ? 8 : 14);
+            Radius = height / 2f;   // pills, and circles for icon buttons
+            PaddingX = string.IsNullOrEmpty(_text) ? 0 : (height <= 26 ? 11 : height <= 30 ? 14 : 18);
             IconSize = height <= 26 ? 13f : 15f;
             Cursor = Cursors.Pointer;
             UpdateSize();
@@ -75,7 +77,7 @@ namespace TextX.UI.Controls
             set { _stretch = value; UpdateSize(); }
         }
 
-        private Font ButtonFont { get { return Theme.UiFont(FontPx, Kind == ButtonKind.Primary); } }
+        private Font ButtonFont { get { return Theme.UiFont(FontPx, Kind == ButtonKind.Primary || Kind == ButtonKind.Strong); } }
 
         private void UpdateSize()
         {
@@ -115,13 +117,18 @@ namespace TextX.UI.Controls
             switch (Kind)
             {
                 case ButtonKind.Primary:
-                    fill = IsPressed ? ThemeColors.Mix(p.Accent, p.Window, 0.25f) : IsHover ? ThemeColors.Mix(p.Accent, p.AccentInk, 0.14f) : p.Accent;
-                    stroke = p.AccentEdge;
+                    fill = IsPressed ? ThemeColors.Mix(p.Accent, p.Window, 0.22f) : IsHover ? ThemeColors.Mix(p.Accent, p.Text, p.IsDark ? 0.14f : 0.10f) : p.Accent;
+                    stroke = Colors.Transparent;
                     fg = p.OnAccent;
                     break;
+                case ButtonKind.Strong:
+                    fill = IsPressed ? ThemeColors.Mix(p.Strong, p.Window, 0.25f) : IsHover ? ThemeColors.Mix(p.Strong, p.Accent, 0.18f) : p.Strong;
+                    stroke = Colors.Transparent;
+                    fg = p.OnStrong;
+                    break;
                 case ButtonKind.Soft:
-                    fill = IsHover ? ThemeColors.Mix(p.AccentSoft, p.AccentInk, 0.12f) : p.AccentSoft;
-                    stroke = IsHover ? p.AccentLine : Colors.Transparent;
+                    fill = IsHover ? ThemeColors.Mix(p.AccentSoft, p.Accent, 0.18f) : p.AccentSoft;
+                    stroke = Colors.Transparent;
                     fg = p.AccentInk;
                     break;
                 case ButtonKind.Ghost:
@@ -131,19 +138,19 @@ namespace TextX.UI.Controls
                     break;
                 case ButtonKind.Dashed:
                     fill = IsHover ? p.ItemHover : Colors.Transparent;
-                    stroke = IsHover ? p.Muted : ThemeColors.Mix(p.Border, p.Muted, 0.35f);
+                    stroke = IsHover ? p.Accent : ThemeColors.Mix(p.Border, p.Muted, 0.45f);
                     fg = p.Text;
                     dashed = true;
                     break;
                 default:
-                    fill = IsPressed ? p.IconBox : IsHover ? ThemeColors.Mix(p.Surface, p.Text, 0.06f) : p.Surface;
-                    stroke = IsHover ? ThemeColors.Mix(p.Border, p.Muted, 0.4f) : p.Border;
+                    fill = IsPressed ? p.IconBox : IsHover ? p.ItemHover : p.Surface;
+                    stroke = IsHover ? ThemeColors.Mix(p.Border, p.Text, 0.35f) : p.Border;
                     fg = p.Text;
                     break;
             }
             if (!Enabled)
             {
-                fill = Kind == ButtonKind.Primary ? ThemeColors.Mix(p.Accent, p.Window, 0.5f) : fill;
+                fill = Kind == ButtonKind.Primary || Kind == ButtonKind.Strong ? ThemeColors.Mix(fill, p.Window, 0.55f) : fill;
                 fg = ThemeColors.WithAlpha(fg, 0.45f);
                 stroke = ThemeColors.WithAlpha(stroke, 0.5f);
             }
@@ -158,7 +165,7 @@ namespace TextX.UI.Controls
             float x = Math.Max(PaddingX, (Width - contentW) / 2f);
             if (_icon != IconKind.None)
             {
-                Icons.Draw(g, _icon, new RectangleF(x, (Height - IconSize) / 2f, IconSize, IconSize), fg, Kind == ButtonKind.Primary ? 2.2f : 2f);
+                Icons.Draw(g, _icon, new RectangleF(x, (Height - IconSize) / 2f, IconSize, IconSize), fg, Kind == ButtonKind.Primary || Kind == ButtonKind.Strong ? 2.3f : 2f);
                 x += IconSize + 7;
             }
             if (hasText)

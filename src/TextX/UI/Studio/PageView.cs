@@ -25,7 +25,7 @@ namespace TextX.UI.Studio
         public PageView()
         {
             CanFocus = false;
-            BackgroundColor = Theme.Current.Window;
+            BackgroundColor = Theme.Current.Stage;
         }
 
         /// <summary>Paragraphs drawn with a warning outline.</summary>
@@ -62,7 +62,7 @@ namespace TextX.UI.Studio
         private RectangleF ImageRect()
         {
             if (_image == null) return RectangleF.Empty;
-            float pad = 14f, top = string.IsNullOrEmpty(Caption) ? pad : 30f;
+            float pad = 12f, top = string.IsNullOrEmpty(Caption) ? pad : 40f;
             float aw = Math.Max(10, Width - 2 * pad), ah = Math.Max(10, Height - top - pad);
             float s = Math.Min(aw / _image.Width, ah / _image.Height);
             float w = _image.Width * s, h = _image.Height * s;
@@ -83,9 +83,19 @@ namespace TextX.UI.Studio
         {
             var g = e.Graphics;
             var p = Theme.Current;
-            g.FillRectangle(p.Window, new RectangleF(0, 0, Width, Height));
+            g.AntiAlias = true;
+            g.FillRectangle(p.Stage, new RectangleF(0, 0, Width, Height));
             if (!string.IsNullOrEmpty(Caption))
-                g.DrawText(Theme.UiFont(11.5f, true), p.Muted, new PointF(14, 8), Caption.ToUpperInvariant());
+            {
+                // the caption as a small chip: "ORIGINAL", "TRANSLATION"
+                var font = Theme.UiFont(10.5f, true);
+                var text = Theme.Spaced(Caption);
+                float w = font.MeasureString(text).Width + 30;
+                var chip = new RectangleF(12, 6, w, 24);
+                global::TextX.UI.Controls.ThemedDrawable.FillRound(g, chip, 12, p.Surface);
+                g.FillEllipse(Caption.StartsWith("Trans", StringComparison.OrdinalIgnoreCase) ? p.Accent : p.Muted, new RectangleF(chip.X + 10, chip.Y + 8.5f, 7, 7));
+                global::TextX.UI.Controls.ThemedDrawable.DrawLine(g, font, p.Text, new RectangleF(chip.X + 21, chip.Y, w - 24, chip.Height), text);
+            }
             if (_image == null)
             {
                 if (!string.IsNullOrEmpty(_placeholder))
@@ -97,10 +107,10 @@ namespace TextX.UI.Studio
                 return;
             }
             var rect = ImageRect();
-            g.FillRectangle(ThemeColors.WithAlpha(Colors.Black, p.IsDark ? 0.35f : 0.12f), new RectangleF(rect.X + 2, rect.Y + 3, rect.Width, rect.Height));
+            for (int i = 3; i >= 1; i--)
+                g.FillRectangle(ThemeColors.WithAlpha(Colors.Black, (p.IsDark ? 0.16f : 0.05f) * (4 - i) / 3f), new RectangleF(rect.X - i + 2, rect.Y - i + 4, rect.Width + 2 * i - 2, rect.Height + 2 * i - 2));
             g.ImageInterpolation = ImageInterpolation.High;
             g.DrawImage(_image, rect);
-            g.DrawRectangle(p.Border, rect);
             foreach (var b in Flagged)
             {
                 var r = ToScreen(b.Box, rect);
@@ -111,8 +121,8 @@ namespace TextX.UI.Studio
             {
                 var r = ToScreen(Selected.Box, rect);
                 r.Inflate(3, 3);
-                g.FillRectangle(ThemeColors.WithAlpha(p.AccentInk, 0.12f), r);
-                g.DrawRectangle(new Pen(p.AccentInk, 2f), r);
+                global::TextX.UI.Controls.ThemedDrawable.FillRound(g, r, 4, ThemeColors.WithAlpha(p.Accent, 0.16f));
+                global::TextX.UI.Controls.ThemedDrawable.StrokeRound(g, r, 4, p.Accent, 2f);
             }
         }
 

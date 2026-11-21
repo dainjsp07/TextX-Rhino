@@ -33,7 +33,8 @@ namespace TextX.UI.Studio
         private readonly ThemeScope _scope = new ThemeScope();
         private readonly KeyPicker _srcLang = new KeyPicker("From", false);
         private readonly KeyPicker _tgtLang = new KeyPicker("To", false);
-        private readonly TabStrip _tabs = new TabStrip();
+        private readonly NavRail _tabs = new NavRail();
+        private Label _pageTitle, _pageHint;
         private readonly Panel _page = new Panel();
         private readonly StatusText _status = new StatusText();
         private readonly ProgressBar _progress = new ProgressBar { MinValue = 0, MaxValue = 1000, Visible = false, Width = 180 };
@@ -96,23 +97,35 @@ namespace TextX.UI.Studio
         }
 
         // ------------------------------------------------------------------ layout
+        private static readonly string[] PageTitles = { "Studio", "Document", "Schedules", "Tools" };
+        private static readonly string[] PageHints =
+        {
+            "Translate documents, read drawings and pictures. No account needed.",
+            "Translate a PDF and keep its layout. Click any text to edit it.",
+            "Products, materials, finishes and title-block details from your drawings.",
+            "Pictures, screenshots, dictation and writing checks.",
+        };
+
         private Control BuildLayout()
         {
-            _tabs.Add("Home", IconKind.Layers);
+            _tabs.Add("Home", IconKind.Home);
             _tabs.Add("Document", IconKind.File);
-            _tabs.Add("Schedules", IconKind.Format);
-            _tabs.Add("Tools", IconKind.Text);
+            _tabs.Add("Schedules", IconKind.Grid);
+            _tabs.Add("Tools", IconKind.Sparkle);
+            _tabs.SetBottom("Settings (translation service, theme ...)", IconKind.Gear);
+            _tabs.BottomClicked += (s, e) => SettingsDialog.ShowFor(this);
             _pages = new[] { BuildHome(), BuildDocument(), BuildSchedules(), BuildTools() };
             _page.Content = _pages[0];
             _scope.Bind(_page, (x, p) => x.BackgroundColor = p.Window);
             _tabs.SelectedIndexChanged += (s, e) => ShowTab(_tabs.SelectedIndex);
 
+            var content = new TableLayout { Spacing = new Size(0, 0) };
+            content.Rows.Add(new TableRow(BuildHeader()));
+            content.Rows.Add(new TableRow(_page) { ScaleHeight = true });
+            content.Rows.Add(new TableRow(BuildFooter()));
+
             var root = new TableLayout { Spacing = new Size(0, 0) };
-            root.Rows.Add(new TableRow(BuildHeader()));
-            root.Rows.Add(new TableRow(_tabs));
-            root.Rows.Add(new TableRow(_page) { ScaleHeight = true });
-            root.Rows.Add(new TableRow(Ui.HLine(_scope)));
-            root.Rows.Add(new TableRow(BuildFooter()));
+            root.Rows.Add(new TableRow(new TableCell(_tabs, false), new TableCell(content, true)) { ScaleHeight = true });
 
             // files can be dropped anywhere on the window
             var dropTarget = new Panel { Content = root, AllowDrop = true };
@@ -124,26 +137,34 @@ namespace TextX.UI.Studio
 
         private Control BuildHeader()
         {
-            var title = Ui.Label(_scope, BuildInfo.ProductName + " Studio", 16f, true);
-            var swap = new FlatButton(string.Empty, IconKind.Swap, ButtonKind.Soft, 30) { ToolTip = "Swap languages", Backdrop = p => p.Surface, Radius = 7 };
+            _pageTitle = new Label { Text = PageTitles[0], Font = Theme.DisplayFont(26f), VerticalAlignment = VerticalAlignment.Center };
+            _scope.Bind(_pageTitle, (x, p) => x.TextColor = p.Text);
+            _pageHint = Ui.Label(_scope, PageHints[0], 12.5f, false, p => p.Muted);
+            var titles = new TableLayout { Spacing = new Size(0, 0) };
+            titles.Rows.Add(new TableRow(_pageTitle));
+            titles.Rows.Add(new TableRow(_pageHint));
+
+            var swap = new FlatButton(string.Empty, IconKind.Swap, ButtonKind.Strong, 30) { ToolTip = "Swap languages", Backdrop = p => p.Surface };
             swap.Click += (s, e) => SwapLanguages();
-            var languages = new Card(Ui.Row(4, _srcLang, swap, _tgtLang), new Padding(4), p => p.Surface, p => p.Border, 10f);
-            var open = new FlatButton("Open", IconKind.File, ButtonKind.Primary, 34) { ToolTip = "Open a PDF or a picture (you can also drop files on the window)" };
+            var languages = new Card(Ui.Row(4, _srcLang, swap, _tgtLang), new Padding(10, 4), p => p.Surface, p => p.Border, 19f);
+            var open = new FlatButton("Open a file", IconKind.Plus, ButtonKind.Primary, 38) { ToolTip = "Open a PDF or a picture (you can also drop files on the window)" };
             open.Click += (s, e) => OpenFileDialog();
-            var settings = new FlatButton(string.Empty, IconKind.Gear, ButtonKind.Secondary, 34) { ToolTip = "Translation service and settings (TRSettings)" };
-            settings.Click += (s, e) => SettingsDialog.ShowFor(this);
-            var row = Ui.Row(12, title, Ui.Spring(), languages, open, settings);
-            var panel = new Panel { Content = row, Padding = new Padding(16, 12, 16, 6) };
+            var row = new TableLayout { Spacing = new Size(12, 0) };
+            row.Rows.Add(new TableRow(new TableCell(titles, true), new TableCell(Ui.Row(12, languages, open), false)));
+            var panel = new Panel { Content = row, Padding = new Padding(10, 18, 24, 10) };
             return _scope.Bind(panel, (x, p) => x.BackgroundColor = p.Window);
         }
 
         private Control BuildFooter()
         {
-            _cancel = new FlatButton("Stop", IconKind.Close, ButtonKind.Ghost, 28) { Visible = false, Backdrop = p => p.Footer };
+            _status.Backdrop = p => p.Surface;
+            _cancel = new FlatButton("Stop", IconKind.Close, ButtonKind.Strong, 26) { Visible = false, Backdrop = p => p.Surface };
             _cancel.Click += (s, e) => { if (_cts != null) _cts.Cancel(); };
             var row = Ui.Row(10, new StackLayoutItem(_status, true), _progress, _cancel);
-            var panel = new Panel { Content = row, Padding = new Padding(16, 8) };
-            return _scope.Bind(panel, (x, p) => x.BackgroundColor = p.Footer);
+            // a floating status pill under the page
+            var pill = new Card(row, new Padding(14, 5, 8, 5), p => p.Surface, p => p.Border, 18f);
+            var panel = new Panel { Content = pill, Padding = new Padding(10, 4, 24, 14) };
+            return _scope.Bind(panel, (x, p) => x.BackgroundColor = p.Window);
         }
 
         private void ShowTab(int index)
@@ -151,6 +172,11 @@ namespace TextX.UI.Studio
             if (index < 0 || index >= _pages.Length) return;
             if (_tabs.SelectedIndex != index) { _tabs.SelectedIndex = index; return; }
             _page.Content = _pages[index];
+            if (_pageTitle != null)
+            {
+                _pageTitle.Text = index == DocumentTab && _project != null ? _project.Name : PageTitles[index];
+                _pageHint.Text = PageHints[index];
+            }
             if (index == HomeTab) RefreshHistory();
             if (index == DocumentTab) RefreshDocument();
             if (index == SchedulesTab) RefreshSchedules();
