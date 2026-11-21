@@ -26,11 +26,11 @@ Use a new, unsaved document.
 
 | # | Do this | Expected |
 |---|---|---|
-| 1 | Drag `textx-<version>-rh8_0-win.yak` into Rhino, restart, type `TR`. | The Text X window opens: deep-navy accent, *From English ⇄ To Hebrew עברית*, service chip with a green dot, tabs Text / Format / Leader / Print / PDF. The command line said "Text X <version> is installed". |
+| 1 | Drag `textx-<version>-rh8_0-win.yak` into Rhino, restart, type `TR`. | Text X Studio opens on Home: the translator card on the left (*Translate anything. Keep every layout.*), Translate a PDF and four tiles on the right, *From Auto-detect ⇄ To Hebrew* and the service with a green dot at the top. The command line said "Text X <version> is installed". |
 | 2 | `TRAbout` | Shows the version from `VERSION`, the package folder and the update status. |
-| 3 | Type `Ground floor plan - Scale 1:50`. | Within a second the Hebrew appears, right-aligned. The sheet preview shows ON SCREEN English and PRINT / PDF Hebrew. The status line names the service. |
-| 4 | **Place text**, click in a viewport. | An orange preview follows the cursor; the text is placed. |
-| 5 | Select it, **Load selected**. | It appears in the object list with the label *Dual*. |
+| 3 | Type `Ground floor plan - Scale 1:50`. | Within a second the Hebrew appears, right-aligned. *On screen* shows the English, *In print · PDF* the Hebrew. |
+| 4 | **Place text**, click in a viewport. | An orange preview follows the cursor; the text is placed on the current layer. A message says *Text placed*. |
+| 5 | Select it, **Load selected**. | The objects chip reads *1 object loaded*; the text and its translation are shown. |
 | 6 | Choose *Hebrew on screen and in print*, **Update 1 object**; `Undo`, `Redo`. | The object shows correct Hebrew; Undo restores English; Redo Hebrew. |
 | 7 | `TRRtlTest`, pick a point, zoom extents. | Row A (and C, Arabic) read correctly; rows B and D are reversed / broken. |
 | 8 | `Print` → Rhino PDF, Vector, Extents → save. | During printing the dual text turns Hebrew; the PDF shows correct Hebrew; the screen returns to English. |
@@ -38,13 +38,16 @@ Use a new, unsaved document.
 | 10 | **Place leader**: arrow point, a second point, Enter. | A leader with arrowhead, landing and text. |
 | 11 | `TRPreview _On`, `_-SaveAs` a `.3dm`, `TRPreview _Off`. | The saved file shows English for dual objects. |
 | 12 | Layout (`_-Layout "Sheet A" 297 210 0`), place a title, `TRExportPdf`. | Layout shows English, the PDF the Hebrew title. |
-| 13 | Format tab: change font, height, alignment; Leader tab: arrowhead. Update. | Only the changed properties change. |
-| 14 | Right-click an object in the list → *Skip*, Update. | The skipped object is unchanged; *Select in Rhino* selects it. |
-| 15 | Resize the window, close and reopen with `TR`. | Size and position are restored. |
-| 16 | `TRSettings` → Appearance and updates → *Light*, OK. | The window switches to the light colours (and back with *Follow Rhino*). |
-| 17 | `TRSettings` → service with a key → **Test**. | `OK: "Ground floor plan" -> ...` |
-| 18 | With an update location configured and a newer `latest.json` published: `TRUpdate`. | Reports the new version and offers to open the download page; the window shows the update banner. |
-| 19 | With the window open: `_-New _None`, open a file, several times. | No errors; the window resets for each document. |
+| 13 | **Text properties**: change font, height, alignment and the arrowhead; **Done**, Update. | Only the changed properties change. The previews show the font, bold / italic / underline and mask. |
+| 14 | Load two objects; objects chip → *Skip this object in Update*, Update. | The skipped object is unchanged; *Select this object in Rhino* selects it. |
+| 15 | **Layer** → a layer of the file, Place text. | The new text is on that layer. |
+| 16 | **Voice typing**, speak; **Check writing** on a text with a typo. | Windows voice typing writes into the text and the translation follows; suggestions appear as chips and apply on click. |
+| 17 | Resize the window narrower than 1000 px, close and reopen with `TR`. | The tiles move under the translator; size and position are restored. |
+| 18 | `TRSettings` → Appearance and updates → *Light*, OK. | The window switches to the light colours (and back with *Follow Rhino*). |
+| 19 | `TRSettings` → service with a key → **Test**. | `OK: "Ground floor plan" -> ...` |
+| 20 | With an update location configured and a newer `latest.json` published: `TRUpdate`. | Reports the new version; Studio shows the update banner with Install update. |
+| 21 | With Studio open: `_-New _None`, open a file, several times. | No errors; the loaded objects are cleared for each document. |
+| 22 | Open a PDF, then **New PDF** on the Document page. | The document closes (it stays in Recent) and the file picker opens. |
 
 ## 3. Calibration after Rhino updates
 

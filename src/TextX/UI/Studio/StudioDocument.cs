@@ -128,7 +128,7 @@ namespace TextX.UI.Studio
             var text = Ui.Label(_scope, "Every heading, paragraph and picture stays where it is; the translation takes its place. Point at the picture to see.", 12.5f, false, p => p.Muted, true);
             text.Width = 420;
             text.TextAlignment = TextAlignment.Center;
-            var open = new FlatButton("Open a PDF", IconKind.Plus, ButtonKind.Primary, 40) { Backdrop = p => p.Stage };
+            var open = new FlatButton("Open a PDF", IconKind.Plus, ButtonKind.Primary, 32) { Backdrop = p => p.Stage };
             open.Click += (s, e) => OpenFileDialog();
             var stack = new StackLayout { Orientation = Orientation.Vertical, Spacing = 10, HorizontalContentAlignment = HorizontalAlignment.Center };
             stack.Items.Add(_docEmptyFigure);

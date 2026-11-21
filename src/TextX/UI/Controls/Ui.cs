@@ -25,7 +25,7 @@ namespace TextX.UI.Controls
         /// <summary>Small upper-case section heading ("OBJECTS", "DISPLAY").</summary>
         public static Label Section(ThemeScope scope, string text)
         {
-            return Label(scope, Theme.Spaced(text), 10.5f, true, p => p.Muted);
+            return Label(scope, Theme.Spaced(text), 11f, true, p => p.Muted);
         }
 
         public static Panel HLine(ThemeScope scope)

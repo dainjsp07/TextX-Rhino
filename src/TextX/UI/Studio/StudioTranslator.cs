@@ -40,6 +40,9 @@ namespace TextX.UI.Studio
         private readonly HeroChip[] _qModes = new HeroChip[3];
         private LinePreview _qScreen, _qPrint;
         private Panel _qBody, _qIssuesHost, _qModesHost;
+        private HeroChip _qModeMenu;
+        private Label _qTitle2;
+        private bool? _qCompact;
         private Control _qFields, _qPropsPanel;
         private StackLayout _qIssueRow;
         private SegmentedControl _qPrintAlign;
@@ -228,7 +231,9 @@ namespace TextX.UI.Studio
             }
             _qViewport = new HeroChip("Preview in Rhino", IconKind.Eye, HeroChipStyle.Outline, 28) { ToolTip = "Draws what Update would do on the loaded objects in the Rhino viewports (orange)", Visible = _bridge.InRhino };
             _qViewport.Click += (s, e) => { _qViewport.On = !_qViewport.On; SchedulePreview(); };
-            _qModesHost = new Panel { Content = Ui.Row(6, _qModes[0], _qModes[1], _qModes[2], Ui.Spring(), _qViewport) };
+            _qModeMenu = new HeroChip(string.Empty, IconKind.Chevron, HeroChipStyle.Outline, 28) { Visible = false, MaxTextWidth = 260, ToolTip = "What shows on screen and in print" };
+            _qModeMenu.Click += (s, e) => ShowModeMenu(_qModeMenu);
+            _qModesHost = new Panel { Content = Ui.Row(6, _qModes[0], _qModes[1], _qModes[2], _qModeMenu, Ui.Spring(), _qViewport) };
 
             _qScreen = new LinePreview("On screen", false);
             _qPrint = new LinePreview("In print · PDF", true);
@@ -249,7 +254,7 @@ namespace TextX.UI.Studio
             var actions = Ui.Row(8, _qPlace, _qLeader, _qUpdate, Ui.Spring(), _qLayer, _qProps);
 
             _qPropsPanel = BuildTextProperties();
-            _qBody = new Panel { Content = _qFields, MinimumSize = new Size(0, 132) };
+            _qBody = new Panel { Content = _qFields, MinimumSize = new Size(0, 150) };
 
             var layout = new TableLayout { Spacing = new Size(0, 8) };
             layout.Rows.Add(new TableRow(top));
@@ -258,7 +263,9 @@ namespace TextX.UI.Studio
             layout.Rows.Add(new TableRow(_qModesHost));
             layout.Rows.Add(new TableRow(previews));
             layout.Rows.Add(new TableRow(actions));
-            var card = new Card(layout, new Padding(16, 12, 16, 12), p => p.Hero, p => p.IsDark ? p.Border : p.Hero, 20f);
+            var card = new Card(layout, new Padding(16, 12, 16, 12), p => p.Hero, p => p.IsDark ? p.Border : p.Hero, 20f) { MinimumSize = new Size(0, 372) };
+            card.SizeChanged += (s, e) => FitTranslator(card.Width);
+            _qTitle2 = title2;
 
             // behaviour
             _qDebounce.Interval = Math.Max(0.15, Settings.RealTimeDelayMs / 1000.0);
@@ -458,6 +465,37 @@ namespace TextX.UI.Studio
                 _qModes[i].ToolTip = ModeTips[i];
                 _qModes[i].On = (int)_qCurrent.Mode == i;
             }
+            if (_qModeMenu != null) _qModeMenu.Text = texts[Math.Max(0, Math.Min(2, (int)_qCurrent.Mode))];
+        }
+
+        /// <summary>
+        /// A narrow card (the tiles beside it, or a small window) keeps every action on one line: the display
+        /// options become one menu, and Layer, Text properties and the viewport preview show their icons only.
+        /// </summary>
+        private void FitTranslator(int width)
+        {
+            bool compact = width > 0 && width < 760;
+            if (_qCompact == compact) return;
+            _qCompact = compact;
+            for (int i = 0; i < 3; i++) _qModes[i].Visible = !compact;
+            _qModeMenu.Visible = compact;
+            _qTitle2.Visible = !compact;
+            _qViewport.Text = compact ? string.Empty : "Preview in Rhino";
+            _qProps.Text = compact ? string.Empty : "Text properties";
+            UpdateQLayer();
+        }
+
+        private void ShowModeMenu(Control anchor)
+        {
+            var menu = new ContextMenu();
+            for (int i = 0; i < 3; i++)
+            {
+                int index = i;
+                var mi = new ButtonMenuItem { Text = ((int)_qCurrent.Mode == i ? "●  " : "     ") + MenuText(_qModes[i].Text) };
+                mi.Click += (s, e) => SetQMode(index);
+                menu.Items.Add(mi);
+            }
+            menu.Show(anchor);
         }
 
         private void SetQMode(int index)
@@ -816,7 +854,8 @@ namespace TextX.UI.Studio
                 foreach (var l in _bridge.Layers())
                     if (l.Key == index) { name = l.Value; break; }
             }
-            _qLayer.Text = "Layer · " + name;
+            _qLayer.Text = _qCompact == true ? string.Empty : "Layer · " + name;
+            _qLayer.ToolTip = "Layer for placed text and leaders: " + name;
         }
 
         private void StopTranslator()

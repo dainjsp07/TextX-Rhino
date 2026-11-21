@@ -67,7 +67,7 @@ namespace TextX.UI.Controls
             set
             {
                 _text = value ?? string.Empty;
-                Size = new Size((int)Math.Ceiling(Measure(Theme.UiFont(11), _text).Width) + 16, 19);
+                Size = new Size((int)Math.Ceiling(Measure(Theme.UiFont(12), _text).Width) + 16, 20);
                 Invalidate();
             }
         }
@@ -75,9 +75,9 @@ namespace TextX.UI.Controls
         protected override void OnDraw(Graphics g)
         {
             var r = new RectangleF(0.5f, 0.5f, Width - 1, Height - 1);
-            FillRound(g, r, 9, Fill(P));
-            if (Outline != null) StrokeRound(g, r, 9, Outline(P));
-            DrawLine(g, Theme.UiFont(11), Foreground(P), new RectangleF(8, 0, Width - 16, Height), _text, FormattedTextAlignment.Center);
+            FillRound(g, r, Height / 2f, Fill(P));
+            if (Outline != null) StrokeRound(g, r, Height / 2f, Outline(P));
+            DrawLine(g, Theme.UiFont(12), Foreground(P), new RectangleF(8, 0, Width - 16, Height), _text, FormattedTextAlignment.Center);
         }
     }
 
@@ -251,14 +251,14 @@ namespace TextX.UI.Controls
         private readonly string[] _items;
         private int _selected;
         private int _hover = -1;
-        private readonly Tween _slide = new Tween(0, 520);
+        private readonly Tween _slide = new Tween(0, 350);
 
         public event EventHandler<EventArgs> SelectedIndexChanged;
 
         public SegmentedControl(params string[] items) : base(true)
         {
             _items = items;
-            Height = 34;
+            Height = 32;
             Cursor = Cursors.Pointer;
             Backdrop = p => p.Surface;
         }
@@ -332,7 +332,7 @@ namespace TextX.UI.Controls
                 float on = (float)Math.Max(0, 1 - Math.Abs(pos - i));
                 if (i == _hover && i != _selected) FillRound(g, r, r.Height / 2f, ThemeColors.WithAlpha(p.ItemHover, Hover));
                 var rest = i == _hover ? ThemeColors.Mix(p.Muted, p.Text, Hover) : p.Muted;
-                DrawLine(g, Theme.UiFont(12.5f, on > 0.5f), ThemeColors.Mix(rest, p.OnStrong, on), r, _items[i], FormattedTextAlignment.Center);
+                DrawLine(g, Theme.UiFont(13f, on > 0.5f), ThemeColors.Mix(rest, p.OnStrong, on), r, _items[i], FormattedTextAlignment.Center);
             }
             DrawFocus(g, outer, Height / 2f);
         }

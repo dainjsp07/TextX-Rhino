@@ -94,21 +94,21 @@ namespace TextX.UI.Studio
             _scheduleInfo = Ui.Label(_scope, string.Empty, 12f, false, p => p.Muted);
             _scheduleEmpty = Ui.Label(_scope, "Open a drawing or a specification (PDF), then click Read schedules. Each tagged item becomes a row: code, name, material, finish, colour, size and quantity, with the title-block details. Point at the picture to see.", 13f, false, p => p.Muted, true);
 
-            var read = new FlatButton("Read schedules", IconKind.Refresh, ButtonKind.Primary, 38) { ToolTip = "Read the document again into schedules (edited rows are kept)" };
+            var read = new FlatButton("Read schedules", IconKind.Refresh, ButtonKind.Primary, 32) { ToolTip = "Read the document again into schedules (edited rows are kept)" };
             read.Click += (s, e) => ReadSchedules();
-            var add = new FlatButton("Add row", IconKind.Plus, ButtonKind.Secondary, 34) { Backdrop = p => p.Surface };
+            var add = new FlatButton("Add row", IconKind.Plus, ButtonKind.Secondary, 32) { Backdrop = p => p.Surface };
             add.Click += (s, e) => AddScheduleRow();
-            var delete = new FlatButton("Delete", IconKind.Close, ButtonKind.Secondary, 34) { ToolTip = "Delete the selected rows", Backdrop = p => p.Surface };
+            var delete = new FlatButton("Delete", IconKind.Close, ButtonKind.Secondary, 32) { ToolTip = "Delete the selected rows", Backdrop = p => p.Surface };
             delete.Click += (s, e) => DeleteScheduleRows();
-            var show = new FlatButton("Show on page", IconKind.Eye, ButtonKind.Secondary, 34) { ToolTip = "Show where the selected row was found", Backdrop = p => p.Surface };
+            var show = new FlatButton("Show on page", IconKind.Eye, ButtonKind.Secondary, 32) { ToolTip = "Show where the selected row was found", Backdrop = p => p.Surface };
             show.Click += (s, e) => ShowScheduleRowOnPage();
-            var excel = new FlatButton("Excel", IconKind.Download, ButtonKind.Strong, 34) { ToolTip = "Save all schedules as an Excel workbook (one sheet each)", Backdrop = p => p.Surface };
+            var excel = new FlatButton("Excel", IconKind.Download, ButtonKind.Strong, 32) { ToolTip = "Save all schedules as an Excel workbook (one sheet each)", Backdrop = p => p.Surface };
             excel.Click += (s, e) => ExportSchedulesExcel();
-            var pdf = new FlatButton("PDF", IconKind.Print, ButtonKind.Secondary, 34) { ToolTip = "Save printable schedule sheets", Backdrop = p => p.Surface };
+            var pdf = new FlatButton("PDF", IconKind.Print, ButtonKind.Secondary, 32) { ToolTip = "Save printable schedule sheets", Backdrop = p => p.Surface };
             pdf.Click += (s, e) => ExportSchedulesPdf();
-            var csv = new FlatButton("CSV", IconKind.Download, ButtonKind.Ghost, 34) { ToolTip = "Save this schedule as comma separated values", Backdrop = p => p.Surface };
+            var csv = new FlatButton("CSV", IconKind.Download, ButtonKind.Ghost, 32) { ToolTip = "Save this schedule as comma separated values", Backdrop = p => p.Surface };
             csv.Click += (s, e) => ExportScheduleCsv();
-            var place = new FlatButton("Place in Rhino", IconKind.Target, ButtonKind.Primary, 34) { ToolTip = "Draw this schedule as a table in the model or a layout (TRPlaceSchedule)", Backdrop = p => p.Surface };
+            var place = new FlatButton("Place in Rhino", IconKind.Target, ButtonKind.Primary, 32) { ToolTip = "Draw this schedule as a table in the model or a layout (TRPlaceSchedule)", Backdrop = p => p.Surface };
             place.Click += (s, e) => PlaceSchedule();
 
             _scheduleList.SelectedKeyChanged += (s, e) => { if (!_scheduleSuppress) { _sortColumn = -1; ShowSchedule(); } };

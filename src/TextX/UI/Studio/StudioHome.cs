@@ -25,7 +25,7 @@ namespace TextX.UI.Studio
         private bool? _homeWide;
 
         /// <summary>Width of the page from which the tiles sit beside the translator (Windows "large" windows).</summary>
-        private const int HomeWideFrom = 1000;
+        private const int HomeWideFrom = 980;
 
         private Control BuildHome()
         {
@@ -33,7 +33,7 @@ namespace TextX.UI.Studio
             _heroCard = BuildTranslator();
 
             // what else Studio does: each tile has a line figure that answers the pointer and says what it shows
-            var translate = new BentoTile(IconKind.Translate, "Translate a PDF", "Layout kept. Compare, edit, save as PDF, Word or text.", "Documents", new PagesFigure()) { Featured = true, Height = 212 };
+            var translate = new BentoTile(IconKind.Translate, "Translate a PDF", "Layout kept. Compare, edit, save as PDF, Word or text.", "Documents", new PagesFigure()) { Featured = true, Height = -1, MinimumSize = new Size(0, 212) };
             translate.Click += (s, e) => { if (_project != null) ShowTab(DocumentTab); else OpenFileDialog(); };
             var schedule = new BentoTile(IconKind.Grid, "Product schedule", "Items, materials and finishes from your drawings.", "Drawings", new ScheduleFigure()) { Compact = true };
             schedule.Click += (s, e) => { ShowTab(SchedulesTab); if (_project == null) OpenFileDialog(); };
@@ -47,8 +47,8 @@ namespace TextX.UI.Studio
             _featuredTile = translate;
 
             var grid = new TableLayout { Spacing = new Size(12, 12) };
-            grid.Rows.Add(new TableRow(new TableCell(schedule, true), new TableCell(picture, true)));
-            grid.Rows.Add(new TableRow(new TableCell(voice, true), new TableCell(_library, true)));
+            grid.Rows.Add(new TableRow(new TableCell(schedule, true), new TableCell(picture, true)) { ScaleHeight = true });
+            grid.Rows.Add(new TableRow(new TableCell(voice, true), new TableCell(_library, true)) { ScaleHeight = true });
             _tileGrid = grid;
 
             // documents opened before, as chips
@@ -65,7 +65,9 @@ namespace TextX.UI.Studio
             var layout = new TableLayout { Spacing = new Size(0, 12), Padding = new Padding(4, 0, 16, 8) };
             layout.Rows.Add(new TableRow(_homeHost) { ScaleHeight = true });
             layout.Rows.Add(new TableRow(recent));
-            return _scope.Bind(new Panel { Content = layout }, (x, p) => x.BackgroundColor = p.Window);
+            // the page fills the window and scrolls only when the window is shorter than its content
+            var scroll = new Scrollable { Content = _scope.Bind(new Panel { Content = layout }, (x, p) => x.BackgroundColor = p.Window), Border = BorderType.None, ExpandContentWidth = true, ExpandContentHeight = true };
+            return _scope.Bind(scroll, (x, p) => x.BackgroundColor = p.Window);
         }
 
         /// <summary>

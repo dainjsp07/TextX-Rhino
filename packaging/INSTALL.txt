@@ -12,7 +12,7 @@ INSTALL (1 minute)
 2. Drag the file  {YAK}  from this folder onto the Rhino window.
    Rhino installs it and asks you to restart.
 3. Restart Rhino.
-4. Type  TR  in the command line and press Enter. The Text X window opens.
+4. Type  TR  in the command line and press Enter. Text X Studio opens on Home, the translator.
 
 If Windows blocked the download: right-click the .yak file > Properties > tick "Unblock" > OK,
 then drag it into Rhino again.
@@ -33,8 +33,9 @@ Rhino > Tools > Package Manager > Installed > Text X > Uninstall, then restart R
 
 COMMANDS
 --------
-TR             open the Text X window (TextX does the same)
-TREdit         pick text / leaders and load them into the window
+TR             open Text X Studio on Home, the translator (TextX does the same)
+TREdit         pick text / leaders and load them into the translator
+TRStudio       open Text X Studio (the same window)
 TRBatch        translate many annotations in one go
 TRPreview      show the print text in the viewports (On / Off / Toggle)
 TRExportPdf    export layouts to PDF with the translations

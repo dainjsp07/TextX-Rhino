@@ -21,16 +21,16 @@ namespace TextX.UI.Controls
         private int _selected;
         private int _hover = -2; // -1 = bottom button, -2 = nothing
         // the orange circle slides between items on the discrete clock (a little quicker than 700 ms)
-        private readonly Tween _slide = new Tween(0, 520);
-        private readonly Tween _hoverDot = new Tween(0, 180) { Ease = Clock.EaseFade };
-        private const float RailW = 52f, ItemD = 40f, Gap = 6f, Logo = 44f, Top = 14f;
+        private readonly Tween _slide = new Tween(0, 350);
+        private readonly Tween _hoverDot = new Tween(0, 150) { Ease = Clock.EaseFade };
+        private const float RailW = 46f, ItemD = 36f, Gap = 4f, Logo = 46f, Top = 12f;
 
         public event EventHandler<EventArgs> SelectedIndexChanged;
         public event EventHandler<EventArgs> BottomClicked;
 
         public NavRail() : base(true)
         {
-            Width = 76;
+            Width = 68;
             Cursor = Cursors.Pointer;
         }
 
@@ -66,20 +66,20 @@ namespace TextX.UI.Controls
 
         private RectangleF TrackRect()
         {
-            float y = Top + Logo + 16;
-            float h = _items.Count * ItemD + (_items.Count - 1) * Gap + 12;
+            float y = Top + Logo + 12;
+            float h = _items.Count * ItemD + (_items.Count - 1) * Gap + 10;
             return new RectangleF(X0, y, RailW, h);
         }
 
         private RectangleF ItemRect(int i)
         {
             var t = TrackRect();
-            return new RectangleF(t.X + (RailW - ItemD) / 2f, t.Y + 6 + i * (ItemD + Gap), ItemD, ItemD);
+            return new RectangleF(t.X + (RailW - ItemD) / 2f, t.Y + 5 + i * (ItemD + Gap), ItemD, ItemD);
         }
 
         private RectangleF BottomRect()
         {
-            return new RectangleF(X0 + (RailW - ItemD) / 2f, Height - 16 - ItemD - 6, ItemD, ItemD);
+            return new RectangleF(X0 + (RailW - ItemD) / 2f, Height - 12 - ItemD - 5, ItemD, ItemD);
         }
 
         private int HitTest(PointF pt)
@@ -146,7 +146,7 @@ namespace TextX.UI.Controls
             // the mark: an orange disc with the translate symbol
             var logo = new RectangleF((Width - Logo) / 2f, Top, Logo, Logo);
             g.FillEllipse(p.Accent, logo);
-            Icons.Draw(g, IconKind.Translate, new RectangleF(logo.X + 11, logo.Y + 11, Logo - 22, Logo - 22), p.OnAccent, 2.4f);
+            Icons.Draw(g, IconKind.Translate, new RectangleF(logo.X + 13, logo.Y + 13, Logo - 26, Logo - 26), p.OnAccent, 2.2f);
 
             var track = TrackRect();
             FillRound(g, track, RailW / 2f, p.Rail);
@@ -167,18 +167,18 @@ namespace TextX.UI.Controls
                 var color = ThemeColors.Mix(rest, p.OnAccent, on);
                 // the icon under the pointer rises a little
                 float dy = i == _hover && i != _selected ? -1.5f * hov : 0;
-                Icons.Draw(g, _items[i].Value, new RectangleF(r.X + 11, r.Y + 11 + dy, ItemD - 22, ItemD - 22), color, on > 0.5f ? 2.3f : 2f);
+                Icons.Draw(g, _items[i].Value, new RectangleF(r.X + 8, r.Y + 8 + dy, ItemD - 16, ItemD - 16), color, on > 0.5f ? 2.1f : 1.8f);
                 if (i == _selected && ShowFocus) using (var pen = new Pen(p.AccentInk, 1.5f)) g.DrawEllipse(pen, new RectangleF(r.X - 3, r.Y - 3, r.Width + 6, r.Height + 6));
             }
 
             if (_bottomIcon != IconKind.None)
             {
                 var b = BottomRect();
-                var ring = new RectangleF(b.X - 6, b.Y - 6, b.Width + 12, b.Height + 12);
+                var ring = new RectangleF(b.X - 5, b.Y - 5, b.Width + 10, b.Height + 10);
                 g.FillEllipse(p.Rail, ring);
                 float bh = _hover == -1 ? hov : 0;
                 if (bh > 0) g.FillEllipse(ThemeColors.WithAlpha(p.RailIcon, 0.18f * bh), b);
-                Icons.Draw(g, _bottomIcon, new RectangleF(b.X + 11, b.Y + 11, ItemD - 22, ItemD - 22), ThemeColors.Mix(p.RailIcon, p.Accent, bh), 2f);
+                Icons.Draw(g, _bottomIcon, new RectangleF(b.X + 8, b.Y + 8, ItemD - 16, ItemD - 16), ThemeColors.Mix(p.RailIcon, p.Accent, bh), 1.8f);
             }
         }
     }
@@ -208,7 +208,7 @@ namespace TextX.UI.Controls
         public bool Compact
         {
             get { return _compact; }
-            set { _compact = value; Height = value ? 148 : (_figure == null ? 168 : 268); Invalidate(); }
+            set { _compact = value; if (value) { Height = -1; MinimumSize = new Size(0, 148); } else Height = _figure == null ? 168 : 268; Invalidate(); }
         }
 
         public event EventHandler<EventArgs> Click;
@@ -367,7 +367,7 @@ namespace TextX.UI.Controls
                 g.FillEllipse(Featured ? p.OnAccent : p.AccentSoft, disc);
                 Icons.Draw(g, _icon, new RectangleF(disc.X + 11, disc.Y + 11, 20, 20), Featured ? p.Accent : p.AccentInk, 2.1f);
                 if (!string.IsNullOrEmpty(_tag))
-                    DrawLine(g, Theme.UiFont(10f, true), muted, new RectangleF(70, 18, Width - 70 - 64, 42), Theme.Spaced(_tag));
+                    DrawLine(g, Theme.UiFont(11f, true), muted, new RectangleF(70, 18, Width - 70 - 64, 42), Theme.Spaced(_tag));
                 y = 76;
             }
             DrawLine(g, Theme.UiFont(16f, true), ink, new RectangleF(16, y, Width - 32, 24), _title);

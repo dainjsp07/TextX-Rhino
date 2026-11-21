@@ -45,10 +45,10 @@ namespace TextX.UI.Controls
             _icon = icon;
             _height = height;
             Kind = kind;
-            FontPx = height <= 26 ? 12f : 13f;
+            FontPx = height <= 28 ? 12f : 13f;
             Radius = height / 2f;   // pills, and circles for icon buttons
-            PaddingX = string.IsNullOrEmpty(_text) ? 0 : (height <= 26 ? 11 : height <= 30 ? 14 : 18);
-            IconSize = height <= 26 ? 13f : 15f;
+            PaddingX = string.IsNullOrEmpty(_text) ? 0 : (height <= 24 ? 10 : height <= 28 ? 12 : 14);
+            IconSize = height <= 24 ? 12f : 14f;
             Cursor = Cursors.Pointer;
             UpdateSize();
         }
@@ -92,7 +92,7 @@ namespace TextX.UI.Controls
             else
             {
                 w = PaddingX * 2 + Measure(ButtonFont, _text).Width;
-                if (_icon != IconKind.None) w += IconSize + 7;
+                if (_icon != IconKind.None) w += IconSize + 6;
             }
             Size = new Size((int)Math.Ceiling(w) + 2, _height);
         }
@@ -164,7 +164,7 @@ namespace TextX.UI.Controls
             var font = ButtonFont;
             bool hasText = !string.IsNullOrEmpty(_text);
             float textW = hasText ? Measure(font, _text).Width : 0;
-            float contentW = textW + (_icon != IconKind.None ? IconSize + (hasText ? 7 : 0) : 0);
+            float contentW = textW + (_icon != IconKind.None ? IconSize + (hasText ? 6 : 0) : 0);
             float x = Math.Max(PaddingX, (Width - contentW) / 2f);
             if (_icon != IconKind.None)
             {
@@ -175,7 +175,7 @@ namespace TextX.UI.Controls
                 else if (_icon == IconKind.Prev) nx = -1.6f * Hover;
                 else if (_icon == IconKind.Download) ny = 1.2f * Hover;
                 Icons.Draw(g, _icon, new RectangleF(x + nx, (Height - IconSize) / 2f + ny, IconSize, IconSize), fg, Kind == ButtonKind.Primary || Kind == ButtonKind.Strong ? 2.3f : 2f);
-                x += IconSize + 7;
+                x += IconSize + 6;
             }
             if (hasText)
                 DrawLine(g, font, fg, new RectangleF(x, 0, Width - x - 2, Height), _text);

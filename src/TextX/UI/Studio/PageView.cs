@@ -88,7 +88,7 @@ namespace TextX.UI.Studio
             if (!string.IsNullOrEmpty(Caption))
             {
                 // the caption as a small chip: "ORIGINAL", "TRANSLATION"
-                var font = Theme.UiFont(10.5f, true);
+                var font = Theme.UiFont(11f, true);
                 var text = Theme.Spaced(Caption);
                 float w = font.MeasureString(text).Width + 30;
                 var chip = new RectangleF(12, 6, w, 24);

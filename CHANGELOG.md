@@ -12,13 +12,46 @@ into a dated section when you release.
 
 ## [Unreleased]
 
-## [1.3.0] - 2026-11-21
+## [2.0.0] - 2026-11-21
+
+Text X Studio is now the Text X window: one app for Rhino text, documents, drawings and pictures.
+
+### Changed
+- **One app.** `TR` (and `TextX`, `TREdit`) open **Text X Studio** on **Home**, where the translator of the old
+  Text X window now lives: type, dictate or load text and leaders from Rhino, see the translation as you type,
+  choose what shows on screen and in print, then **Place text**, **Place leader** or **Update objects**.
+  The separate Text X window is gone; `TRPlaceText`, `TRPlaceLeader` and `TRApply` work with Studio.
+- **Home**: the translator on the left; **Translate a PDF** and four tiles (Product schedule, Picture or
+  screenshot, Voice typing, Library) on the right. In a narrower window the tiles move under the translator.
+- **One language pair and one translation service for every page**, chosen at the top of the window.
+- **Picture or screenshot** replaces the Tools page: take a screenshot, paste or open a picture, or capture the
+  Rhino view; its text is read on this computer and translated. **Use on Home** puts it in the translator.
+- Messages appear for a few seconds under the page instead of in a permanent status bar; long tasks keep their
+  progress bar and Stop button there.
+- Design: one type scale (20, 16, 14, 13, 12 and 11 px), controls of 24, 28 and 32 px, spacing on a 4 px grid,
+  orange kept for the main action of each page, and the round arrows of the tiles turn orange on hover.
 
 ### Added
-- **Text X Studio** (`TRStudio`, or the Studio button in the Text X window): one window for documents and
+- **Voice typing** and **Check writing** on Home, in the translator's text: Windows voice typing writes what you
+  say and the translation follows; LanguageTool's suggestions (free, no account) appear as chips under the
+  texts, click one to apply it.
+- **Layer** for placed text and leaders, from the layers of the open Rhino file (current layer by default).
+- **Text properties**: Rhino's text and leader properties (annotation style, font, height, bold, italic,
+  underline, alignment, rotation, wrapping, mask, frame, layer, colour, arrowhead, leader curve, landing) and
+  the print tools (alignment in print, Export PDF with translation, show print text, manage translated objects,
+  restore screen text) open in place of the texts.
+- **On screen** and **In print** previews of the text with its font, emphasis, mask, frame, colour and alignment.
+- **New PDF** on the Document page: closes the open document (it stays in Recent) and opens another.
+- The objects menu on Home: pick the loaded object to edit, skip one in Update, select it in Rhino, translate
+  them all, or start a new text.
+
+### Text X Studio (new since 1.2.0)
+
+#### Added
+- **Text X Studio** (`TRStudio`): one window for documents and
   pictures. Open a file or drop it on the window, then pick what to do. No account or setup.
-- **PDF translation keeping the layout.** Any language, detected automatically, into the chosen language
-  (English by default). Headings, paragraphs, tables, images, drawings and title blocks stay in place; the
+- **PDF translation keeping the layout.** Any language, detected automatically, into the language chosen at
+  the top. Headings, paragraphs, tables, images, drawings and title blocks stay in place; the
   translation is drawn in the same position, size, style and colour, made a little smaller when it is longer.
   Right-to-left languages, Chinese, Japanese, Korean, Thai and other scripts are supported. Fonts are embedded
   with only the characters used, so files stay small and the text can be selected and copied.
@@ -41,17 +74,14 @@ into a dated section when you release.
   dimensions; and the document's own tables. Search, sort, edit, show on the page, save as Excel, CSV or
   PDF, or place in Rhino as a table (`TRPlaceSchedule`).
 - **Pictures and screenshots**: take a screenshot, paste or open a picture, or capture the Rhino view; the
-  text is read and translated. **Speak**: Windows voice typing with live translation. **Check writing**:
-  spelling and grammar suggestions from LanguageTool's free service.
-- The Text X window accepts text from Studio, ready to place as text or a leader.
+  text is read and translated.
 - **Drawings with outlined text** (CAD exports whose words are shapes, not text) are read with OCR, next to
   the real text on the page.
 
-### Changed
+#### Changed
 - **New look**, in light and dark: a charcoal and warm-paper palette with one signal-orange accent, an icon
   rail for navigation, large rounded cards, pill buttons and chips, round icon buttons, and the document page
-  as the centre of the Document view with a floating page bar. The Text X window uses the same colours,
-  buttons and tabs.
+  as the centre of the Document view with a floating page bar.
 - **Pictures that explain.** Each Home tile has a small line drawing that answers the pointer and says what
   it shows: a page and its translation with every piece in the same place, cabinets on a drawing and their
   rows in a schedule, a picture whose lines become text as the reading bar passes, a voice becoming text,

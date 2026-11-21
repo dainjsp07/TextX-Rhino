@@ -4,11 +4,9 @@ Text X translates Rhino text and leaders, English to Hebrew by default (43 langu
 right-to-left text right in Rhino: word order, numbers, punctuation and mixed English–Hebrew lines.
 Layouts keep English on screen; the translation is switched in automatically when you print or export a PDF.
 
-Type **`TR`** in Rhino's command line to open it.
-
-**Text X Studio** (`TRStudio`, or the **Studio** button) works with documents and pictures: it translates
-whole PDFs keeping their layout, turns drawings into product schedules, and reads, dictates and checks text.
-No account, no login, nothing to set up.
+Type **`TR`** in Rhino's command line to open **Text X Studio**. Its Home is the translator for Rhino text and
+leaders; its other pages translate whole PDFs keeping their layout, turn drawings into product schedules, and
+read the text of pictures and screenshots. No account, no login, nothing to set up.
 
 | | |
 |---|---|
@@ -32,14 +30,18 @@ Full guide, including troubleshooting: [docs/INSTALL.md](docs/INSTALL.md).
 
 ## Using Text X
 
-**New text.** Type in the English box; the translation appears within a second (turn off **Live** to translate
-only when you click **Translate**). Check the **Sheet preview**, pick a **Display** option, then click
-**Place text** (pick a point) or **Place leader** (pick the arrow point and leader points, Enter).
+Choose the languages and the translation service at the top of the window; they apply to every page.
 
-**Existing text.** Select text or leaders in Rhino and click **Load selected** (or run `TREdit`). Edit or
-translate, then click **Update** – the same objects are changed in place (layer, font, height, alignment,
-rotation, colour and the other properties are kept; Undo works). Right-click an object in the list to skip
-it or select it in Rhino.
+**New text.** On **Home**, type in the text box (or click **Voice typing** and speak); the translation appears
+within a second (turn off **Live** to translate only when you ask). **Check writing** lists spelling and grammar
+suggestions as chips; click one to apply it. Check the **On screen** and **In print** previews, pick a display
+option, choose the **Layer**, then click **Place text** (pick a point) or **Place leader** (pick the arrow point
+and leader points, Enter).
+
+**Existing text.** Select text or leaders in Rhino and click **Load selected** (or run `TR` or `TREdit` with them
+selected). Edit or translate, then click **Update objects** – the same objects are changed in place (layer, font,
+height, alignment, rotation, colour and the other properties are kept; Undo works). The objects menu (next to
+Load selected) picks the object to edit, skips one, selects it in Rhino or translates them all.
 
 **Display options**
 
@@ -52,9 +54,9 @@ it or select it in Rhino.
 **Printing.** `Print`, `Save As` / `Export` to PDF, AI, EPS or SVG and `TRExportPdf` use the translation
 automatically and switch back afterwards. Saved `.3dm` files always contain the screen text.
 
-The **Format** and **Leader** tabs hold the options of Rhino's Text and Leader dialogs (annotation style,
-font, height, bold / italic / underline, alignment, rotation, wrapping, mask, layer, colour, arrowheads,
-landing). **Print / PDF** sets the print alignment and holds the PDF and recovery tools.
+**Text properties** holds the options of Rhino's Text and Leader dialogs (annotation style, font, height,
+bold / italic / underline, alignment, rotation, wrapping, mask, layer, colour, arrowheads, landing), the print
+alignment, and the PDF and recovery tools.
 
 ### Text X Studio
 
@@ -75,9 +77,7 @@ Open a file (or drop it on the window), then pick what you need:
   tables. Search, sort, edit, add or delete rows, see where a row was found, then save to **Excel**, **CSV** or
   **PDF**, or **place the schedule in Rhino** as a table (`TRPlaceSchedule`).
 * **Picture or screenshot** – take a screenshot, paste or open a picture, or capture the Rhino view: its text
-  is read and translated, ready to copy or place in Rhino.
-* **Speak** – Windows voice typing writes what you say; the translation follows as you speak.
-* **Check writing** – spelling, grammar and style suggestions (LanguageTool's free service).
+  is read on your computer and translated, ready to copy or to place in Rhino (**Use on Home**).
 
 Every document you open is kept in **Recent documents** with its translation, corrections and schedules.
 Schedules are read with rules and word lists for English, French, German, Spanish, Italian and Dutch
@@ -88,17 +88,17 @@ and edited.
 
 | Command | |
 |---|---|
-| `TR` | Open the Text X window (loads pre-selected text). `TextX` does the same. |
-| `TREdit` | Pick text / leaders and load them into the window |
-| `TRPlaceText`, `TRPlaceLeader` | Place the text from the window |
-| `TRApply` | Write the window's text into the loaded objects |
+| `TR` | Open Text X Studio on Home, the translator (loads pre-selected text). `TextX` does the same. |
+| `TREdit` | Pick text / leaders and load them into the translator |
+| `TRPlaceText`, `TRPlaceLeader` | Place the translator's text |
+| `TRApply` | Write the translator's text into the loaded objects |
 | `TRBatch` | Translate many annotations at once |
 | `TRPreview` | Show print text in the viewports (On / Off / Toggle) |
 | `TRExportPdf` | Export layouts to PDF with translations |
 | `TRRestore` | Switch everything back to screen text (recovery) |
 | `TRManage` | List translated objects, change display, remove translations |
 | `TRRemove` | Remove translation data from objects |
-| `TRStudio` | Open Text X Studio: PDF translation, product schedules, pictures, voice, writing check |
+| `TRStudio` | Open Text X Studio (the same window as `TR`) |
 | `TRPlaceSchedule` | Place the schedule shown in Text X Studio as a table (text and lines, grouped) |
 | `TRSettings` | Translation service and keys, right-to-left options, print switching, glossary, theme, updates |
 | `TRRtlTest` | Places right-to-left test samples (run once after a Rhino update) |

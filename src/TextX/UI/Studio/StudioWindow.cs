@@ -117,8 +117,8 @@ namespace TextX.UI.Studio
         {
             "Translate the text in Rhino, documents, drawings and pictures. No account needed.",
             "Translate a PDF and keep its layout. Click any text to edit it.",
-            "Products, materials, finishes and title-block details from your drawings.",
-            "Take a screenshot or open a picture: its text is read on this computer and translated.",
+            "Products, materials, finishes and title blocks from your drawings.",
+            "Its text is read on this computer and translated.",
         };
 
         private Control BuildLayout()
