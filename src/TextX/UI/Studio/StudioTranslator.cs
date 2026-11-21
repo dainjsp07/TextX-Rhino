@@ -40,7 +40,7 @@ namespace TextX.UI.Studio
         private readonly HeroChip[] _qModes = new HeroChip[3];
         private LinePreview _qScreen, _qPrint;
         private Panel _qBody, _qIssuesHost, _qModesHost;
-        private HeroChip _qModeMenu;
+        private HeroChip _qModeMenu, _qFixSource, _qFixTarget;
         private Label _qTitle2;
         private bool? _qCompact;
         private Control _qFields, _qPropsPanel;
@@ -195,10 +195,12 @@ namespace TextX.UI.Studio
             _qCheck.Click += (s, e) => CheckTranslatorWriting();
             var fixSource = new HeroChip("Fix reversed", IconKind.None, HeroChipStyle.Quiet, 24) { Backdrop = p => HeroInk.Field(p), ToolTip = "The text is stored backwards (typed or pasted in visual order): restore the reading order." };
             fixSource.Click += (s, e) => { _qSource.Text = RtlText.VisualToLogical(_qSource.Text); };
+            _qFixSource = fixSource;
             var retranslate = new HeroChip("Re-translate", IconKind.Refresh, HeroChipStyle.Quiet, 24) { Backdrop = p => HeroInk.Field(p), ToolTip = "Discard manual edits and translate again" };
             retranslate.Click += (s, e) => { _qCurrent.TranslationEdited = false; TranslateCurrentItem(true); };
             var fixTarget = new HeroChip("Fix reversed", IconKind.None, HeroChipStyle.Quiet, 24) { Backdrop = p => HeroInk.Field(p), ToolTip = fixSource.ToolTip };
             fixTarget.Click += (s, e) => { _qTarget.Text = RtlText.VisualToLogical(_qTarget.Text); };
+            _qFixTarget = fixTarget;
 
             var sourceField = HeroField(Ui.Row(6, _qSourceLabel, Ui.Spring()), _qSource, Ui.Row(6, _qVoice, _qCheck, Ui.Spring(), fixSource), false);
             var targetField = HeroField(Ui.Row(6, _qTargetLabel, _qRtl, _qEdited, Ui.Spring(), _qLive), _qTarget, Ui.Row(6, Ui.Spring(), retranslate, fixTarget), true);
@@ -481,6 +483,8 @@ namespace TextX.UI.Studio
             _qTitle2.Visible = !compact;
             _qViewport.Text = compact ? string.Empty : "Preview in Rhino";
             _qProps.Text = compact ? string.Empty : "Text properties";
+            _qFixSource.Visible = !compact;
+            _qFixTarget.Visible = !compact;
             UpdateQLayer();
         }
 

@@ -31,7 +31,7 @@ namespace TextX.UI.Studio
         private bool? _homeWide;
 
         /// <summary>Width of the page from which the tiles sit beside the translator (Windows "large" windows).</summary>
-        private static int HomeWideFrom = 980;
+        private static int HomeWideFrom = 1060;
 
         private Control BuildHome()
         {
