@@ -48,7 +48,7 @@ namespace TextX.UI.Studio
             // the picture sits in the free space at the right (drawn behind the text)
             hero.Paint += (s, e) =>
             {
-                try { HeroArt.Draw(e.Graphics, new RectangleF(460, 0, Math.Max(0, hero.Width - 460), hero.Height)); }
+                try { HeroArt.Draw(e.Graphics, new RectangleF(0, 0, hero.Width, hero.Height), 26f, new RectangleF(450, 0, Math.Max(0, hero.Width - 450), hero.Height)); }
                 catch (Exception ex) { Diagnostics.Log("hero art: " + ex.Message); }
             };
             hero.SizeChanged += (s, e) => hero.Invalidate();

@@ -12,12 +12,45 @@ namespace TextX.UI.Studio
     /// </summary>
     public static class HeroArt
     {
-        public static void Draw(Graphics g, RectangleF area)
+        /// <param name="card">The whole card (the picture is clipped to its rounded shape).</param>
+        /// <param name="area">The free part of the card at the right of the text.</param>
+        public static void Draw(Graphics g, RectangleF card, float radius, RectangleF area)
         {
             var p = Theme.Current;
-            float size = Math.Min(area.Width, area.Height);
-            if (size < 80) return;
             g.AntiAlias = true;
+            using (var clip = GraphicsPath.GetRoundRect(card, radius))
+            {
+                g.SetClip(clip);
+                try
+                {
+                    if (area.Width >= 220 && area.Height >= 200) Full(g, p, area);
+                    else Sunrise(g, p, card);
+                }
+                finally
+                {
+                    g.ResetClip();
+                }
+            }
+        }
+
+        /// <summary>Narrow cards: an orange sun rising in the bottom right corner.</summary>
+        private static void Sunrise(Graphics g, ThemeColors p, RectangleF card)
+        {
+            float r = Math.Min(110f, card.Height * 0.3f);
+            float cx = card.Right - 24, cy = card.Bottom + r * 0.35f;
+            using (var pen = new Pen(ThemeColors.WithAlpha(p.Accent, 0.5f), 1.2f))
+            {
+                pen.DashStyle = new DashStyle(0, new float[] { 2f, 4f });
+                g.DrawEllipse(pen, new RectangleF(cx - r * 1.45f, cy - r * 1.45f, r * 2.9f, r * 2.9f));
+            }
+            g.FillEllipse(p.Accent, new RectangleF(cx - r, cy - r, 2 * r, 2 * r));
+            Icons.Draw(g, IconKind.Translate, new RectangleF(cx - r * 0.62f, cy - r * 0.78f, r * 0.5f, r * 0.5f), p.OnAccent, 2.2f);
+            Icons.Draw(g, IconKind.Sparkle, new RectangleF(cx - r * 1.25f, cy - r * 1.2f, 14, 14), p.Accent, 1.6f);
+        }
+
+        private static void Full(Graphics g, ThemeColors p, RectangleF area)
+        {
+            float size = Math.Min(area.Width, area.Height);
             float r = Math.Min(Math.Min(size * 0.27f, (area.Width - 110f) / 3.4f), 92f);
             if (r < 22) return;
             // keep the chips on the orbit inside the card (the widest one reaches about 50 px past it)
