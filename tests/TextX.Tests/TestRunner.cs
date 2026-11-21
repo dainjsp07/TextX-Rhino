@@ -93,6 +93,7 @@ namespace TextX.Tests
                 CoreTests.Room,
                 CoreTests.InkStyle,
                 CoreTests.Schedules,
+                CoreTests.Tools,
                 CoreTests.Guessing,
             })
             {
@@ -111,6 +112,7 @@ namespace TextX.Tests
                     NativeDocumentTests.Smoke,
                     NativeDocumentTests.Ocr,
                     NativeDocumentTests.Pipeline,
+                    NativeDocumentTests.Online,
                 })
                 {
                     var sw = System.Diagnostics.Stopwatch.StartNew();

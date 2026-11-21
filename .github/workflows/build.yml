@@ -43,6 +43,9 @@ jobs:
 
       - name: Build, test and package
         shell: pwsh
+        env:
+          # development branches also try the free online services for real (their problems only warn)
+          TEXTX_ONLINE: ${{ startsWith(github.ref, 'refs/heads/dev/') && '1' || '' }}
         run: |
           # Keep the output so that a failure can be shown on the run's summary page.
           $ok = $true

@@ -433,5 +433,55 @@ namespace TextX.Tests
                 SaveSideBySide("compare-page1-he.png", TranslatedPdfWriter.RenderOriginal(pdf, 0, 1.4f), page.Render(1.4f));
             OcrEngine.Release();
         }
+
+        /// <summary>
+        /// The real free services (CI only, TEXTX_ONLINE=1): a French sample translated by Google's free
+        /// endpoint into a PDF, and a LanguageTool check. Service problems are reported, not failed.
+        /// </summary>
+        public static void Online()
+        {
+            if (Environment.GetEnvironmentVariable("TEXTX_ONLINE") != "1") { Log("  online checks skipped (TEXTX_ONLINE not set)"); return; }
+            try
+            {
+                var pdf = Path.Combine(OutDir, "sample-fr.pdf");
+                if (!File.Exists(pdf)) MakeSample(pdf);
+                var project = ReadAll(pdf, TextX.Core.Languages.AutoDetect);
+                var google = ProviderFactory.Create(ProviderIds.GoogleFree, new ProviderSettings());
+                var engine = new TranslationEngine(new JoiningProvider(google), null, new Glossary(), new TranslationCache());
+                var translator = new DocumentTranslator(engine);
+                var detected = translator.DetectLanguageAsync(project, System.Threading.CancellationToken.None).GetAwaiter().GetResult();
+                Log("  ONLINE detected language: " + detected);
+                project.SourceLang = detected ?? string.Empty;
+                project.TargetLang = "en";
+                var sw = System.Diagnostics.Stopwatch.StartNew();
+                translator.TranslateAsync(project, null, false, null, System.Threading.CancellationToken.None).GetAwaiter().GetResult();
+                Log("  ONLINE translated " + project.TranslatedBlocks + " of " + project.TotalBlocks + " blocks in " + sw.ElapsedMilliseconds + " ms");
+                var output = Path.Combine(OutDir, "online-en.pdf");
+                TranslatedPdfWriter.Write(project, output, new PdfWriteOptions { Fonts = FontCatalog.System() }, System.Threading.CancellationToken.None);
+                for (int i = 0; i < project.PageCount; i++)
+                    using (var doc = PdfFile.Open(output))
+                    using (var page = doc.LoadPage(i))
+                        SaveSideBySide("online-page" + (i + 1) + ".png", TranslatedPdfWriter.RenderOriginal(pdf, i, 1.4f), page.Render(1.4f));
+                foreach (var issue in QualityChecker.Check(project)) Log("  ONLINE quality: " + issue);
+                var summary = Summarizer.Summarize(project);
+                Log("  ONLINE summary: " + summary.ToText().Replace("\n", " / "));
+                var schedules = TextX.Core.Documents.Schedules.ScheduleExtractor.Extract(project, new TextX.Core.Documents.Schedules.ExtractOptions { UseTranslation = true });
+                TextX.Core.Documents.Schedules.XlsxWriter.Write(schedules.Schedules, Path.Combine(OutDir, "online-schedules.xlsx"), project.Name);
+                File.WriteAllText(Path.Combine(OutDir, "online-layout.txt"), Dump(project));
+            }
+            catch (Exception ex) { Log("  ONLINE WARN translation: " + ex.GetType().Name + ": " + ex.Message); }
+            try
+            {
+                var check = TextX.Core.Tools.WritingCheck.CheckAsync("The cabinat doors is made from oak.", "auto", System.Threading.CancellationToken.None).GetAwaiter().GetResult();
+                Log("  ONLINE writing check (" + check.Language + "): " + string.Join(" / ", check.Issues.Select(i => i.ShortMessage + " -> " + i.Best)));
+                Log("  ONLINE corrected: " + TextX.Core.Tools.WritingCheck.Apply("The cabinat doors is made from oak.", check.Issues));
+            }
+            catch (Exception ex) { Log("  ONLINE WARN writing check: " + ex.GetType().Name + ": " + ex.Message); }
+        }
+
+        private static void Log(string line)
+        {
+            Console.WriteLine(line);
+        }
     }
 }
