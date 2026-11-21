@@ -1,8 +1,8 @@
 {
-  "comment": "Native libraries shipped with Text X (Windows x64). tools/get-natives.ps1 downloads them from nuget.org. 'latest' resolves the newest stable version and prints it; pin the printed version here.",
+  "comment": "Native libraries shipped with Text X (Windows x64). tools/get-natives.ps1 downloads them from nuget.org. 'latest' resolves the newest stable version and prints it; pin the printed version here (pinned versions are what was tested).",
   "pdfium": {
     "package": "bblanchon.PDFium.Win32",
-    "version": "latest",
+    "version": "160.0.8165",
     "licence": "PDFium: BSD-3-Clause / Apache-2.0 (https://pdfium.googlesource.com/pdfium/)"
   },
   "tesseract": {

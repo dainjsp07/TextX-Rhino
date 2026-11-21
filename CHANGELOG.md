@@ -12,6 +12,37 @@ into a dated section when you release.
 
 ## [Unreleased]
 
+### Added
+- **Text X Studio** (`TRStudio`, or the Studio button in the Text X window): one window for documents and
+  pictures. Open a file or drop it on the window, then pick what to do. No account or setup.
+- **PDF translation keeping the layout.** Any language, detected automatically, into the chosen language
+  (English by default). Headings, paragraphs, tables, images, drawings and title blocks stay in place; the
+  translation is drawn in the same position, size, style and colour, made a little smaller when it is longer.
+  Right-to-left languages, Chinese, Japanese, Korean, Thai and other scripts are supported. Fonts are embedded
+  with only the characters used, so files stay small and the text can be selected and copied.
+- **Scanned PDFs** are read with OCR (Tesseract, on your computer; the language data is downloaded the first
+  time it is needed). Text colour and weight are taken from the scan.
+- **Review and edit**: original and translation side by side, click a paragraph on the page or in the list
+  to correct it; corrections are remembered and reused for identical text. Translate a paragraph again or
+  keep it in the original language. Glossary terms are applied inside sentences.
+- **Save as** PDF (same layout), Word (headings, paragraphs, tables and images) or text, also with both
+  languages.
+- **Checks**: changed or missing numbers, links and e-mail addresses, glossary terms, untranslated text, text
+  in the wrong alphabet, unusually short or long translations, text made smaller to fit; and an optional
+  meaning check that translates a page back.
+- **Summary**: key points (sentences of the document itself), contents from the headings, and figures.
+- **Recent documents**: each document keeps its translation, corrections and schedules; large documents can
+  be stopped and continued.
+- **Product schedules from drawings**: codes, categories, descriptions, materials, finishes, colours (RAL,
+  NCS, Pantone, names), sizes, quantities, tag counts, manufacturers and models; materials and finishes;
+  title-block details (project, client, architect, drawn by, scale, date, drawing number, revision); notes;
+  dimensions; and the document's own tables. Search, sort, edit, show on the page, save as Excel, CSV or
+  PDF, or place in Rhino as a table (`TRPlaceSchedule`).
+- **Pictures and screenshots**: take a screenshot, paste or open a picture, or capture the Rhino view; the
+  text is read and translated. **Speak**: Windows voice typing with live translation. **Check writing**:
+  spelling and grammar suggestions from LanguageTool's free service.
+- The Text X window accepts text from Studio, ready to place as text or a leader.
+
 ## [1.2.0] - 2026-10-25
 
 ### Added

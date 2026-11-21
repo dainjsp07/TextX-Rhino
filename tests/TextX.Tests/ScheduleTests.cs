@@ -112,6 +112,10 @@ namespace TextX.Tests
             Equal(products.Rows[0][col("Description")], again.Find(ScheduleKind.Products).Rows[0][col("Description")], "rows saved");
             True(again.Find(ScheduleKind.Products).Rows[0].HasBox, "position saved");
 
+            // names in title blocks are not translated
+            var nameBlocks = DocumentTranslator.NameValues(project);
+            True(nameBlocks.Any(b => b.Source == "Atelier Moreau") && !nameBlocks.Any(b => b.Source == "Résidence Les Pins" || b.Source == "1:20"), "architect's name kept: " + string.Join(", ", nameBlocks.Select(b => b.Source)));
+
             // exports
             Equal("A", XlsxWriter.ColumnName(0), "column A");
             Equal("Z", XlsxWriter.ColumnName(25), "column Z");

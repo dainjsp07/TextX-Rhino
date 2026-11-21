@@ -5,6 +5,7 @@ using Eto.Drawing;
 using Eto.Forms;
 using TextX.Core.Documents;
 using TextX.UI.Theming;
+using Theme = TextX.UI.Theming.Theme;
 
 namespace TextX.UI.Studio
 {

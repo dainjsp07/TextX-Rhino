@@ -15,6 +15,7 @@ using TextX.Core.Documents.Schedules;
 using TextX.Integration;
 using TextX.UI.Controls;
 using TextX.UI.Theming;
+using Theme = TextX.UI.Theming.Theme;
 
 namespace TextX.UI.Studio
 {

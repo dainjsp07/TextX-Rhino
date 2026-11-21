@@ -1,0 +1,23 @@
+Text X includes the following open-source components. Each keeps its own licence.
+
+PDFium (textx_pdfium.dll)
+  The PDF engine of the Chromium project, built by Benoit Blanchon (https://github.com/bblanchon/pdfium-binaries).
+  Copyright 2014 The PDFium Authors. Licensed under the BSD 3-Clause licence and the Apache License 2.0.
+  https://pdfium.googlesource.com/pdfium/+/main/LICENSE
+
+Tesseract OCR (x64\tesseract50.dll)
+  Copyright Google LLC and the Tesseract contributors. Licensed under the Apache License 2.0.
+  https://github.com/tesseract-ocr/tesseract/blob/main/LICENSE
+
+Leptonica (x64\leptonica-*.dll)
+  Copyright Dan Bloomberg and the Leptonica contributors. Licensed under the BSD 2-Clause style licence.
+  http://leptonica.org/about-the-license.html
+
+Tesseract language data (downloaded on first use from https://github.com/tesseract-ocr/tessdata_fast)
+  Licensed under the Apache License 2.0.
+
+Online services used without an account (only when you use the feature):
+  Translation: the service chosen in Text X settings (default: Google Translate's free endpoint).
+  Writing check: LanguageTool (https://languagetool.org), free public API; the text you check is sent to it.
+
+The Apache License 2.0 is at https://www.apache.org/licenses/LICENSE-2.0

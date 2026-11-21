@@ -6,6 +6,10 @@ Layouts keep English on screen; the translation is switched in automatically whe
 
 Type **`TR`** in Rhino's command line to open it.
 
+**Text X Studio** (`TRStudio`, or the **Studio** button) works with documents and pictures: it translates
+whole PDFs keeping their layout, turns drawings into product schedules, and reads, dictates and checks text.
+No account, no login, nothing to set up.
+
 | | |
 |---|---|
 | Version | see [`VERSION`](VERSION) and [`CHANGELOG.md`](CHANGELOG.md) |
@@ -52,6 +56,34 @@ The **Format** and **Leader** tabs hold the options of Rhino's Text and Leader d
 font, height, bold / italic / underline, alignment, rotation, wrapping, mask, layer, colour, arrowheads,
 landing). **Print / PDF** sets the print alignment and holds the PDF and recovery tools.
 
+### Text X Studio
+
+Open a file (or drop it on the window), then pick what you need:
+
+* **Translate a PDF** – any language, detected automatically, into the language chosen at the top (English
+  by default). The translated PDF keeps the original's layout: headings, paragraphs, tables, images, drawings
+  and title blocks stay where they are; only the text changes. Scanned pages are read with OCR. Check the
+  translation side by side with the original, click any paragraph to correct it (your corrections are
+  remembered and reused), add glossary terms, and save as **PDF**, **Word** or **text** (also with both
+  languages). **Check** looks for changed numbers, links, missing text, glossary terms and words left in the
+  wrong alphabet; **Check the meaning** translates a page back to compare. **Summary** gives the key points,
+  contents and figures. Large documents are translated in batches and can be stopped and continued.
+* **Product schedule** – reads drawings and specifications into editable lists: products and items (codes,
+  categories, descriptions, materials, finishes, colours, sizes, quantities, how many times each code is tagged,
+  manufacturers and models), materials and finishes, project details from title blocks (project, client,
+  architect, drawn by, scale, date, drawing number, revision), notes, dimensions and the document's own
+  tables. Search, sort, edit, add or delete rows, see where a row was found, then save to **Excel**, **CSV** or
+  **PDF**, or **place the schedule in Rhino** as a table (`TRPlaceSchedule`).
+* **Picture or screenshot** – take a screenshot, paste or open a picture, or capture the Rhino view: its text
+  is read and translated, ready to copy or place in Rhino.
+* **Speak** – Windows voice typing writes what you say; the translation follows as you speak.
+* **Check writing** – spelling, grammar and style suggestions (LanguageTool's free service).
+
+Every document you open is kept in **Recent documents** with its translation, corrections and schedules.
+Schedules are read with rules and word lists for English, French, German, Spanish, Italian and Dutch
+drawings (any language when read from the English translation): results can be checked against the page
+and edited.
+
 ### Commands
 
 | Command | |
@@ -66,6 +98,8 @@ landing). **Print / PDF** sets the print alignment and holds the PDF and recover
 | `TRRestore` | Switch everything back to screen text (recovery) |
 | `TRManage` | List translated objects, change display, remove translations |
 | `TRRemove` | Remove translation data from objects |
+| `TRStudio` | Open Text X Studio: PDF translation, product schedules, pictures, voice, writing check |
+| `TRPlaceSchedule` | Place the schedule shown in Text X Studio as a table (text and lines, grouped) |
 | `TRSettings` | Translation service and keys, right-to-left options, print switching, glossary, theme, updates |
 | `TRRtlTest` | Places right-to-left test samples (run once after a Rhino update) |
 | `TRAbout` | Version, install folder, update status |
@@ -73,7 +107,7 @@ landing). **Print / PDF** sets the print alignment and holds the PDF and recover
 
 ### Translation services
 
-Google's free endpoint works without setup, with MyMemory as automatic fallback. For production work add a
+Google's free endpoint works without setup, with MyMemory as automatic fallback (Text X Studio uses the same service). For production work add a
 key in `TRSettings` for DeepL, Google Cloud, Azure, Claude (Anthropic) or a LibreTranslate server. Keys are
 encrypted for your Windows user. A glossary (`samples/glossary-sample-he.csv`) fixes your office's terms.
 

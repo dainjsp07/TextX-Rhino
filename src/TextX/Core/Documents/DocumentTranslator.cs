@@ -42,6 +42,40 @@ namespace TextX.Core.Documents
         /// <summary>Characters per batch: one request to the free Google service, a progress step.</summary>
         public int BatchChars = 4000;
 
+        private static readonly HashSet<string> NameFields = new HashSet<string>(StringComparer.Ordinal)
+        {
+            "Architect", "Interior designer", "Drawn by", "Checked by", "Approved by", "Client", "Contractor", "Engineer", "Manufacturer",
+        };
+
+        /// <summary>
+        /// Names in title blocks (the architect, who drew or checked the drawing, the client ...): kept as
+        /// they are, since translating "Atelier Moreau" or "J. Smith" makes them wrong.
+        /// </summary>
+        internal static HashSet<DocBlock> NameValues(DocProject project)
+        {
+            var names = new HashSet<DocBlock>();
+            Func<DocBlock, bool> isNameField = b => { var f = Schedules.Vocabulary.TitleFields.Exactly(b.Source); return f != null && NameFields.Contains(f); };
+            foreach (var page in project.Pages.Where(p => p.Extracted))
+            {
+                foreach (var row in page.Blocks.Where(b => b.Kind == BlockKind.TableCell && b.Table >= 0).GroupBy(b => b.Table * 10000 + b.Row))
+                {
+                    var cells = row.OrderBy(b => b.Col).ToList();
+                    if (cells.Count >= 2 && isNameField(cells[0]))
+                        foreach (var b in cells.Skip(1)) names.Add(b);
+                }
+                foreach (var label in page.Blocks.Where(b => b.Kind != BlockKind.TableCell && b.Lines.Count <= 2 && b.Source.Length <= 40 && isNameField(b)))
+                {
+                    float size = Math.Max(4f, label.FontSize);
+                    var value = page.Blocks
+                        .Where(o => o != label && o.Box.L >= label.Box.R - 1 && o.Box.L - label.Box.R < Math.Max(page.Width * 0.3f, size * 25) &&
+                                    Math.Min(o.Box.T, label.Box.T) - Math.Max(o.Box.B, label.Box.B) > Math.Min(o.Box.H, label.Box.H) * 0.4f)
+                        .OrderBy(o => o.Box.L - label.Box.R).FirstOrDefault();
+                    if (value != null && Schedules.Vocabulary.TitleFields.Exactly(value.Source) == null && value.Source.Length <= 80) names.Add(value);
+                }
+            }
+            return names;
+        }
+
         // ------------------------------------------------------------------ language
         /// <summary>The document's language: the alphabet decides when it can, the online detector otherwise.</summary>
         public async Task<string> DetectLanguageAsync(DocProject project, CancellationToken ct)
@@ -86,10 +120,11 @@ namespace TextX.Core.Documents
                 .Where(b => b.State != BlockState.Edited && (again ? true : b.NeedsTranslation))
                 .ToList();
 
+            var names = NameValues(project);
             var work = new List<DocBlock>();
             foreach (var b in blocks)
             {
-                if (!LanguageGuess.HasWords(b.Source) || TextSegmenter.IsCodeLike(b.Source.Trim()) || LanguageGuess.IsReference(b.Source) || SameLanguage(src, tgt))
+                if (!LanguageGuess.HasWords(b.Source) || TextSegmenter.IsCodeLike(b.Source.Trim()) || LanguageGuess.IsReference(b.Source) || SameLanguage(src, tgt) || names.Contains(b))
                 {
                     b.State = BlockState.Kept;
                     b.Translation = null;

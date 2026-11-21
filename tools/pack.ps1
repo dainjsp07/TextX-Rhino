@@ -11,7 +11,8 @@
 #>
 param(
   [string]$Rhp = "",
-  [string]$OutDir = ""
+  [string]$OutDir = "",
+  [string]$NativesDir = ""
 )
 $ErrorActionPreference = "Stop"
 Import-Module (Join-Path $PSScriptRoot 'TextX.Build.psm1') -Force
@@ -60,9 +61,17 @@ $manifest.Add("  $desc")
 if ($product.Website) { $manifest.Add("url: $($product.Website)") } else { Write-Warning "No website / GitHub repository set: the package has no url (needed for 'yak push')." }
 $manifest.Add('icon: icon.png')
 $manifest.Add('keywords:')
-foreach ($k in @('translation', 'translate', 'hebrew', 'rtl', 'text', 'leader', 'annotation', 'layout', 'pdf', 'guid:6f2c6b0e-4f7a-4e1b-9d6a-2b7f1d8a3c51')) { $manifest.Add("- $k") }
+foreach ($k in @('translation', 'translate', 'hebrew', 'rtl', 'text', 'leader', 'annotation', 'layout', 'pdf', 'ocr', 'schedule', 'drawings', 'guid:6f2c6b0e-4f7a-4e1b-9d6a-2b7f1d8a3c51')) { $manifest.Add("- $k") }
 $manifestPath = Join-Path $stage 'manifest.yml'
 [System.IO.File]::WriteAllLines($manifestPath, $manifest, (New-Object System.Text.UTF8Encoding($false)))
+
+# ---- native engines (PDF and OCR) shipped next to the plug-in
+if (-not $NativesDir) { $NativesDir = Join-Path $root 'artifacts/natives' }
+$pdfium = Join-Path $NativesDir 'textx_pdfium.dll'
+$tessDlls = @(Get-ChildItem -Path (Join-Path $NativesDir 'x64') -Filter '*.dll' -ErrorAction SilentlyContinue)
+if (-not (Test-Path $pdfium) -or -not ($tessDlls | Where-Object { $_.Name -like 'tesseract*' })) {
+  throw "The native engines are missing from $NativesDir. Run tools\get-natives.ps1 (tools\build.ps1 does it)."
+}
 
 # ---- the .yak package
 $items = @(
@@ -72,8 +81,11 @@ $items = @(
   @{ File = (Join-Path $root 'README.md'); Name = 'misc/README.md' },
   @{ File = (Join-Path $root 'CHANGELOG.md'); Name = 'misc/CHANGELOG.md' },
   @{ File = (Join-Path $root 'LICENSE'); Name = 'misc/LICENSE.txt' },
-  @{ File = (Join-Path $root 'samples/glossary-sample-he.csv'); Name = 'misc/glossary-sample-he.csv' }
+  @{ File = (Join-Path $root 'samples/glossary-sample-he.csv'); Name = 'misc/glossary-sample-he.csv' },
+  @{ File = (Join-Path $root 'packaging/THIRD-PARTY-NOTICES.txt'); Name = 'misc/THIRD-PARTY-NOTICES.txt' },
+  @{ File = $pdfium; Name = 'textx_pdfium.dll' }
 )
+foreach ($dll in $tessDlls) { $items += @{ File = $dll.FullName; Name = 'x64/' + $dll.Name } }
 $yakPath = Join-Path $OutDir $yakName
 New-TextXZip -Path $yakPath -Items $items
 

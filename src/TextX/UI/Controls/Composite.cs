@@ -6,6 +6,7 @@ using Eto.Forms;
 using TextX.Core;
 using TextX.Core.Text;
 using TextX.UI.Theming;
+using Theme = TextX.UI.Theming.Theme;
 
 namespace TextX.UI.Controls
 {

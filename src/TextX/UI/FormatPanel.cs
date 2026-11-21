@@ -10,6 +10,7 @@ using TextX.UI.Controls;
 using TextX.UI.Theming;
 using EtoColor = Eto.Drawing.Color;
 using SdColor = System.Drawing.Color;
+using Theme = TextX.UI.Theming.Theme;
 
 namespace TextX.UI
 {

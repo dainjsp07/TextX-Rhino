@@ -2,6 +2,7 @@ using System;
 using Eto.Drawing;
 using Eto.Forms;
 using TextX.UI.Theming;
+using Theme = TextX.UI.Theming.Theme;
 
 namespace TextX.UI.Controls
 {
