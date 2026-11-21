@@ -40,6 +40,12 @@ namespace TextX.Core.Documents.Schedules
         private static readonly Regex FirmWords = new Regex(@"\b(?:architect(?:s|e|es|ure)?|architekt(?:en|ur)?|arquitect(?:o|os|ura)|architett(?:o|i|ura)|atelier|studio|associates|associes|design|interiors|partners|ltd|llp|gmbh|sarl|sas|s\.a\.|s\.l\.|srl|spa|inc|llc|b\.v\.)\b", RegexOptions.Compiled | RegexOptions.IgnoreCase);
         private static readonly Regex NoteStart = new Regex(@"^\s*(?:note|notes|n\.?b\.?|nota|hinweis|remarque|opmerking)\s*[:\-.]", RegexOptions.Compiled | RegexOptions.IgnoreCase);
         private static readonly Regex NumberedItem = new Regex(@"(?:(?<=^)|(?<=\s))(?=\d{1,2}[.)]\s+\p{L})", RegexOptions.Compiled);
+        /// <summary>Abbreviations that stay in capitals when drawing text is put in title case.</summary>
+        private static readonly HashSet<string> Abbreviations = new HashSet<string>(StringComparer.Ordinal)
+        {
+            "MDF", "HDF", "HPL", "CPL", "OSB", "PVC", "LVT", "PMMA", "ABS", "LED", "RAL", "NCS", "PMS", "WC", "MFC", "MR", "FR", "UV", "PU", "PE", "PP", "GRP", "SS", "AISI", "EN", "ISO", "DIN", "BS",
+        };
+
         private static readonly HashSet<string> NotCodePrefixes = new HashSet<string>(StringComparer.Ordinal)
         {
             "RAL", "NCS", "EN", "ISO", "DIN", "BS", "NF", "UNI", "ASTM", "DN", "PN", "IP", "IK", "CE", "UL", "PMS", "REV", "TEL", "FAX", "UNE", "CEN", "ANSI", "NEN", "SN", "VDE",
@@ -675,7 +681,7 @@ namespace TextX.Core.Documents.Schedules
             for (int i = 0; i < words.Length; i++)
             {
                 var w = words[i];
-                if (w.Length <= 3 && w.All(c => !char.IsLetter(c) || char.IsUpper(c)) && w.Any(char.IsLetter) && w.Length > 1) continue;
+                if (Abbreviations.Contains(w.Trim(',', '.', ';', ':', '(', ')')) || (w.Any(char.IsDigit) && w.Any(char.IsLetter))) continue;
                 if (w.Any(char.IsLetter) && w.Where(char.IsLetter).All(char.IsUpper)) words[i] = w.Substring(0, 1) + w.Substring(1).ToLowerInvariant();
             }
             var r = string.Join(" ", words);

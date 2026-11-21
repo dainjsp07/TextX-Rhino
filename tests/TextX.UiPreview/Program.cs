@@ -1,5 +1,6 @@
 using System;
 using System.IO;
+using System.Linq;
 using System.Reflection;
 using System.Threading.Tasks;
 using Eto.Forms;
@@ -68,7 +69,16 @@ namespace TextX.UiPreview
             Call("TranslateDocument", false);
             await WaitIdle(180);
             await Task.Delay(4000);
+            var project = (TextX.Core.Documents.DocProject)Field("_project");
+            var paragraph = project.Pages[0].Blocks.FirstOrDefault(b => b.Source.StartsWith("Les caissons", StringComparison.Ordinal));
+            if (paragraph != null) Call("SelectBlock", paragraph, true);
+            await Task.Delay(1500);
             Capture("studio-3-translated.png");
+            ((TextX.UI.Controls.SegmentedControl)Field("_viewMode")).SelectedIndex = 1;
+            await Task.Delay(2500);
+            Capture("studio-3b-translation-only.png");
+            ((TextX.UI.Controls.SegmentedControl)Field("_viewMode")).SelectedIndex = 0;
+            await Task.Delay(1500);
             Call("GoToPage", 2);
             await Task.Delay(3500);
             Capture("studio-4-drawing.png");

@@ -347,8 +347,8 @@ namespace TextX.Core.Documents.Schedules
         public static readonly Vocabulary Headings = new Vocabulary(
             "Code|code|ref|ref.|reference|item no|item nr|item|tag|mark|key|no|nr|no.|n|n°|nº|id|pos|pos.|position|repere|type|codice|codigo|referencia|riferimento|kenmerk",
             "Description|description|designation|desc|beschreibung|bezeichnung|benennung|descripcion|denominacion|descrizione|omschrijving|name|nom|naam|product|produit|produkt|producto|prodotto|article|artikel|articulo|articolo|element|element",
-            "Material|material|materials|materiau|materiaux|matiere|werkstoff|materiale|materiali|materiaal",
-            "Finish|finish|finishes|finition|finitions|oberflache|oberflaeche|ausfuhrung|ausfuehrung|acabado|acabados|finitura|finiture|afwerking|surface",
+            "Material|material|materials|material type|materiau|materiaux|matiere|werkstoff|materiale|materiali|materiaal",
+            "Finish|finish|finishes|finishing|finishings|surface finish|finition|finitions|oberflache|oberflaeche|ausfuhrung|ausfuehrung|acabado|acabados|finitura|finiture|afwerking|surface",
             "Colour|colour|color|colours|colors|couleur|couleurs|teinte|farbe|farbton|color|colore|kleur|ral",
             "Size|size|sizes|dimension|dimensions|dims|dim|w x d x h|l x w x h|w x h|taille|format|abmessung|abmessungen|masse|groesse|grosse|medidas|dimensiones|tamano|dimensioni|misure|afmetingen|maat",
             "Width|width|w|largeur|l|breite|b|ancho|larghezza|breedte",

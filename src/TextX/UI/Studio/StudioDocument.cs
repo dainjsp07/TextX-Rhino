@@ -25,6 +25,8 @@ namespace TextX.UI.Studio
         private readonly SegmentedControl _viewMode = new SegmentedControl("Side by side", "Translation", "Original");
         private readonly GridView _blocks = new GridView { AllowMultipleSelection = false, ShowHeader = true, GridLines = GridLines.Horizontal };
         private Label _docTitle, _docInfo, _pageLabel, _blocksTitle;
+        private TextArea _editOriginal, _editTranslation;
+        private DocBlock _editing;
         private Pill _checkPill;
         private FlatButton _translate;
         private TableLayout _viewer;
@@ -63,6 +65,7 @@ namespace TextX.UI.Studio
             var next = new FlatButton("Next", IconKind.None, ButtonKind.Secondary, 28) { ToolTip = "Next page (Page Down)" };
             next.Click += (s, e) => GoToPage(_pageIndex + 1);
             _pageLabel = Ui.Label(_scope, string.Empty, 12.5f);
+            _viewMode.Width = 320;
             _viewMode.SelectedIndexChanged += (s, e) => LayoutViewer();
             var nav = Ui.Row(8, prev, _pageLabel, next, Ui.Spring(), _viewMode);
 
@@ -99,19 +102,19 @@ namespace TextX.UI.Studio
             {
                 HeaderText = "Original",
                 DataCell = new TextBoxCell { Binding = Binding.Delegate<DocBlock, string>(b => Short(b.Source)) },
-                Editable = false, Resizable = true, Width = 170,
+                Editable = false, Resizable = true, Width = 150,
             });
             _blocks.Columns.Add(new GridColumn
             {
                 HeaderText = "Translation (click to edit)",
                 DataCell = new TextBoxCell { Binding = Binding.Delegate<DocBlock, string>(b => b.Translation ?? (b.State == BlockState.Kept ? b.Source : string.Empty), (b, v) => EditBlock(b, v)) },
-                Editable = true, Resizable = true, Width = 200,
+                Editable = true, Resizable = true, Width = 170,
             });
             _blocks.Columns.Add(new GridColumn
             {
                 HeaderText = "Check",
                 DataCell = new TextBoxCell { Binding = Binding.Delegate<DocBlock, string>(b => IssueText(b)) },
-                Editable = false, Resizable = true, Width = 110,
+                Editable = false, Resizable = true, Width = 90,
             });
             _blocks.SelectionChanged += (s, e) =>
             {
@@ -126,21 +129,30 @@ namespace TextX.UI.Studio
                 if (b.State == BlockState.Edited && e.Column.HeaderText.StartsWith("Translation", StringComparison.Ordinal)) e.ForegroundColor = Theme.Current.AccentInk;
             };
 
+            // editor for the selected paragraph
+            _editOriginal = Ui.TextArea(_scope, 12.5f);
+            _editOriginal.ReadOnly = true;
+            _editOriginal.Height = 58;
+            _editTranslation = Ui.TextArea(_scope, 13f);
+            _editTranslation.Height = 76;
+            var save = new FlatButton("Save change", IconKind.Check, ButtonKind.Primary, 28) { ToolTip = "Use your text for this paragraph (also for identical paragraphs)" };
+            save.Click += (s, e) => SaveEditor();
             var again = new FlatButton("Translate again", IconKind.Refresh, ButtonKind.Secondary, 28) { ToolTip = "Translate the selected paragraph again (your edit is replaced)" };
             again.Click += (s, e) => RetranslateSelected();
             var keep = new FlatButton("Keep original", IconKind.Undo, ButtonKind.Secondary, 28) { ToolTip = "Leave the selected text untranslated" };
             keep.Click += (s, e) => KeepSelected();
-            var term = new FlatButton("Glossary term", IconKind.Plus, ButtonKind.Secondary, 28) { ToolTip = "Always translate a word or phrase your way" };
+            var term = new FlatButton("Glossary", IconKind.Plus, ButtonKind.Ghost, 28) { ToolTip = "Always translate a word or phrase your way" };
             term.Click += (s, e) => AddGlossaryTerm();
-            var buttons = new TableLayout { Spacing = new Size(6, 6) };
-            buttons.Rows.Add(new TableRow(new TableCell(again, true), new TableCell(keep, true)));
-            buttons.Rows.Add(new TableRow(new TableCell(term, true), new TableCell(null, true)));
 
-            var panel = new TableLayout { Spacing = new Size(0, 8) };
+            var panel = new TableLayout { Spacing = new Size(0, 6) };
             panel.Rows.Add(new TableRow(_blocksTitle));
             panel.Rows.Add(new TableRow(_blocks) { ScaleHeight = true });
-            panel.Rows.Add(new TableRow(buttons));
-            return new Panel { Content = panel, Width = 500 };
+            panel.Rows.Add(new TableRow(Ui.Section(_scope, "Original")));
+            panel.Rows.Add(new TableRow(Ui.FieldBox(_editOriginal)));
+            panel.Rows.Add(new TableRow(Ui.Section(_scope, "Translation")));
+            panel.Rows.Add(new TableRow(Ui.FieldBox(_editTranslation)));
+            panel.Rows.Add(new TableRow(Ui.Row(6, save, again, keep, Ui.Spring(), term)));
+            return new Panel { Content = panel, Width = 420 };
         }
 
         private static string Short(string s)
@@ -153,7 +165,7 @@ namespace TextX.UI.Studio
         {
             List<QualityIssue> list;
             if (b.State == BlockState.Failed) return "Not translated (service error)";
-            if (!_issues.TryGetValue(b, out list) || list.Count == 0) return b.State == BlockState.Kept ? "Kept as is" : string.Empty;
+            if (!_issues.TryGetValue(b, out list) || list.Count == 0) return string.Empty;
             return string.Join("; ", list.Select(i => i.Message));
         }
 
@@ -367,6 +379,7 @@ namespace TextX.UI.Studio
             if (_project != null && block.Page != _pageIndex) GoToPage(block.Page);
             _originalView.Select(block);
             _translatedView.Select(block);
+            FillEditor(block);
             if (fromPage)
             {
                 var list = _blocks.DataStore as List<DocBlock>;
@@ -451,6 +464,23 @@ namespace TextX.UI.Studio
             RenderPages();
         }
 
+        private void FillEditor(DocBlock block)
+        {
+            _editing = block;
+            if (_editOriginal == null) return;
+            _editOriginal.Text = block == null ? string.Empty : block.Source;
+            _editTranslation.Text = block == null ? string.Empty : (block.Translation ?? (block.State == BlockState.Kept ? block.Source : string.Empty));
+        }
+
+        private void SaveEditor()
+        {
+            var block = _editing;
+            if (block == null) { SetStatus("Select a paragraph in the list (or click it on the page) first.", StatusText.Level.Warning); return; }
+            EditBlock(block, _editTranslation.Text);
+            RefreshBlockList();
+            SetStatus("Change saved.", StatusText.Level.Success);
+        }
+
         private async void RetranslateSelected()
         {
             var block = _blocks.SelectedItem as DocBlock;
@@ -466,6 +496,7 @@ namespace TextX.UI.Studio
             _issues.Remove(block);
             SaveProject();
             RefreshBlockList();
+            FillEditor(block);
             RenderPages();
         }
 
@@ -478,6 +509,7 @@ namespace TextX.UI.Studio
             _issues.Remove(block);
             SaveProject();
             RefreshBlockList();
+            FillEditor(block);
             RenderPages();
         }
 

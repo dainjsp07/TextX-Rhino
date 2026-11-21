@@ -12,6 +12,8 @@ into a dated section when you release.
 
 ## [Unreleased]
 
+## [1.3.0] - 2026-11-21
+
 ### Added
 - **Text X Studio** (`TRStudio`, or the Studio button in the Text X window): one window for documents and
   pictures. Open a file or drop it on the window, then pick what to do. No account or setup.

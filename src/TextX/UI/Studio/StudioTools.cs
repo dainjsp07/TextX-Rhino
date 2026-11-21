@@ -99,8 +99,8 @@ namespace TextX.UI.Studio
             // writing body: text and suggestions
             _writingText = Ui.TextArea(_scope, 14f);
             _writingInfo = Ui.Label(_scope, "Checked with LanguageTool's free online service (no account). The text is sent to languagetool.org to be checked.", 12f, false, p => p.Muted, true);
-            _writingIssues.Columns.Add(new GridColumn { HeaderText = "Problem", DataCell = new TextBoxCell { Binding = Binding.Delegate<WritingIssue, string>(i => i.Message) }, Width = 300, Resizable = true });
-            _writingIssues.Columns.Add(new GridColumn { HeaderText = "Suggestion", DataCell = new TextBoxCell { Binding = Binding.Delegate<WritingIssue, string>(i => i.Replacements.Count == 0 ? "(no suggestion)" : string.Join(" / ", i.Replacements.Take(3))) }, Width = 160, Resizable = true });
+            _writingIssues.Columns.Add(new GridColumn { HeaderText = "Problem", DataCell = new TextBoxCell { Binding = Binding.Delegate<WritingIssue, string>(i => i.Message) }, Width = 220, Resizable = true });
+            _writingIssues.Columns.Add(new GridColumn { HeaderText = "Suggestion", DataCell = new TextBoxCell { Binding = Binding.Delegate<WritingIssue, string>(i => i.Replacements.Count == 0 ? "(no suggestion)" : string.Join(" / ", i.Replacements.Take(3))) }, Width = 150, Resizable = true });
             _writingIssues.Columns.Add(new GridColumn { HeaderText = "Kind", DataCell = new TextBoxCell { Binding = Binding.Delegate<WritingIssue, string>(i => i.Category) }, Width = 100, Resizable = true });
             _writingIssues.SelectionChanged += (s, e) =>
             {
@@ -117,6 +117,7 @@ namespace TextX.UI.Studio
             writingLayout.Rows.Add(new TableRow(_writingInfo));
             _writingBody = writingLayout;
 
+            _toolMode.Width = 560;
             _toolMode.SelectedIndex = 0;
             _toolMode.SelectedIndexChanged += (s, e) => ShowTool(_toolMode.SelectedIndex);
             _scope.Bind(_toolBar, (x, p) => x.BackgroundColor = p.Window);
