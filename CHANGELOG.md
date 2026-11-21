@@ -22,7 +22,8 @@ Text X Studio is now the Text X window: one app for Rhino text, documents, drawi
   choose what shows on screen and in print, then **Place text**, **Place leader** or **Update objects**.
   The separate Text X window is gone; `TRPlaceText`, `TRPlaceLeader` and `TRApply` work with Studio.
 - **Home**: the translator on the left; **Translate a PDF** and four tiles (Product schedule, Picture or
-  screenshot, Voice typing, Library) on the right. In a narrower window the tiles move under the translator.
+  screenshot, Voice typing, Library) on the right. In a narrower window the tiles move under the translator,
+  and in a small one the display options fold into one menu and secondary buttons keep only their icons.
 - **One language pair and one translation service for every page**, chosen at the top of the window.
 - **Picture or screenshot** replaces the Tools page: take a screenshot, paste or open a picture, or capture the
   Rhino view; its text is read on this computer and translated. **Use on Home** puts it in the translator.
