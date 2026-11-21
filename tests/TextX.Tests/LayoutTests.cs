@@ -147,7 +147,7 @@ namespace TextX.Tests
             Equal(3, lines.Count, "OCR lines (second split at the gap)");
             Equal("Hello scanned world", lines[0].Text, "OCR line text");
             True(Math.Abs(lines[0].Box.L - 72) < 1 && lines[0].Box.T > 760, "OCR line in page points: " + lines[0].Box);
-            True(Math.Abs(lines[0].FontSize - 13.7f) < 1.5f, "OCR font size estimate " + lines[0].FontSize);
+            True(Math.Abs(lines[0].FontSize - 19.4f) < 1.5f, "OCR font size estimate " + lines[0].FontSize);
         }
 
         public static void ProjectJson()

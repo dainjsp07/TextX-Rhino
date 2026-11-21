@@ -5,6 +5,7 @@ using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using TextX.Core.Documents;
+using TextX.Core.Documents.Export;
 using TextX.Core.Documents.Fonts;
 using TextX.Core.Documents.Layout;
 using TextX.Core.Translation;
@@ -73,6 +74,21 @@ namespace TextX.Tests
                 var again = TrueTypeFont.Parse(data);
                 True(again.HasChar('中') && again.GlyphCount == zh.Font.GlyphCount, "TTC face extracted as TTF (" + data.Length + " bytes)");
                 True(Math.Abs(again.Measure("中文", 10) - zh.Font.Measure("中文", 10)) < 0.01, "extracted face measures the same");
+            }
+            // subsets keep only the characters used, measure the same and parse again
+            var full = sans.EmbedData;
+            var sub = sans.Font.Subset(new[] { (int)'H', 'e', 'l', 'o', ' ', '-' });
+            var reparsed = TrueTypeFont.Parse(sub);
+            True(sub.Length < full.Length / 4, "subset is small: " + sub.Length + " of " + full.Length + " bytes");
+            True(reparsed.HasChar('H') && reparsed.HasChar('-') && !reparsed.HasChar('Z'), "subset covers exactly the requested characters");
+            True(Math.Abs(reparsed.Measure("Hello - Hello", 10) - sans.Font.Measure("Hello - Hello", 10)) < 0.01, "subset measures the same");
+            True(Math.Abs(reparsed.AscentFactor - sans.Font.AscentFactor) < 0.001, "subset keeps the metrics");
+            if (zh != null)
+            {
+                var zsub = zh.Font.Subset(new[] { (int)'中', '文', 'A' });
+                var zr = TrueTypeFont.Parse(zsub);
+                True(zr.HasChar('中') && zr.HasChar('文') && !zr.HasChar('国') && zsub.Length < 200000, "CJK face subset (" + zsub.Length + " bytes)");
+                True(Math.Abs(zr.Measure("中文", 10) - zh.Font.Measure("中文", 10)) < 0.01, "CJK subset measures the same");
             }
             // fallback runs: Latin primary, CJK from a fallback face
             var runs = FontCatalog.Runs("Size 中文 end", sans, catalog.FallbackFaces("en"), 10);
@@ -161,6 +177,46 @@ namespace TextX.Tests
             Equal("Posé par l'équipe de menuiserie.", fitted.Translation, "edit survives a full retranslation");
         }
 
+        public static void Exports()
+        {
+            var page = new FakePage()
+                .Line("Kitchen Cabinets", 72, 780, 20, bold: true)
+                .Line("The doors are solid oak with a matt finish and soft-close hinges,", 72, 750, 11)
+                .Line("fitted by the joinery team before the worktops are installed.", 72, 736, 11)
+                .Line("Item", 72, 680, 10, bold: true).Line("Material", 200, 680, 10, bold: true).Line("Finish", 330, 680, 10, bold: true)
+                .Line("Doors", 72, 664, 10).Line("Oak veneer", 200, 664, 10).Line("Matt lacquer", 330, 664, 10)
+                .Line("Plinth", 72, 648, 10).Line("MDF", 200, 648, 10).Line("RAL 9016", 330, 648, 10)
+                .Line("Page 1", 290, 30, 8)
+                .Analyze();
+            page.Images.Add(new Box(72, 300, 300, 560));
+            var project = new DocProject { Name = "Kitchen spec", PageCount = 1, SourceLangSetting = "en", TargetLang = "fr" };
+            project.Pages.Add(page);
+            var engine = new TranslationEngine(new JoiningProvider(new DocFakeProvider()), null, new Glossary(), new TranslationCache());
+            new DocumentTranslator(engine).TranslateAsync(project, null, false, null, CancellationToken.None).GetAwaiter().GetResult();
+            True(page.TableCount >= 1, "fake page has a table");
+
+            var dir = Environment.GetEnvironmentVariable("TEXTX_TEST_OUT") ?? Path.Combine(Path.GetTempPath(), "textx-tests");
+            Directory.CreateDirectory(dir);
+            var docx = Path.Combine(dir, "unit-export.docx");
+            var png = TextX.Core.Documents.Imaging.PngWriter.FromGray(Enumerable.Repeat((byte)180, 40 * 30).ToArray(), 40, 30);
+            DocxWriter.Write(project, docx, new DocxOptions { Text = ExportText.Bilingual, ImageProvider = (pg, box) => png });
+            using (var zip = System.IO.Compression.ZipFile.OpenRead(docx))
+            {
+                var body = new StreamReader(zip.GetEntry("word/document.xml").Open()).ReadToEnd();
+                True(body.Contains("[fr] Kitchen Cabinets") && body.Contains("Kitchen Cabinets"), "bilingual Word export");
+                True(body.Contains("Heading1") || body.Contains("Heading2"), "headings use Word heading styles");
+                True(body.Contains("<w:tbl>") && body.Contains("[fr] Oak veneer"), "table exported as a Word table");
+                True(zip.GetEntry("word/media/image1.png") != null, "image exported");
+                System.Xml.Linq.XDocument.Parse(body);
+                foreach (var e in zip.Entries.Where(e => e.FullName.EndsWith(".xml") || e.FullName.EndsWith(".rels")))
+                    System.Xml.Linq.XDocument.Parse(new StreamReader(e.Open()).ReadToEnd());
+                True(true, "Word parts are well-formed XML");
+            }
+            var txt = TextExporter.Build(project, ExportText.Translated);
+            True(txt.Contains("[fr] Kitchen Cabinets") && txt.Contains("\t"), "text export with tab-separated table: " + txt.Replace("\n", " | "));
+            Equal("a b -", TranslatedPdfWriter.NormalizeForPdf("a\u00A0b \u00AD\u2011"), "PDF text normalised");
+        }
+
         public static void Joining()
         {
             var fake = new DocFakeProvider();
@@ -182,6 +238,8 @@ namespace TextX.Tests
             Equal("zh-CN", LanguageGuess.FromScript("这是中文"), "Chinese");
             Equal(null, LanguageGuess.FromScript("Bonjour tout le monde"), "Latin left to the service");
             True(!LanguageGuess.HasWords("1200 x 600") && LanguageGuess.HasWords("Oak"), "words vs numbers");
+            True(LanguageGuess.IsReference("RAL 9016") && LanguageGuess.IsReference("NCS S 0502-Y") && LanguageGuess.IsReference("EN 13501-1") && LanguageGuess.IsReference("Ø 35 mm"), "references kept as they are");
+            True(!LanguageGuess.IsReference("Door 2") && !LanguageGuess.IsReference("RAL") && !LanguageGuess.IsReference("Oak veneer 19 mm"), "words are not references");
             Equal("he", TextX.Core.Translation.Providers.GoogleFreeProvider.ParseDetectedLanguage("[[[\"Hello\",\"שלום\",null,null,10]],null,\"iw\",null,null,null,1,[],[[\"iw\"],null,[1],[\"iw\"]]]"), "detected language parsed");
         }
     }

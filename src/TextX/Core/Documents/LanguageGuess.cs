@@ -66,6 +66,32 @@ namespace TextX.Core.Documents
             return d.TryGetValue(k, out n) ? n : 0;
         }
 
+        /// <summary>
+        /// True for references that read the same in every language: colour and standard codes
+        /// ("RAL 9016", "NCS S 0502-Y", "EN 13501-1", "Ø 35 mm") — short capital abbreviations and units
+        /// around numbers, with no ordinary word.
+        /// </summary>
+        public static bool IsReference(string text)
+        {
+            if (string.IsNullOrWhiteSpace(text) || text.Length > 40) return false;
+            bool number = false;
+            foreach (var token in text.Split(new[] { ' ', '\t', '\n', '/', ',', ';', ':', '(', ')' }, StringSplitOptions.RemoveEmptyEntries))
+            {
+                if (token.Any(char.IsDigit)) { number = true; continue; }
+                var letters = new string(token.Where(char.IsLetter).ToArray());
+                if (letters.Length == 0) continue;
+                if (letters.Length <= 4 && letters.All(c => c < 0x0250 && char.IsUpper(c))) continue;
+                if (Units.Contains(letters)) continue;
+                return false;
+            }
+            return number;
+        }
+
+        private static readonly HashSet<string> Units = new HashSet<string>(StringComparer.Ordinal)
+        {
+            "mm", "cm", "m", "km", "in", "ft", "kg", "g", "t", "l", "ml", "kW", "W", "V", "A", "Hz", "Pa", "kPa", "MPa", "kN", "N", "dB", "lx", "lm", "K", "x", "X", "Ø", "pcs"
+        };
+
         /// <summary>True when the text contains letters (otherwise it is numbers, codes or symbols: nothing to translate).</summary>
         public static bool HasWords(string text)
         {

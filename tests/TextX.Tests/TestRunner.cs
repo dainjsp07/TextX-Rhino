@@ -86,6 +86,7 @@ namespace TextX.Tests
                 CoreTests.Fitting,
                 CoreTests.Translator,
                 CoreTests.Joining,
+                CoreTests.Exports,
                 CoreTests.Guessing,
             })
             {

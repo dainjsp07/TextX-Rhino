@@ -89,7 +89,7 @@ namespace TextX.Core.Documents
             var work = new List<DocBlock>();
             foreach (var b in blocks)
             {
-                if (!LanguageGuess.HasWords(b.Source) || TextSegmenter.IsCodeLike(b.Source.Trim()) || SameLanguage(src, tgt))
+                if (!LanguageGuess.HasWords(b.Source) || TextSegmenter.IsCodeLike(b.Source.Trim()) || LanguageGuess.IsReference(b.Source) || SameLanguage(src, tgt))
                 {
                     b.State = BlockState.Kept;
                     b.Translation = null;

@@ -381,7 +381,22 @@ namespace TextX.Tests
                 True(text.Contains("Description of works") || text.Contains("Kitchen"), "scanned page translated: " + text.Replace("\n", " | "));
                 SaveSideBySide("compare-scan.png", TranslatedPdfWriter.RenderOriginal(scan, 0, 1.4f), page.Render(1.4f));
             }
-            True(new FileInfo(output).Length < 8 * 1024 * 1024, "output size " + new FileInfo(output).Length / 1024 + " KB");
+            // only the characters used are embedded, so the file stays close to the original's size
+            long inSize = new FileInfo(pdf).Length, outSize = new FileInfo(output).Length;
+            True(outSize < inSize + 400 * 1024, "output size " + outSize / 1024 + " KB (original " + inSize / 1024 + " KB)");
+
+            // Word and text exports, with the figures cropped from the page
+            var docx = Path.Combine(OutDir, "sample-en.docx");
+            using (var images = new PageImages(pdf))
+                DocxWriter.Write(project, docx, new DocxOptions { Fonts = fonts, ImageProvider = images.Crop });
+            using (var zip = System.IO.Compression.ZipFile.OpenRead(docx))
+            {
+                var body = new StreamReader(zip.GetEntry("word/document.xml").Open()).ReadToEnd();
+                True(body.Contains("Description of works") && body.Contains("<w:tbl>"), "Word export has the headings and the table");
+                True(zip.Entries.Any(e => e.FullName.StartsWith("word/media/") && e.Length > 500), "Word export has the figure");
+            }
+            var txt = TextExporter.Build(project, ExportText.Bilingual);
+            True(txt.Contains("Description des travaux") && txt.Contains("Description of works"), "bilingual text export");
 
             // Hebrew output: right-to-left text in the PDF
             foreach (var blk in project.AllBlocks.Where(x => x.Translation != null)) blk.Translation = "תרגום: " + blk.Translation;

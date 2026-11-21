@@ -25,14 +25,16 @@ namespace TextX.Core.Documents.Layout
             var lines = new List<DocLine>();
             var current = new List<PdfChar>();
             PdfChar? prev = null;
-            foreach (var c in chars)
+            foreach (var raw in chars)
             {
+                var c = raw;
                 if (c.Code == '\r' || c.Code == '\n')
                 {
                     Flush(current, lines);
                     prev = null;
                     continue;
                 }
+                if (c.Code == 0xAD || c.Code == 0x2011) c.Code = '-';   // soft / non-breaking hyphen
                 bool isSpace = c.Code == ' ' || c.Code == 0xA0 || c.Code == 0x3000 || c.Code == '\t';
                 if (c.Code < 32 && !isSpace) continue;
                 if (!isSpace && c.Right - c.Left <= 0 && c.Top - c.Bottom <= 0) continue;
@@ -211,7 +213,10 @@ namespace TextX.Core.Documents.Layout
                 var l = horizontal[i];
                 float tol = Math.Max(1f, l.FontSize * 0.3f);
                 var same = horizontal.Where(o => Math.Abs(o.Baseline - l.Baseline) <= tol).ToList();
-                if (same.Count >= 3 || (same.Count == 2 && same.All(o => o.Box.W < pageWidth * 0.3f)))
+                if (same.Count < 2) continue;
+                // running prose in columns: every line on the baseline is a long run of words
+                if (same.All(o => o.Text.Length >= 28 && o.Text.Count(ch => ch == ' ') >= 4)) continue;
+                if (same.Count >= 3 || same.All(o => o.Box.W < pageWidth * 0.3f))
                     foreach (var o in same) result.Add(o);
             }
             return result;
@@ -387,13 +392,14 @@ namespace TextX.Core.Documents.Layout
                     var next = rows[j];
                     float size = Math.Max(4f, prev.Average(b => b.FontSize));
                     float gap = prev.Min(b => b.Box.B) - next.Max(b => b.Box.T);
-                    if (gap > size * 4f) break;
+                    if (gap > size * 3f) break;
                     if (ColumnMatch(prev, next, size) < 0.6) break;
                     group.Add(next);
                     j++;
                 }
                 int cells = group.Sum(r => r.Count);
-                if (group.Count >= 2 && cells >= 4 && group.Max(r => r.Count) >= 2)
+                // two rows of two labels are common on drawings; a table has more structure
+                if ((group.Count >= 3 || group.Max(r => r.Count) >= 3) && cells >= 4 && group.Max(r => r.Count) >= 2)
                 {
                     var columns = ColumnStarts(group);
                     for (int r = 0; r < group.Count; r++)

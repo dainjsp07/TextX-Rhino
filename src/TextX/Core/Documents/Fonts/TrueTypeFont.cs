@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.IO;
+using System.Linq;
 using System.Text;
 
 namespace TextX.Core.Documents.Fonts
@@ -264,6 +265,220 @@ namespace TextX.Core.Documents.Fonts
             }
             int headPos = (int)U32(output, 12 + 16 * tags.IndexOf("head") + 8);
             WU32(output, headPos + 8, 0xB1B0AFBAu - Checksum(output, 0, output.Length));
+            return output;
+        }
+
+        /// <summary>
+        /// A small font containing only the glyphs needed for <paramref name="codePoints"/> (plus glyphs
+        /// they are built from), renumbered compactly, with a cmap listing exactly those characters.
+        /// Text drawn with it is extracted back as exactly these characters. Falls back to the whole
+        /// face for fonts without TrueType outlines.
+        /// </summary>
+        public byte[] Subset(ICollection<int> codePoints)
+        {
+            if (IsCff || !_tables.ContainsKey("glyf") || !_tables.ContainsKey("loca") || !_tables.ContainsKey("hmtx")) return ToStandaloneFont();
+            int numGlyphs = GlyphCount;
+            int head = Table("head");
+            bool longLoca = S16(_data, head + 50) == 1;
+            int loca = Table("loca"), glyf = Table("glyf"), hmtx = Table("hmtx");
+            int numberOfHMetrics = Math.Max(1, U16(_data, Table("hhea") + 34));
+            Func<int, int> offsetOf = g => longLoca ? (int)U32(_data, loca + 4 * g) : U16(_data, loca + 2 * g) * 2;
+
+            var chars = new SortedDictionary<int, int>();
+            var keep = new SortedSet<int> { 0 };
+            foreach (var cp in codePoints)
+            {
+                int g = GlyphOf(cp);
+                if (g <= 0 || g >= numGlyphs) continue;
+                chars[cp] = g;
+                keep.Add(g);
+            }
+            // composite glyphs need their components; remember where component numbers sit
+            var componentRefs = new Dictionary<int, List<int>>(); // glyph -> offsets (within the glyph) of component numbers
+            var queue = new Queue<int>(keep);
+            while (queue.Count > 0)
+            {
+                int g = queue.Dequeue();
+                int start = offsetOf(g), end = offsetOf(g + 1);
+                if (end - start < 10 || S16(_data, glyf + start) >= 0) continue;
+                var refs = new List<int>();
+                int pos = glyf + start + 10;
+                while (pos + 4 <= glyf + end)
+                {
+                    int flags = U16(_data, pos), component = U16(_data, pos + 2);
+                    refs.Add(pos + 2 - (glyf + start));
+                    pos += 4;
+                    pos += (flags & 0x1) != 0 ? 4 : 2;
+                    if ((flags & 0x8) != 0) pos += 2;
+                    else if ((flags & 0x40) != 0) pos += 4;
+                    else if ((flags & 0x80) != 0) pos += 8;
+                    if (component < numGlyphs && keep.Add(component)) queue.Enqueue(component);
+                    if ((flags & 0x20) == 0) break;
+                }
+                componentRefs[g] = refs;
+            }
+
+            var order = keep.ToList();
+            var newId = new Dictionary<int, int>();
+            for (int i = 0; i < order.Count; i++) newId[order[i]] = i;
+            int count = order.Count;
+
+            var glyfOut = new System.IO.MemoryStream();
+            var locaOut = new byte[4 * (count + 1)];
+            var hmtxOut = new byte[4 * count];
+            for (int i = 0; i < count; i++)
+            {
+                int g = order[i];
+                WU32(locaOut, 4 * i, (uint)glyfOut.Length);
+                int adv = U16(_data, hmtx + 4 * Math.Min(g, numberOfHMetrics - 1));
+                int lsb = g < numberOfHMetrics ? U16(_data, hmtx + 4 * g + 2) : U16(_data, hmtx + 4 * numberOfHMetrics + 2 * (g - numberOfHMetrics));
+                WU16(hmtxOut, 4 * i, adv);
+                WU16(hmtxOut, 4 * i + 2, lsb);
+                int start = offsetOf(g), end = offsetOf(g + 1);
+                if (end <= start) continue;
+                var bytes = new byte[end - start];
+                Buffer.BlockCopy(_data, glyf + start, bytes, 0, bytes.Length);
+                List<int> refs;
+                if (componentRefs.TryGetValue(g, out refs))
+                    foreach (var r in refs)
+                    {
+                        int old = U16(bytes, r), mapped;
+                        WU16(bytes, r, newId.TryGetValue(old, out mapped) ? mapped : 0);
+                    }
+                glyfOut.Write(bytes, 0, bytes.Length);
+                while (glyfOut.Length % 4 != 0) glyfOut.WriteByte(0);
+            }
+            WU32(locaOut, 4 * count, (uint)glyfOut.Length);
+
+            var map = new SortedDictionary<int, int>();
+            foreach (var kv in chars) map[kv.Key] = newId[kv.Value];
+
+            var tables = new SortedDictionary<string, byte[]>(StringComparer.Ordinal);
+            foreach (var tag in new[] { "head", "hhea", "maxp", "name", "OS/2", "cvt ", "fpgm", "prep", "gasp" })
+                if (_tables.ContainsKey(tag)) tables[tag] = Slice(tag);
+            WU16(tables["head"], 50, 1);        // indexToLocFormat: long
+            WU16(tables["hhea"], 34, count);    // numberOfHMetrics
+            WU16(tables["maxp"], 4, count);     // numGlyphs
+            tables["hmtx"] = hmtxOut;
+            tables["loca"] = locaOut;
+            tables["glyf"] = glyfOut.ToArray();
+            tables["cmap"] = BuildCmap(map);
+            var post = new byte[32];
+            if (_tables.ContainsKey("post")) Buffer.BlockCopy(_data, Table("post"), post, 0, Math.Min(32, _tables["post"].Value));
+            WU32(post, 0, 0x00030000); // no glyph names
+            tables["post"] = post;
+            return BuildFont(tables);
+        }
+
+        private byte[] Slice(string tag)
+        {
+            var t = _tables[tag];
+            var b = new byte[t.Value];
+            Buffer.BlockCopy(_data, t.Key, b, 0, t.Value);
+            return b;
+        }
+
+        /// <summary>A cmap with a (3,1) format 4 subtable and, if needed, a (3,10) format 12 subtable.</summary>
+        private static byte[] BuildCmap(SortedDictionary<int, int> map)
+        {
+            var bmp = map.Where(kv => kv.Key < 0xFFFF).ToList();
+            // segments of consecutive code points
+            var segments = new List<KeyValuePair<int, int>>(); // start index, count
+            for (int i = 0; i < bmp.Count;)
+            {
+                int j = i + 1;
+                while (j < bmp.Count && bmp[j].Key == bmp[j - 1].Key + 1) j++;
+                segments.Add(new KeyValuePair<int, int>(i, j - i));
+                i = j;
+            }
+            int segCount = segments.Count + 1;
+            int glyphIds = bmp.Count;
+            int len4 = 16 + 8 * segCount + 2 * glyphIds;
+            var f4 = new byte[len4];
+            WU16(f4, 0, 4);
+            WU16(f4, 2, len4);
+            WU16(f4, 6, segCount * 2);
+            int es = 0;
+            while ((1 << (es + 1)) <= segCount) es++;
+            WU16(f4, 8, 2 * (1 << es));
+            WU16(f4, 10, es);
+            WU16(f4, 12, 2 * segCount - 2 * (1 << es));
+            int endOff = 14, startOff = 16 + 2 * segCount, deltaOff = startOff + 2 * segCount, rangeOff = deltaOff + 2 * segCount, glyphOff = rangeOff + 2 * segCount;
+            int glyphIndex = 0;
+            for (int s = 0; s < segments.Count; s++)
+            {
+                var seg = segments[s];
+                WU16(f4, endOff + 2 * s, bmp[seg.Key + seg.Value - 1].Key);
+                WU16(f4, startOff + 2 * s, bmp[seg.Key].Key);
+                WU16(f4, deltaOff + 2 * s, 0);
+                WU16(f4, rangeOff + 2 * s, 2 * (segCount - s + glyphIndex));
+                for (int k = 0; k < seg.Value; k++) WU16(f4, glyphOff + 2 * (glyphIndex + k), bmp[seg.Key + k].Value);
+                glyphIndex += seg.Value;
+            }
+            int last = segments.Count;
+            WU16(f4, endOff + 2 * last, 0xFFFF);
+            WU16(f4, startOff + 2 * last, 0xFFFF);
+            WU16(f4, deltaOff + 2 * last, 1);
+            WU16(f4, rangeOff + 2 * last, 0);
+
+            var supplementary = map.Where(kv => kv.Key > 0xFFFF).ToList();
+            byte[] f12 = null;
+            if (supplementary.Count > 0)
+            {
+                var all = map.ToList();
+                f12 = new byte[16 + 12 * all.Count];
+                WU16(f12, 0, 12);
+                WU32(f12, 4, (uint)f12.Length);
+                WU32(f12, 12, (uint)all.Count);
+                for (int i = 0; i < all.Count; i++)
+                {
+                    WU32(f12, 16 + 12 * i, (uint)all[i].Key);
+                    WU32(f12, 20 + 12 * i, (uint)all[i].Key);
+                    WU32(f12, 24 + 12 * i, (uint)all[i].Value);
+                }
+            }
+            int numTables = f12 == null ? 1 : 2;
+            int header = 4 + 8 * numTables;
+            var cmap = new byte[header + f4.Length + (f12 == null ? 0 : f12.Length)];
+            WU16(cmap, 2, numTables);
+            WU16(cmap, 4, 3); WU16(cmap, 6, 1); WU32(cmap, 8, (uint)header);
+            Buffer.BlockCopy(f4, 0, cmap, header, f4.Length);
+            if (f12 != null)
+            {
+                WU16(cmap, 12, 3); WU16(cmap, 14, 10); WU32(cmap, 16, (uint)(header + f4.Length));
+                Buffer.BlockCopy(f12, 0, cmap, header + f4.Length, f12.Length);
+            }
+            return cmap;
+        }
+
+        private static byte[] BuildFont(SortedDictionary<string, byte[]> tables)
+        {
+            int numTables = tables.Count;
+            int headerSize = 12 + 16 * numTables;
+            int total = headerSize + tables.Values.Sum(t => (t.Length + 3) & ~3);
+            var output = new byte[total];
+            int entrySelector = 0;
+            while ((1 << (entrySelector + 1)) <= numTables) entrySelector++;
+            int searchRange = (1 << entrySelector) * 16;
+            WU32(output, 0, 0x00010000);
+            WU16(output, 4, numTables);
+            WU16(output, 6, searchRange);
+            WU16(output, 8, entrySelector);
+            WU16(output, 10, numTables * 16 - searchRange);
+            int pos = headerSize, i = 0, headPos = -1;
+            foreach (var kv in tables)
+            {
+                var t = kv.Value;
+                if (kv.Key == "head") { WU32(t, 8, 0); headPos = pos; }
+                int rec = 12 + 16 * i++;
+                for (int k = 0; k < 4; k++) output[rec + k] = (byte)kv.Key[k];
+                Buffer.BlockCopy(t, 0, output, pos, t.Length);
+                WU32(output, rec + 4, Checksum(output, pos, t.Length));
+                WU32(output, rec + 8, (uint)pos);
+                WU32(output, rec + 12, (uint)t.Length);
+                pos += (t.Length + 3) & ~3;
+            }
+            if (headPos >= 0) WU32(output, headPos + 8, 0xB1B0AFBAu - Checksum(output, 0, output.Length));
             return output;
         }
 

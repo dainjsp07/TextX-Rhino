@@ -54,7 +54,8 @@ namespace TextX.Core.Documents.Layout
             page.DisplayToFrame(left / scale, top / scale, out x1, out y1);
             page.DisplayToFrame(right / scale, bottom / scale, out x2, out y2);
             var box = new Box(x1, y1, x2, y2);
-            float size = Math.Max(4f, heightPx / scale * 0.95f);
+            // word boxes are tight around the ink: about 0.74 of the font size for typical words
+            float size = Math.Max(4f, heightPx / scale * 1.35f);
             var line = new DocLine
             {
                 Text = sb.ToString(),

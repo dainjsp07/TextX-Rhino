@@ -34,20 +34,43 @@ namespace TextX.Core.Documents.Export
     /// </summary>
     public static class TranslatedPdfWriter
     {
+        /// <summary>One line of text to draw (page frame coordinates).</summary>
+        private sealed class DrawOp
+        {
+            public FittedLine Line;
+            public float Size, X, Y, Angle;
+            public uint Color;
+        }
+
+        private sealed class PagePlan
+        {
+            public DocPage Page;
+            public List<DocBlock> Write = new List<DocBlock>();
+            public List<DrawOp> Ops = new List<DrawOp>();
+            public PageWriteReport Report;
+        }
+
         public static List<PageWriteReport> Write(DocProject project, string outputPath, PdfWriteOptions options, CancellationToken ct)
         {
-            var reports = new List<PageWriteReport>();
             var temp = outputPath + ".partial";
+            var plans = new List<PagePlan>();
             using (var doc = PdfFile.Open(project.PdfPath))
             {
-                int done = 0;
-                foreach (var page in project.Pages)
+                // pass 1: what to replace and how the translations are laid out
+                foreach (var page in project.Pages.Where(p => p.Extracted))
                 {
                     ct.ThrowIfCancellationRequested();
-                    if (page.Extracted)
-                    {
-                        using (var p = doc.LoadPage(page.Index)) reports.Add(Apply(doc, p, page, project, options));
-                    }
+                    using (var p = doc.LoadPage(page.Index)) plans.Add(Plan(p, page, project, options));
+                }
+                // embed each font once, with only the characters the document uses
+                var fonts = LoadFonts(doc, plans);
+                // pass 2: replace the text
+                int done = 0;
+                foreach (var plan in plans)
+                {
+                    ct.ThrowIfCancellationRequested();
+                    if (plan.Write.Count > 0)
+                        using (var p = doc.LoadPage(plan.Page.Index)) Apply(p, plan, fonts);
                     done++;
                     if (options.PagesDone != null) options.PagesDone.Report(done);
                 }
@@ -55,7 +78,7 @@ namespace TextX.Core.Documents.Export
             }
             if (File.Exists(outputPath)) File.Delete(outputPath);
             File.Move(temp, outputPath);
-            return reports;
+            return plans.Select(pl => pl.Report).ToList();
         }
 
         /// <summary>Renders one page as it will look translated (nothing is saved).</summary>
@@ -65,7 +88,13 @@ namespace TextX.Core.Documents.Export
             using (var p = doc.LoadPage(pageIndex))
             {
                 var page = project.Pages[pageIndex];
-                report = page.Extracted ? Apply(doc, p, page, project, options) : null;
+                report = null;
+                if (page.Extracted)
+                {
+                    var plan = Plan(p, page, project, options);
+                    if (plan.Write.Count > 0) Apply(p, plan, LoadFonts(doc, new[] { plan }));
+                    report = plan.Report;
+                }
                 return p.Render(scale);
             }
         }
@@ -84,20 +113,20 @@ namespace TextX.Core.Documents.Export
                    !string.Equals(b.Translation.Trim(), b.Source.Trim(), StringComparison.Ordinal);
         }
 
-        internal static PageWriteReport Apply(PdfFile doc, PdfPage p, DocPage page, DocProject project, PdfWriteOptions options)
+        private static Func<DocBlock, IEnumerable<IntPtr>> HandlesOf(List<PdfChar> chars)
         {
-            var report = new PageWriteReport { Page = page.Index };
+            return b => b.CharIndices.Where(i => i >= 0 && i < chars.Count).Select(i => chars[i].TextObject).Where(h => h != IntPtr.Zero).Distinct();
+        }
+
+        /// <summary>
+        /// The blocks to rewrite: changed ones, plus any block sharing a text object with them (removing
+        /// the object would remove that block's text too).
+        /// </summary>
+        private static HashSet<DocBlock> WriteSet(DocPage page, List<PdfChar> chars)
+        {
             var write = new HashSet<DocBlock>(page.Blocks.Where(Changed));
-            if (write.Count == 0) return report;
-
-            var chars = p.GetChars();
-            var objects = p.GetObjects();
-            var objectByHandle = new Dictionary<IntPtr, PdfObjectInfo>();
-            foreach (var o in objects) if (o.IsText && !objectByHandle.ContainsKey(o.Handle)) objectByHandle[o.Handle] = o;
-            Func<DocBlock, IEnumerable<IntPtr>> handlesOf = b => b.CharIndices.Where(i => i >= 0 && i < chars.Count)
-                .Select(i => chars[i].TextObject).Where(h => h != IntPtr.Zero).Distinct();
-
-            // text objects to remove; blocks sharing one of them are rewritten too so nothing disappears
+            if (write.Count == 0) return write;
+            var handlesOf = HandlesOf(chars);
             var remove = new HashSet<IntPtr>();
             bool grew = true;
             while (grew)
@@ -106,20 +135,60 @@ namespace TextX.Core.Documents.Export
                 foreach (var b in write.Where(b => !b.FromOcr).ToList())
                     foreach (var h in handlesOf(b)) remove.Add(h);
                 foreach (var b in page.Blocks.Where(b => !b.FromOcr && !write.Contains(b)))
-                {
                     if (handlesOf(b).Any(remove.Contains)) { write.Add(b); grew = true; }
-                }
             }
+            return write;
+        }
 
-            var cover = new HashSet<DocBlock>(write.Where(b => b.FromOcr));
+        private static PagePlan Plan(PdfPage p, DocPage page, DocProject project, PdfWriteOptions options)
+        {
+            var plan = new PagePlan { Page = page, Report = new PageWriteReport { Page = page.Index } };
+            if (!page.Blocks.Any(Changed)) return plan;
+            var chars = p.GetChars();
+            plan.Write = WriteSet(page, chars).OrderBy(b => b.Order).ToList();
+            foreach (var b in plan.Write) LayoutBlock(page, project, b, options, plan);
+            return plan;
+        }
+
+        private static Dictionary<FontFace, IntPtr> LoadFonts(PdfFile doc, IEnumerable<PagePlan> plans)
+        {
+            var used = new Dictionary<FontFace, HashSet<int>>();
+            foreach (var op in plans.SelectMany(pl => pl.Ops))
+                foreach (var run in op.Line.Runs)
+                {
+                    HashSet<int> set;
+                    if (!used.TryGetValue(run.Face, out set)) used[run.Face] = set = new HashSet<int>();
+                    for (int i = 0; i < run.Text.Length; i++)
+                    {
+                        int cp = run.Text[i];
+                        if (char.IsHighSurrogate(run.Text[i]) && i + 1 < run.Text.Length) { cp = char.ConvertToUtf32(run.Text[i], run.Text[i + 1]); i++; }
+                        set.Add(cp);
+                    }
+                }
+            var fonts = new Dictionary<FontFace, IntPtr>();
+            foreach (var kv in used) fonts[kv.Key] = doc.LoadFont(kv.Key.Key + "#subset", kv.Key.Font.Subset(kv.Value));
+            return fonts;
+        }
+
+        private static void Apply(PdfPage p, PagePlan plan, Dictionary<FontFace, IntPtr> fonts)
+        {
+            var page = plan.Page;
+            var report = plan.Report;
+            var chars = p.GetChars();
+            var objects = p.GetObjects();
+            var objectByHandle = new Dictionary<IntPtr, PdfObjectInfo>();
+            foreach (var o in objects) if (o.IsText && !objectByHandle.ContainsKey(o.Handle)) objectByHandle[o.Handle] = o;
+            var handlesOf = HandlesOf(chars);
+            var remove = new HashSet<IntPtr>(plan.Write.Where(b => !b.FromOcr).SelectMany(handlesOf));
+
+            var cover = new HashSet<DocBlock>(plan.Write.Where(b => b.FromOcr));
             foreach (var h in remove)
             {
                 PdfObjectInfo info;
                 bool removed = objectByHandle.TryGetValue(h, out info) && p.RemoveObject(info);
                 if (!removed)
-                    foreach (var b in write.Where(b => !b.FromOcr && handlesOf(b).Contains(h))) cover.Add(b);
+                    foreach (var b in plan.Write.Where(b => !b.FromOcr && handlesOf(b).Contains(h))) cover.Add(b);
             }
-
             foreach (var b in cover)
             {
                 var box = b.Box.Inflate(Math.Max(0.8f, b.FontSize * 0.12f));
@@ -130,19 +199,38 @@ namespace TextX.Core.Documents.Export
                 report.Covered++;
             }
 
-            foreach (var b in write.OrderBy(b => b.Order))
+            foreach (var op in plan.Ops)
             {
-                DrawBlock(doc, p, page, project, b, options, report);
-                report.Written++;
+                double angle = op.Angle + page.FrameToUserAngle;
+                double ax = Math.Cos(op.Angle), ay = Math.Sin(op.Angle);
+                float along = 0;
+                foreach (var run in op.Line.Runs)
+                {
+                    if (run.Text.Trim().Length > 0)
+                    {
+                        float ux, uy;
+                        page.FrameToUser((float)(op.X + ax * along), (float)(op.Y + ay * along), out ux, out uy);
+                        p.AddText(fonts[run.Face], op.Size, run.Text, ux, uy, op.Color, angle);
+                    }
+                    along += run.Width;
+                }
             }
+            report.Written = plan.Write.Count;
             p.CommitChanges();
-            return report;
         }
 
-        private static void DrawBlock(PdfFile doc, PdfPage p, DocPage page, DocProject project, DocBlock b, PdfWriteOptions options, PageWriteReport report)
+        /// <summary>Characters that share a glyph with a plainer one are drawn as the plain one.</summary>
+        public static string NormalizeForPdf(string s)
+        {
+            if (string.IsNullOrEmpty(s)) return string.Empty;
+            return s.Replace(' ', ' ').Replace(' ', ' ').Replace(' ', ' ').Replace("­", string.Empty)
+                    .Replace('‑', '-').Replace("﻿", string.Empty).Replace("​", string.Empty);
+        }
+
+        private static void LayoutBlock(DocPage page, DocProject project, DocBlock b, PdfWriteOptions options, PagePlan plan)
         {
             bool translated = Changed(b);
-            string text = translated ? b.Translation : b.Source;
+            string text = NormalizeForPdf(translated ? b.Translation : b.Source);
             string lang = translated ? project.TargetLang : project.SourceLang;
             bool rtl = translated ? Languages.IsRtl(project.TargetLang) : b.SourceRtl;
             var fonts = options.Fonts;
@@ -151,17 +239,17 @@ namespace TextX.Core.Documents.Export
             var fallbacks = fonts.FallbackFaces(lang);
             uint color = b.FromOcr ? (Luma(b.Background) < 110 ? 0xFFFFFFFFu : 0xFF141414u) : b.Color;
             float size = b.FontSize > 0 ? b.FontSize : 10f;
+            bool flip = translated && b.SourceRtl != rtl;
 
             if (b.IsRotated)
             {
                 var first = b.Lines[0];
                 var fit = TextFitter.Fit(text.Replace('\n', ' '), Math.Max(first.Advance, size * 2), size * 1.3f, size, 1.2f, true, rtl, primary, fallbacks, options.MinScale);
-                Note(b, fit, report);
+                Note(b, fit, plan.Report);
                 var line = fit.Lines[0];
-                double offset = AlignOffset(b.Align, rtl, translated && b.SourceRtl != rtl, first.Advance, line.Width);
+                double offset = AlignOffset(b.Align, rtl, flip, first.Advance, line.Width);
                 double ax = Math.Cos(b.Angle), ay = Math.Sin(b.Angle);
-                float ox = (float)(first.OriginX + ax * offset), oy = (float)(first.OriginY + ay * offset);
-                DrawLine(doc, p, page, line, fit.Size, ox, oy, b.Angle, color);
+                plan.Ops.Add(new DrawOp { Line = line, Size = fit.Size, X = (float)(first.OriginX + ax * offset), Y = (float)(first.OriginY + ay * offset), Angle = b.Angle, Color = color });
                 return;
             }
 
@@ -170,36 +258,17 @@ namespace TextX.Core.Documents.Export
             if (b.Kind == BlockKind.Label || b.Kind == BlockKind.Heading) width *= 1.15f; // short texts may grow a little
             float height = b.Box.H + (b.Lines.Count > 1 ? (b.LinePitch - 1f) * size : 0f);
             var result = TextFitter.Fit(text, width, height, size, b.LinePitch, singleLine, rtl, primary, fallbacks, options.MinScale);
-            Note(b, result, report);
+            Note(b, result, plan.Report);
             float baseline = b.Lines[0].Baseline + (size - result.Size) * 0.78f;
-            bool flip = translated && b.SourceRtl != rtl;
+            var align = EffectiveAlign(b.Align, rtl, flip);
             foreach (var line in result.Lines)
             {
                 float x;
-                var align = EffectiveAlign(b.Align, rtl, flip);
                 if (align == BlockAlign.Right) x = b.Box.R - line.Width;
                 else if (align == BlockAlign.Center) x = b.Box.CX - line.Width / 2f;
                 else x = b.Box.L;
-                DrawLine(doc, p, page, line, result.Size, x, baseline, 0f, color);
+                plan.Ops.Add(new DrawOp { Line = line, Size = result.Size, X = x, Y = baseline, Angle = 0f, Color = color });
                 baseline -= result.Pitch;
-            }
-        }
-
-        private static void DrawLine(PdfFile doc, PdfPage p, DocPage page, FittedLine line, float size, float x, float y, float frameAngle, uint color)
-        {
-            double angle = frameAngle + page.FrameToUserAngle;
-            double ax = Math.Cos(frameAngle), ay = Math.Sin(frameAngle);
-            float along = 0;
-            foreach (var run in line.Runs)
-            {
-                if (run.Text.Trim().Length > 0)
-                {
-                    var font = doc.LoadFont(run.Face.Key, run.Face.EmbedData);
-                    float ux, uy;
-                    page.FrameToUser((float)(x + ax * along), (float)(y + ay * along), out ux, out uy);
-                    p.AddText(font, size, run.Text, ux, uy, color, angle);
-                }
-                along += run.Width;
             }
         }
 
@@ -221,6 +290,7 @@ namespace TextX.Core.Documents.Export
 
         private static void Note(DocBlock b, FitResult fit, PageWriteReport report)
         {
+            bool layoutNote = b.Note != null && (b.Note.StartsWith("Text reduced", StringComparison.Ordinal) || b.Note.StartsWith("The translation is longer", StringComparison.Ordinal));
             if (fit.Overflow)
             {
                 report.Overflowing++;
@@ -231,7 +301,7 @@ namespace TextX.Core.Documents.Export
                 report.Shrunk++;
                 b.Note = "Text reduced to " + (int)Math.Round(fit.Scale * 100) + "% to fit the original space.";
             }
-            else if (b.Note != null && b.Note.StartsWith("Text reduced", StringComparison.Ordinal) || (b.Note != null && b.Note.StartsWith("The translation is longer", StringComparison.Ordinal)))
+            else if (layoutNote)
             {
                 b.Note = null;
             }
