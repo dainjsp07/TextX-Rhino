@@ -377,27 +377,33 @@ namespace TextX.Core.Documents.Layout
                 if (row == null) rows.Add(row = new List<DocBlock>());
                 row.Add(b);
             }
-            rows = rows.Where(r => r.Count >= 2).Select(r => r.OrderBy(b => b.Box.L).ToList()).OrderByDescending(r => r[0].Box.T).ToList();
+            // text far away on the same line (a note on the left of a sheet, a title block on the right) is not one row
+            rows = rows.Select(r => r.OrderBy(b => b.Box.L).ToList()).SelectMany(SplitAtWideGaps)
+                       .Where(r => r.Count >= 2).OrderByDescending(r => r[0].Box.T).ToList();
             if (rows.Count < 2) return;
 
-            // chain consecutive rows whose cells share column positions
+            // chain the rows below each other whose cells share column positions
             int tableId = page.TableCount;
             var used = new HashSet<DocBlock>();
-            int i = 0;
-            while (i < rows.Count)
+            var taken = new HashSet<int>();
+            for (int i = 0; i < rows.Count; i++)
             {
+                if (taken.Contains(i)) continue;
                 var group = new List<List<DocBlock>> { rows[i] };
-                int j = i + 1;
-                while (j < rows.Count)
+                var members = new List<int> { i };
+                for (int j = i + 1; j < rows.Count; j++)
                 {
+                    if (taken.Contains(j)) continue;
                     var prev = group[group.Count - 1];
                     var next = rows[j];
+                    float gl = group.SelectMany(r => r).Min(b => b.Box.L), gr = group.SelectMany(r => r).Max(b => b.Box.R);
+                    if (next.Max(b => b.Box.R) < gl || next.Min(b => b.Box.L) > gr) continue;   // beside the table, not below it
                     float size = Math.Max(4f, prev.Average(b => b.FontSize));
                     float gap = prev.Min(b => b.Box.B) - next.Max(b => b.Box.T);
                     if (gap > size * 3f) break;
                     if (ColumnMatch(prev, next, size) < 0.6) break;
                     group.Add(next);
-                    j++;
+                    members.Add(j);
                 }
                 int cells = group.Sum(r => r.Count);
                 // two rows of two labels are common on drawings; a table has more structure
@@ -416,14 +422,27 @@ namespace TextX.Core.Documents.Layout
                         }
                     }
                     tableId++;
-                    i = j;
-                }
-                else
-                {
-                    i++;
+                    taken.UnionWith(members);
                 }
             }
             page.TableCount = tableId;
+        }
+
+        /// <summary>Splits a row (sorted left to right) where a gap is much wider than the others.</summary>
+        private static IEnumerable<List<DocBlock>> SplitAtWideGaps(List<DocBlock> row)
+        {
+            if (row.Count < 3) { yield return row; yield break; }
+            var gaps = new List<float>();
+            for (int k = 1; k < row.Count; k++) gaps.Add(row[k].Box.L - row[k - 1].Box.R);
+            float size = Math.Max(4f, row.Average(b => b.FontSize));
+            float limit = Math.Max(size * 15f, Math.Max(1f, gaps.Min()) * 4f);
+            var part = new List<DocBlock> { row[0] };
+            for (int k = 1; k < row.Count; k++)
+            {
+                if (gaps[k - 1] > limit) { yield return part; part = new List<DocBlock>(); }
+                part.Add(row[k]);
+            }
+            yield return part;
         }
 
         private static double ColumnMatch(List<DocBlock> a, List<DocBlock> b, float size)

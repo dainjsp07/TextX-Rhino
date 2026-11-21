@@ -311,8 +311,13 @@ namespace TextX.Tests
             {
                 sb.AppendLine("== page " + (page.Index + 1) + (page.Scanned ? " (scanned, OCR " + page.OcrLanguages + ", confidence " + page.OcrConfidence.ToString("0") + ")" : ""));
                 foreach (var b in page.InReadingOrder)
+                {
                     sb.AppendLine(string.Format("{0,-7} {1,-11} {2,-34} {3,5:0.0}pt {4}{5}| {6}{7}", b.Id, b.Kind + (b.Kind == BlockKind.Heading ? b.Level.ToString() : ""),
                         b.Box, b.FontSize, b.Bold ? "B " : "", b.Table >= 0 ? "t" + b.Table + " r" + b.Row + " c" + b.Col + " " : "", b.Source, b.Translation == null ? "" : "  =>  " + b.Translation));
+                    if (page.Scanned)
+                        foreach (var l in b.Lines)
+                            sb.AppendLine(string.Format("          line baseline {0:0.0} size {1:0.0} {2} {3:X8} {4} | {5}", l.Baseline, l.FontSize, l.Bold ? "B" : "-", l.Color, l.Box, l.Text));
+                }
             }
             return sb.ToString();
         }
@@ -398,6 +403,25 @@ namespace TextX.Tests
             }
             var txt = TextExporter.Build(project, ExportText.Bilingual);
             True(txt.Contains("Description des travaux") && txt.Contains("Description of works"), "bilingual text export");
+
+            // schedules from the drawings, as a printable PDF and a workbook
+            var schedules = TextX.Core.Documents.Schedules.ScheduleExtractor.Extract(project, new TextX.Core.Documents.Schedules.ExtractOptions { UseTranslation = true });
+            var products = schedules.Find(TextX.Core.Documents.Schedules.ScheduleKind.Products);
+            True(products.Rows.Any(r => r[0] == "P-01") && products.Rows.Any(r => r[0] == "T-02"), "product codes scheduled: " + string.Join(" / ", products.Rows.Select(r => r[0] + " " + r[2])));
+            var schedulePdf = Path.Combine(OutDir, "schedules.pdf");
+            TextX.Core.Documents.Schedules.SchedulePdfWriter.Write(schedules.Schedules, schedulePdf, fonts, project.Name, schedules.Find(TextX.Core.Documents.Schedules.ScheduleKind.ProjectInfo));
+            TextX.Core.Documents.Schedules.XlsxWriter.Write(schedules.Schedules, Path.Combine(OutDir, "schedules.xlsx"), project.Name);
+            using (var doc = PdfFile.Open(schedulePdf))
+            {
+                True(doc.PageCount >= 3, "schedule pages: " + doc.PageCount);
+                using (var page = doc.LoadPage(0))
+                {
+                    var text = Text(page.GetChars());
+                    True(text.Contains("Products and items") && text.Contains("P-01"), "schedule PDF text: " + text.Replace("\n", " | "));
+                    var img = page.Render(1.4f);
+                    File.WriteAllBytes(Path.Combine(OutDir, "schedule-page1.png"), PngWriter.FromBgra(img.Pixels, img.Width, img.Height));
+                }
+            }
 
             // Hebrew output: right-to-left text in the PDF
             foreach (var blk in project.AllBlocks.Where(x => x.Translation != null)) blk.Translation = "תרגום: " + blk.Translation;
