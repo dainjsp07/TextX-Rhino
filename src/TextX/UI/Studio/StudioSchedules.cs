@@ -43,6 +43,7 @@ namespace TextX.UI.Studio
         public string CurrentDocumentName { get { return _project == null ? string.Empty : _project.Name; } }
 
         private Control _scheduleEmptyPanel;
+        private Panel _scheduleBody;
         private FigureView _scheduleFigure;
 
         /// <summary>No schedules yet: the schedule figure shows how items on a drawing become rows.</summary>
@@ -135,8 +136,9 @@ namespace TextX.UI.Studio
             var sheet = new TableLayout { Spacing = new Size(0, 10) };
             sheet.Rows.Add(new TableRow(_scheduleInfo));
             _scheduleEmptyPanel = BuildSchedulesEmpty();
-            sheet.Rows.Add(new TableRow(_scheduleEmptyPanel) { ScaleHeight = true });
-            sheet.Rows.Add(new TableRow(_scheduleGrid) { ScaleHeight = true });
+            // one place for the grid, or for the picture that explains it while there is nothing yet
+            _scheduleBody = new Panel { Content = _scheduleEmptyPanel };
+            sheet.Rows.Add(new TableRow(_scheduleBody) { ScaleHeight = true });
             sheet.Rows.Add(new TableRow(bottom));
             var card = new Card(sheet, new Padding(18, 14, 14, 14), p => p.Surface, p => p.Border, 24f);
             var layout = new TableLayout { Spacing = new Size(0, 14), Padding = new Padding(10, 4, 24, 6) };
@@ -157,7 +159,11 @@ namespace TextX.UI.Studio
             SetScheduleItems(names, set == null || set.Schedules.Count == 0 ? -1 : Math.Max(0, Math.Min(keep, set.Schedules.Count - 1)));
             _scheduleSuppress = false;
             _scheduleEmpty.Visible = set == null;
-            if (_scheduleEmptyPanel != null) _scheduleEmptyPanel.Visible = set == null;
+            if (_scheduleBody != null)
+            {
+                var want = set == null ? _scheduleEmptyPanel : (Control)_scheduleGrid;
+                if (_scheduleBody.Content != want) _scheduleBody.Content = want;
+            }
             _scheduleGrid.Visible = set != null;
             if (_project != null && set == null) _scheduleInfo.Text = _project.Name + ": click Read schedules.";
             ShowSchedule();

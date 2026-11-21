@@ -46,7 +46,7 @@ namespace TextX.UI.Studio
             heroText.Width = 400;
             var heroRow = new TableLayout { Spacing = new Size(16, 0) };
             heroRow.Rows.Add(new TableRow(new TableCell(heroBody, false), new TableCell(null, true)) { ScaleHeight = true });
-            var hero = new Card(heroRow, new Padding(30, 26, 22, 24), p => p.Hero, p => p.IsDark ? p.Border : p.Hero, 26f) { Height = 330 };
+            var hero = new Card(heroRow, new Padding(30, 26, 22, 24), p => p.Hero, p => p.IsDark ? p.Border : p.Hero, 26f) { Height = 340 };
             // the picture sits in the free space at the right (drawn behind the text)
             hero.Paint += (s, e) =>
             {
@@ -56,7 +56,7 @@ namespace TextX.UI.Studio
             hero.SizeChanged += (s, e) => hero.Invalidate();
 
             // what can be done: each tile has a line figure that answers the pointer and says what it shows
-            var translate = new BentoTile(IconKind.Translate, "Translate a PDF", "Any language, layout kept. Compare side by side, edit, save as PDF, Word or text.", "Documents", new PagesFigure()) { Featured = true, Height = 330 };
+            var translate = new BentoTile(IconKind.Translate, "Translate a PDF", "Any language, layout kept. Compare side by side, edit, save as PDF, Word or text.", "Documents", new PagesFigure()) { Featured = true, Height = 340 };
             translate.Click += (s, e) => { if (_project != null) ShowTab(DocumentTab); else OpenFileDialog(); };
             var schedule = new BentoTile(IconKind.Grid, "Product schedule", "Items, materials, finishes and title blocks from drawings, to Excel, PDF or Rhino.", "Drawings", new ScheduleFigure());
             schedule.Click += (s, e) => { ShowTab(SchedulesTab); if (_project == null) OpenFileDialog(); };

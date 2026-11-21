@@ -209,7 +209,7 @@ namespace TextX.UI.Controls
             _tag = tag;
             _figure = figure;
             Cursor = Cursors.Pointer;
-            Height = figure == null ? 168 : 250;
+            Height = figure == null ? 168 : 268;
             ToolTip = figure == null ? _title : _title + ": " + figure.Label;
         }
 
@@ -242,7 +242,7 @@ namespace TextX.UI.Controls
 
         private RectangleF FigureRect
         {
-            get { return new RectangleF(10, 34, Width - 20, Height - 34 - 92); }
+            get { return new RectangleF(10, 34, Width - 20, Height - 34 - 110); }
         }
 
         protected override void OnMouseMoveAt(PointF location)
