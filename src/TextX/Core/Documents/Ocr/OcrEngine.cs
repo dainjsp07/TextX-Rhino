@@ -115,6 +115,7 @@ namespace TextX.Core.Documents.Ocr
                     if (T.TessBaseAPIInit2(api, T.Utf8Z(DataDirectory), T.Utf8Z("osd"), T.OemTesseractOnly) != 0)
                         throw new InvalidOperationException("OCR script detection could not start (osd.traineddata missing?).");
                     T.TessBaseAPISetPageSegMode(api, T.PsmOsdOnly);
+                    T.TessBaseAPISetVariable(api, T.Utf8Z("user_defined_dpi"), T.Utf8Z(dpi.ToString(System.Globalization.CultureInfo.InvariantCulture)));
                     T.TessBaseAPISetImage(api, gray, width, height, 1, width);
                     T.TessBaseAPISetSourceResolution(api, dpi);
                     int deg; float oconf, sconf; IntPtr name;

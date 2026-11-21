@@ -25,6 +25,9 @@ namespace TextX.Core.Documents.Native
         [DllImport(Lib, CallingConvention = CC)] public static extern float FPDF_GetPageWidthF(IntPtr page);
         [DllImport(Lib, CallingConvention = CC)] public static extern float FPDF_GetPageHeightF(IntPtr page);
         [DllImport(Lib, CallingConvention = CC)] public static extern int FPDFPage_GetRotation(IntPtr page);
+        [DllImport(Lib, CallingConvention = CC)] public static extern int FPDFPage_GetCropBox(IntPtr page, out float left, out float bottom, out float right, out float top);
+        [DllImport(Lib, CallingConvention = CC)] public static extern int FPDFPage_GetMediaBox(IntPtr page, out float left, out float bottom, out float right, out float top);
+        [DllImport(Lib, CallingConvention = CC)] public static extern int FPDFTextObj_GetTextRenderMode(IntPtr textObject);
         [DllImport(Lib, CallingConvention = CC)] public static extern uint FPDF_GetMetaText(IntPtr document, [MarshalAs(UnmanagedType.LPStr)] string tag, IntPtr buffer, uint buflen);
 
         [DllImport(Lib, CallingConvention = CC)] public static extern IntPtr FPDFBitmap_Create(int width, int height, int alpha);

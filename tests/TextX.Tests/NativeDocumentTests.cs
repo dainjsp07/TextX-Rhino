@@ -50,6 +50,7 @@ namespace TextX.Tests
             foreach (var c in chars)
             {
                 if (c.Code == '\n') sb.Append('\n');
+                else if (c.Code == 0xA0) sb.Append(' ');
                 else if (c.Code >= 32 && c.Code <= 0x10FFFF && (c.Code < 0xD800 || c.Code > 0xDFFF)) sb.Append(char.ConvertFromUtf32(c.Code));
             }
             return sb.ToString();
@@ -153,6 +154,7 @@ namespace TextX.Tests
             var hello = result.Words.FirstOrDefault(w => w.Text == "Hello");
             True(hello != null && Math.Abs(hello.Left - 72 * 300 / 72) < 30, "OCR word position");
             True(result.MeanConfidence > 80, "OCR confidence " + result.MeanConfidence.ToString("0"));
+            OcrEngine.Release();
         }
     }
 }

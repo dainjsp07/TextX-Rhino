@@ -78,6 +78,10 @@ namespace TextX.Tests
                 CoreTests.Versions,
                 CoreTests.UpdateFeed,
                 CoreTests.PackageInstall,
+                CoreTests.Layout,
+                CoreTests.PageFrame,
+                CoreTests.OcrLines,
+                CoreTests.ProjectJson,
             })
             {
                 try { t(); }

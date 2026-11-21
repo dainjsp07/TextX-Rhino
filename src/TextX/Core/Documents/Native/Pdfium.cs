@@ -298,7 +298,28 @@ namespace TextX.Core.Documents.Native
             Index = index;
             Width = N.FPDF_GetPageWidthF(page);
             Height = N.FPDF_GetPageHeightF(page);
-            Rotation = N.FPDFPage_GetRotation(page);
+            Rotation = N.FPDFPage_GetRotation(page) & 3;
+            float l, b, r, t;
+            if (N.FPDFPage_GetCropBox(page, out l, out b, out r, out t) != 0 || N.FPDFPage_GetMediaBox(page, out l, out b, out r, out t) != 0)
+            {
+                OriginX = Math.Min(l, r);
+                OriginY = Math.Min(b, t);
+            }
+        }
+
+        /// <summary>Lower-left corner of the visible page area in PDF user space (usually 0, 0).</summary>
+        public float OriginX { get; private set; }
+        public float OriginY { get; private set; }
+
+        /// <summary>True when the text object is drawn invisibly (render mode 3: an OCR layer over a scan).</summary>
+        public static bool IsInvisibleText(IntPtr textObject)
+        {
+            if (textObject == IntPtr.Zero) return false;
+            lock (Pdfium.Sync)
+            {
+                try { return N.FPDFTextObj_GetTextRenderMode(textObject) == 3; }
+                catch (EntryPointNotFoundException) { return false; }
+            }
         }
 
         public int Index { get; private set; }
