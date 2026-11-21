@@ -24,7 +24,7 @@ namespace TextX.Core.Documents.Native
         public string FontName;
         public bool Bold, Italic;
         public uint Color;   // 0xAARRGGBB
-        public float Angle;  // radians
+        public float Angle;  // radians, counter-clockwise (PDF convention), 0 to 2 pi
         public IntPtr TextObject;
 
         public float CenterX { get { return (Left + Right) / 2f; } }
@@ -41,6 +41,7 @@ namespace TextX.Core.Documents.Native
         public float Left, Bottom, Right, Top;
         public bool IsText { get { return Type == N.ObjText; } }
         public bool IsImage { get { return Type == N.ObjImage; } }
+        public bool IsPath { get { return Type == N.ObjPath; } }
         public float Width { get { return Right - Left; } }
         public float Height { get { return Top - Bottom; } }
     }
@@ -51,6 +52,16 @@ namespace TextX.Core.Documents.Native
     /// </summary>
     public static class Pdfium
     {
+        /// <summary>An angle in radians brought into [0, 2 pi).</summary>
+        public static float NormalizeAngle(double a)
+        {
+            const double TwoPi = Math.PI * 2;
+            a %= TwoPi;
+            if (a < 0) a += TwoPi;
+            if (a > TwoPi - 1e-4) a = 0;
+            return (float)a;
+        }
+
         public static readonly object Sync = new object();
         private static bool _initialised;
 
@@ -368,7 +379,12 @@ namespace TextX.Core.Documents.Native
                         double ox, oy;
                         if (N.FPDFText_GetCharOrigin(tp, i, out ox, out oy) != 0) { c.OriginX = (float)ox; c.OriginY = (float)oy; }
                         c.FontSize = (float)N.FPDFText_GetFontSize(tp, i);
-                        c.Angle = N.FPDFText_GetCharAngle(tp, i);
+                        // PDFium measures the angle clockwise; Text X uses the PDF convention (counter-clockwise)
+                        c.Angle = Pdfium.NormalizeAngle(-N.FPDFText_GetCharAngle(tp, i));
+                        // text set at size 1 and scaled by its matrix reports 1 pt, and text squeezed by its matrix
+                        // (CAD exports) reports far more than it shows: take the size from the glyph box then
+                        double across = Math.Abs(c.Right - c.Left) * Math.Abs(Math.Sin(c.Angle)) + Math.Abs(c.Top - c.Bottom) * Math.Abs(Math.Cos(c.Angle));
+                        if (!c.Generated && across > 0 && (c.FontSize < across * 0.5 || c.FontSize > across * 2.5)) c.FontSize = (float)(across * 0.88);
                         uint cr, cg, cb, ca;
                         if (N.FPDFText_GetFillColor(tp, i, out cr, out cg, out cb, out ca) != 0)
                             c.Color = (ca << 24) | (cr << 16) | (cg << 8) | cb;

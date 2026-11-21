@@ -1,6 +1,7 @@
 using System;
 using System.Diagnostics;
 using System.IO;
+using System.Linq;
 using System.Runtime.InteropServices;
 using System.Threading;
 using System.Threading.Tasks;
@@ -83,11 +84,18 @@ namespace TextX.Integration
                     ct.ThrowIfCancellationRequested();
                     if (project.Pages[i].Extracted) continue;
                     if (status != null) status.Report("Reading page " + (i + 1) + " of " + doc.PageCount + "...");
-                    var options = new ReadOptions { SourceLang = project.SourceLangSetting, AllowOcr = true, Status = status };
+                    var options = new ReadOptions { SourceLang = project.SourceLangSetting, AllowOcr = true, Status = status, LanguageHint = LanguageHint(project) };
                     project.Pages[i] = await PageReader.ReadAsync(doc, i, options, ct).ConfigureAwait(false);
                     if (pagesDone != null) pagesDone.Report(i + 1);
                 }
             }
+        }
+
+        /// <summary>The language of the text read so far (by its script), for pages that only OCR can read.</summary>
+        private static string LanguageHint(DocProject project)
+        {
+            var text = string.Join(" ", project.Pages.Where(p => p.Extracted).SelectMany(p => p.Blocks).Take(400).Select(b => b.Source));
+            return LanguageGuess.FromScript(text);
         }
 
         /// <summary>A small picture of the first page for the history list.</summary>
@@ -110,6 +118,36 @@ namespace TextX.Integration
         }
 
         // ------------------------------------------------------------------ pictures
+
+        /// <summary>
+        /// A photo saved as PNG is large: when JPEG (quality 88) is much smaller, it is used instead.
+        /// Drawings and text stay PNG (sharp edges).
+        /// </summary>
+        public static byte[] CompactImage(byte[] png)
+        {
+            if (png == null || png.Length < 150 * 1024) return png;
+            try
+            {
+                using (var input = new MemoryStream(png))
+                using (var bmp = new System.Drawing.Bitmap(input))
+                using (var output = new MemoryStream())
+                {
+                    var codec = System.Drawing.Imaging.ImageCodecInfo.GetImageEncoders().FirstOrDefault(c => c.FormatID == System.Drawing.Imaging.ImageFormat.Jpeg.Guid);
+                    if (codec == null) return png;
+                    using (var parameters = new System.Drawing.Imaging.EncoderParameters(1))
+                    {
+                        parameters.Param[0] = new System.Drawing.Imaging.EncoderParameter(System.Drawing.Imaging.Encoder.Quality, 88L);
+                        bmp.Save(output, codec, parameters);
+                    }
+                    return output.Length < png.Length * 0.6 ? output.ToArray() : png;
+                }
+            }
+            catch (Exception ex)
+            {
+                Diagnostics.Log("compact image: " + ex.Message);
+                return png;
+            }
+        }
 
         /// <summary>Reads an image file (PNG, JPEG, BMP, GIF, TIFF) as grey pixels.</summary>
         public static GrayImage LoadImage(string path)

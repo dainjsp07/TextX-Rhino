@@ -93,6 +93,8 @@ namespace TextX.Tests
                 CoreTests.Room,
                 CoreTests.InkStyle,
                 CoreTests.Schedules,
+                CoreTests.Drawings,
+                CoreTests.DocxImages,
                 CoreTests.Tools,
                 CoreTests.Guessing,
             })

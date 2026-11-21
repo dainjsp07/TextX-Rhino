@@ -19,6 +19,10 @@ namespace TextX.Core.Documents
         public int OcrDpi = 300;
         /// <summary>Find text anywhere on the page (drawings) rather than in columns.</summary>
         public bool SparseOcr;
+        /// <summary>Read drawings whose words were exported as outlines (no real text) with OCR.</summary>
+        public bool ReadOutlinedText = true;
+        /// <summary>Language seen elsewhere in the document (auto mode): picks the OCR data when a page has no text to go by.</summary>
+        public string LanguageHint;
         /// <summary>Reports what is happening ("Downloading OCR data heb", "Reading page 3 with OCR").</summary>
         public IProgress<string> Status;
     }
@@ -33,7 +37,7 @@ namespace TextX.Core.Documents
             options = options ?? new ReadOptions();
             DocPage page;
             List<PdfChar> chars;
-            bool scanned, ocrLayer;
+            bool scanned, ocrLayer, outlined;
             RenderedImage background = null;
             using (var p = file.LoadPage(index))
             {
@@ -60,7 +64,9 @@ namespace TextX.Core.Documents
                 }
                 scanned = letters.Count < 12 && maxImage > 0.35f;
                 ocrLayer = !scanned && maxImage > 0.35f && invisible > letters.Count * 0.6;
-                if (scanned && options.AllowOcr && OcrEngine.IsAvailable)
+                outlined = !scanned && !ocrLayer && options.ReadOutlinedText && LooksOutlined(letters, objects);
+                bool ocr = (scanned || outlined) && options.AllowOcr && OcrEngine.IsAvailable;
+                if (ocr)
                 {
                     float dpi = options.OcrDpi;
                     double inches2 = page.Width / 72.0 * page.Height / 72.0;
@@ -71,6 +77,7 @@ namespace TextX.Core.Documents
                 {
                     background = p.Render(1f);
                 }
+                if (!ocr) outlined = false;
             }
 
             page.Scanned = scanned;
@@ -79,7 +86,28 @@ namespace TextX.Core.Documents
             {
                 var frameChars = chars.Select(c => ToFrame(c, page)).ToList();
                 var lines = LayoutAnalyzer.BuildLines(frameChars);
-                page.Blocks = LayoutAnalyzer.BuildBlocks(page, lines);
+                if (outlined && background != null)
+                {
+                    // a drawing whose words were turned into outlines (CAD export): read them with OCR,
+                    // except where the page has real text
+                    if (options.Status != null) options.Status.Report("Reading the drawing text of page " + (index + 1) + " with OCR");
+                    var info = Info(background);
+                    page.Blocks = LayoutAnalyzer.BuildBlocks(page, lines);
+                    var ocrLines = await OcrLinesAsync(page, background, info, options, true, ct, true).ConfigureAwait(false);
+                    ocrLines = ocrLines.Where(o => !lines.Any(l => Overlaps(l.Box, o.Box))).ToList();
+                    page.Blocks = LayoutAnalyzer.BuildBlocks(page, lines.Concat(ocrLines).ToList());
+                    float scale = background.Width / page.Width;
+                    foreach (var b in page.Blocks.Where(b => b.Lines.All(l => l.Chars.Count == 0)))
+                    {
+                        b.FromOcr = true;
+                        b.Background = OcrLayout.BackgroundAround(info, page, b.Box, scale);
+                    }
+                    page.OutlinedText = page.Blocks.Any(b => b.FromOcr);
+                }
+                else
+                {
+                    page.Blocks = LayoutAnalyzer.BuildBlocks(page, lines);
+                }
                 if (ocrLayer && background != null)
                 {
                     foreach (var b in page.Blocks)
@@ -91,36 +119,68 @@ namespace TextX.Core.Documents
             }
             else if (background != null)
             {
-                float scale = background.Width / page.Width;
-                int dpi = (int)Math.Round(scale * 72);
-                var gray = background.ToGray();
-                string languages = OcrLanguages.ForLanguage(options.SourceLang);
-                if (languages == null)
-                {
-                    await OcrEngine.EnsureDataAsync("osd", Report(options, "Downloading OCR data"), ct).ConfigureAwait(false);
-                    if (options.Status != null) options.Status.Report("Detecting the script of page " + (index + 1));
-                    ScriptDetection script = null;
-                    try { script = OcrEngine.DetectScript(gray, background.Width, background.Height, dpi); }
-                    catch (Exception) { script = null; }
-                    languages = OcrLanguages.ForScript(script == null ? null : script.Script);
-                }
-                await OcrEngine.EnsureDataAsync(languages, Report(options, "Downloading OCR data"), ct).ConfigureAwait(false);
-                ct.ThrowIfCancellationRequested();
                 if (options.Status != null) options.Status.Report("Reading page " + (index + 1) + " with OCR");
-                var ocr = await Task.Run(() => OcrEngine.Recognize(gray, background.Width, background.Height, dpi, languages, options.SparseOcr), ct).ConfigureAwait(false);
                 var info = Info(background);
-                var lines = OcrLayout.BuildLines(ocr, page, scale, 30f, info);
+                var lines = await OcrLinesAsync(page, background, info, options, options.SparseOcr, ct).ConfigureAwait(false);
+                float scale = background.Width / page.Width;
                 page.Blocks = LayoutAnalyzer.BuildBlocks(page, lines);
                 foreach (var b in page.Blocks)
                 {
                     b.FromOcr = true;
                     b.Background = OcrLayout.BackgroundAround(info, page, b.Box, scale);
                 }
-                page.OcrConfidence = ocr.MeanConfidence;
-                page.OcrLanguages = languages;
             }
             page.Extracted = true;
             return page;
+        }
+
+        /// <summary>
+        /// A drawing with (almost) no real words but thousands of small shapes: CAD programs often export
+        /// their text as outlines, which only OCR can read.
+        /// </summary>
+        internal static bool LooksOutlined(List<PdfChar> letters, List<PdfObjectInfo> objects)
+        {
+            int words = letters.Count(c => char.IsLetter(Safe(c.Code)));
+            if (words >= 80) return false;
+            int glyphLike = objects.Count(o => o.IsPath && o.Width > 0.8f && o.Height > 0.8f && o.Width < 12f && o.Height < 12f);
+            return glyphLike >= 600;
+        }
+
+        private static bool Overlaps(Box a, Box b)
+        {
+            float w = Math.Min(a.R, b.R) - Math.Max(a.L, b.L), h = Math.Min(a.T, b.T) - Math.Max(a.B, b.B);
+            if (w <= 0 || h <= 0) return false;
+            return w * h > 0.3f * Math.Max(1f, Math.Min(a.W * a.H, b.W * b.H));
+        }
+
+        /// <summary>OCR of a rendered page (language detected from the script when not given) as page lines.</summary>
+        private static async Task<List<DocLine>> OcrLinesAsync(DocPage page, RenderedImage background, RenderedImageInfo info, ReadOptions options, bool sparse, CancellationToken ct, bool drawing = false)
+        {
+            float scale = background.Width / page.Width;
+            int dpi = (int)Math.Round(scale * 72);
+            var gray = background.ToGray();
+            string languages = OcrLanguages.ForLanguage(options.SourceLang);
+            // auto: the page's own real text, then the rest of the document, then the script seen on the image
+            if (languages == null) languages = OcrLanguages.ForLanguage(LanguageGuess.FromScript(string.Join(" ", page.Blocks.Select(b => b.Source))));
+            if (languages == null) languages = OcrLanguages.ForLanguage(options.LanguageHint);
+            if (languages == null)
+            {
+                await OcrEngine.EnsureDataAsync("osd", Report(options, "Downloading OCR data"), ct).ConfigureAwait(false);
+                if (options.Status != null) options.Status.Report("Detecting the script of page " + (page.Index + 1));
+                ScriptDetection script = null;
+                try { script = OcrEngine.DetectScript(gray, background.Width, background.Height, dpi); }
+                catch (Exception) { script = null; }
+                // line drawings mislead script detection: trust it only when it is sure
+                bool sure = script != null && (!sparse || script.ScriptConfidence >= 1.5f);
+                if (options.Status != null && script != null) options.Status.Report("Script " + script.Script + " (" + script.ScriptConfidence.ToString("0.00", System.Globalization.CultureInfo.InvariantCulture) + ")");
+                languages = OcrLanguages.ForScript(sure ? script.Script : null);
+            }
+            await OcrEngine.EnsureDataAsync(languages, Report(options, "Downloading OCR data"), ct).ConfigureAwait(false);
+            ct.ThrowIfCancellationRequested();
+            var ocr = await Task.Run(() => OcrEngine.Recognize(gray, background.Width, background.Height, dpi, languages, sparse), ct).ConfigureAwait(false);
+            page.OcrConfidence = ocr.MeanConfidence;
+            page.OcrLanguages = languages;
+            return OcrLayout.BuildLines(ocr, page, scale, 30f, info, drawing);
         }
 
         private static IProgress<string> Report(ReadOptions o, string prefix)
@@ -153,7 +213,7 @@ namespace TextX.Core.Documents
             float ox, oy;
             page.UserToFrame(c.OriginX, c.OriginY, out ox, out oy);
             c.OriginX = ox; c.OriginY = oy;
-            c.Angle -= page.FrameToUserAngle;
+            c.Angle = Pdfium.NormalizeAngle(c.Angle - page.FrameToUserAngle);
             return c;
         }
     }

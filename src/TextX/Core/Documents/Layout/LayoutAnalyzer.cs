@@ -23,15 +23,21 @@ namespace TextX.Core.Documents.Layout
         /// <summary>Builds lines from a page's text layer. Generated characters mark spaces and line breaks.</summary>
         public static List<DocLine> BuildLines(IList<PdfChar> chars)
         {
-            var lines = new List<DocLine>();
+            // 1. runs of characters as the PDF gives them
+            var fragments = new List<List<PdfChar>>();
             var current = new List<PdfChar>();
             PdfChar? prev = null;
+            Action cut = () =>
+            {
+                if (current.Count > 0) fragments.Add(current);
+                current = new List<PdfChar>();
+            };
             foreach (var raw in chars)
             {
                 var c = raw;
                 if (c.Code == '\r' || c.Code == '\n')
                 {
-                    Flush(current, lines);
+                    cut();
                     prev = null;
                     continue;
                 }
@@ -39,15 +45,104 @@ namespace TextX.Core.Documents.Layout
                 bool isSpace = c.Code == ' ' || c.Code == 0xA0 || c.Code == 0x3000 || c.Code == '\t';
                 if (c.Code < 32 && !isSpace) continue;
                 if (!isSpace && c.Right - c.Left <= 0 && c.Top - c.Bottom <= 0) continue;
-                if (prev.HasValue && !isSpace && current.Count > 0 && BreaksLine(prev.Value, c))
-                {
-                    Flush(current, lines);
-                }
+                if (prev.HasValue && !isSpace && current.Count > 0 && BreaksLine(prev.Value, c)) cut();
                 current.Add(c);
                 if (!isSpace) prev = c;
             }
-            Flush(current, lines);
+            cut();
+
+            // 2. runs on one baseline that touch (words placed one by one, right-to-left text) form one line
+            var lines = new List<DocLine>();
+            foreach (var f in MergeFragments(fragments)) Flush(f.Value, lines, f.Key);
             return lines;
+        }
+
+        private sealed class Fragment
+        {
+            public List<PdfChar> Chars;
+            public int Order;
+            public float Angle, Size;
+            public double V, UMin, UMax;
+            public bool Merged;
+        }
+
+        /// <summary>
+        /// Joins runs that sit on the same baseline with no more than a word space between them, in either
+        /// direction. PDFs written word by word, or right-to-left text, come apart into such runs.
+        /// The flag says the text must be rebuilt from the positions of the characters.
+        /// </summary>
+        private static List<KeyValuePair<bool, List<PdfChar>>> MergeFragments(List<List<PdfChar>> fragments)
+        {
+            var frags = new List<Fragment>();
+            for (int i = 0; i < fragments.Count; i++)
+            {
+                var visible = fragments[i].Where(c => !IsSpace(c.Code)).ToList();
+                if (visible.Count == 0) continue;
+                float angle = visible[0].Angle;
+                double cos = Math.Cos(angle), sin = Math.Sin(angle);
+                var f = new Fragment { Chars = fragments[i], Order = i, Angle = angle, Size = Math.Max(1f, Median(visible.Select(c => c.FontSize))) };
+                f.V = Median(visible.Select(c => (float)(-c.OriginX * sin + c.OriginY * cos)));
+                f.UMin = visible.Min(c => StartAlong(c, cos, sin));
+                f.UMax = visible.Max(c => EndAlong(c, cos, sin));
+                frags.Add(f);
+            }
+            var result = new List<Fragment>();
+            foreach (var group in frags.GroupBy(f => (int)Math.Round(Pdfium.NormalizeAngle(f.Angle) / 0.05)))
+            {
+                var pending = group.OrderBy(f => f.V).ThenBy(f => f.UMin).ToList();
+                // baselines: fragments whose baseline is within a third of the text size
+                var rows = new List<List<Fragment>>();
+                foreach (var f in pending)
+                {
+                    var row = rows.LastOrDefault();
+                    if (row != null && Math.Abs(row[0].V - f.V) < Math.Min(row[0].Size, f.Size) * 0.35) row.Add(f);
+                    else rows.Add(new List<Fragment> { f });
+                }
+                foreach (var row in rows)
+                {
+                    Fragment open = null;
+                    foreach (var f in row.OrderBy(x => x.UMin))
+                    {
+                        if (open != null)
+                        {
+                            float size = Math.Max(open.Size, f.Size);
+                            double gap = f.UMin - open.UMax;
+                            float ratio = Math.Max(open.Size, f.Size) / Math.Min(open.Size, f.Size);
+                            bool inside = f.UMin >= open.UMin - size * 0.1 && f.UMax <= open.UMax + size * 0.1 && !Duplicates(open, f);
+                            if (((gap > -size * 0.5 && gap < size * 0.75) || inside) && ratio <= 1.25f)
+                            {
+                                open.Chars = open.Chars.Concat(new[] { new PdfChar { Code = ' ', Index = -1 } }).Concat(f.Chars).ToList();
+                                open.UMax = Math.Max(open.UMax, f.UMax);
+                                open.Order = Math.Min(open.Order, f.Order);
+                                open.Merged = true;
+                                continue;
+                            }
+                        }
+                        open = f;
+                        result.Add(f);
+                    }
+                }
+            }
+            return result.OrderBy(f => f.Order).Select(f => new KeyValuePair<bool, List<PdfChar>>(f.Merged, f.Chars)).ToList();
+        }
+
+        /// <summary>True when the run is drawn over the other one (bold made by printing twice, shadows).</summary>
+        private static bool Duplicates(Fragment a, Fragment b)
+        {
+            var ac = a.Chars.Where(c => !IsSpace(c.Code)).ToList();
+            foreach (var c in b.Chars.Where(c => !IsSpace(c.Code)))
+                if (ac.Any(o => o.Code == c.Code && Math.Abs(o.Left - c.Left) < 1f && Math.Abs(o.Bottom - c.Bottom) < 1f)) return true;
+            return false;
+        }
+
+        private static double StartAlong(PdfChar c, double cos, double sin)
+        {
+            return Math.Min(c.Left * cos + c.Bottom * sin, Math.Min(c.Right * cos + c.Top * sin, Math.Min(c.Left * cos + c.Top * sin, c.Right * cos + c.Bottom * sin)));
+        }
+
+        private static double EndAlong(PdfChar c, double cos, double sin)
+        {
+            return Math.Max(c.Left * cos + c.Bottom * sin, Math.Max(c.Right * cos + c.Top * sin, Math.Max(c.Left * cos + c.Top * sin, c.Right * cos + c.Bottom * sin)));
         }
 
         /// <summary>True when <paramref name="c"/> cannot continue the line that ended with <paramref name="p"/>.</summary>
@@ -83,34 +178,45 @@ namespace TextX.Core.Documents.Layout
             return d;
         }
 
-        private static void Flush(List<PdfChar> chars, List<DocLine> lines)
+        private static void Flush(List<PdfChar> chars, List<DocLine> lines, bool geometric)
         {
-            try { FlushCore(chars, lines); }
-            finally { chars.Clear(); }
+            FlushCore(new List<PdfChar>(chars), lines, geometric);
         }
 
-        private static void FlushCore(List<PdfChar> chars, List<DocLine> lines)
+        private static void FlushCore(List<PdfChar> chars, List<DocLine> lines, bool geometric)
         {
             while (chars.Count > 0 && IsSpace(chars[chars.Count - 1].Code)) chars.RemoveAt(chars.Count - 1);
             while (chars.Count > 0 && IsSpace(chars[0].Code)) chars.RemoveAt(0);
             if (chars.Count == 0) return;
             var visible = chars.Where(c => !IsSpace(c.Code)).ToList();
             var line = new DocLine();
-            var sb = new StringBuilder();
-            bool lastSpace = false;
-            foreach (var c in chars)
+            bool rtl = visible.Count(c => UnicodeProps.IsStrongRtl(c.Code)) * 2 > visible.Count(c => char.IsLetter(SafeChar(c.Code)) || UnicodeProps.IsStrongRtl(c.Code));
+            if (geometric || visible.Any(c => UnicodeProps.IsStrongRtl(c.Code)))
             {
-                if (IsSpace(c.Code))
-                {
-                    if (!lastSpace) sb.Append(' ');
-                    lastSpace = true;
-                    continue;
-                }
-                lastSpace = false;
-                sb.Append(char.ConvertFromUtf32(c.Code >= 0 && c.Code <= 0x10FFFF && (c.Code < 0xD800 || c.Code > 0xDFFF) ? c.Code : 0xFFFD));
-                line.Chars.Add(c.Index);
+                // the order on the page is the truth: characters left to right (along the baseline), spaces
+                // where the gaps (or the PDF's own space characters) are, then right-to-left text back into reading order
+                var spaces = chars.Where(c => IsSpace(c.Code) && !c.Generated && c.Right - c.Left > 0.01f).ToList();
+                line.Text = GeometricText(visible, rtl, spaces);
+                foreach (var c in visible) line.Chars.Add(c.Index);
             }
-            line.Text = sb.ToString();
+            else
+            {
+                var sb = new StringBuilder();
+                bool lastSpace = false;
+                foreach (var c in chars)
+                {
+                    if (IsSpace(c.Code))
+                    {
+                        if (!lastSpace) sb.Append(' ');
+                        lastSpace = true;
+                        continue;
+                    }
+                    lastSpace = false;
+                    sb.Append(CharText(c.Code));
+                    line.Chars.Add(c.Index);
+                }
+                line.Text = sb.ToString();
+            }
             var box = new Box(visible[0].Left, visible[0].Bottom, visible[0].Right, visible[0].Top);
             foreach (var c in visible) box = box.Union(new Box(c.Left, c.Bottom, c.Right, c.Top));
             line.Box = box;
@@ -120,7 +226,7 @@ namespace TextX.Core.Documents.Layout
             line.Color = visible.GroupBy(c => c.Color).OrderByDescending(g => g.Count()).First().Key;
             line.FontName = visible.GroupBy(c => c.FontName ?? string.Empty).OrderByDescending(g => g.Count()).First().Key;
             line.Angle = visible[0].Angle;
-            line.Rtl = visible.Count(c => UnicodeProps.IsStrongRtl(c.Code)) * 2 > visible.Count(c => char.IsLetter(SafeChar(c.Code)) || UnicodeProps.IsStrongRtl(c.Code));
+            line.Rtl = rtl;
             line.Baseline = Median(visible.Select(c => c.OriginY));
             var first = visible.OrderBy(c => Along(c, line.Angle)).First();
             var last = visible.OrderBy(c => Along(c, line.Angle)).Last();
@@ -130,6 +236,49 @@ namespace TextX.Core.Documents.Layout
                 ? (float)(Along(last, line.Angle) - Along(first, line.Angle)) + line.FontSize * 0.6f
                 : box.W;
             lines.Add(line);
+        }
+
+        private static string CharText(int code)
+        {
+            return char.ConvertFromUtf32(code >= 0 && code <= 0x10FFFF && (code < 0xD800 || code > 0xDFFF) ? code : 0xFFFD);
+        }
+
+        /// <summary>Text of a line from where its characters are: visual order, gaps as spaces, then logical order.</summary>
+        internal static string GeometricText(List<PdfChar> visible, bool rtl, List<PdfChar> spaces = null)
+        {
+            if (visible.Count == 0) return string.Empty;
+            float angle = visible[0].Angle;
+            double cos = Math.Cos(angle), sin = Math.Sin(angle);
+            // combining marks stay with the letter before them
+            var clusters = new List<List<PdfChar>>();
+            foreach (var c in visible)
+            {
+                bool mark = c.Code < 0x10000 && char.GetUnicodeCategory((char)c.Code) == System.Globalization.UnicodeCategory.NonSpacingMark;
+                if (mark && clusters.Count > 0) clusters[clusters.Count - 1].Add(c);
+                else clusters.Add(new List<PdfChar> { c });
+            }
+            var ordered = clusters.OrderBy(k => (StartAlong(k[0], cos, sin) + EndAlong(k[0], cos, sin)) / 2).ToList();
+            float size = Math.Max(1f, Median(visible.Select(c => c.FontSize)));
+            var sb = new StringBuilder();
+            for (int i = 0; i < ordered.Count; i++)
+            {
+                if (i > 0)
+                {
+                    double end = EndAlong(ordered[i - 1][0], cos, sin), start = StartAlong(ordered[i][0], cos, sin);
+                    double gap = start - end;
+                    bool spaceChar = spaces != null && spaces.Any(sp =>
+                    {
+                        double mid = (StartAlong(sp, cos, sin) + EndAlong(sp, cos, sin)) / 2;
+                        return mid > end - size * 0.05 && mid < start + size * 0.05;
+                    });
+                    if (gap > size * 0.17 || (spaceChar && gap > size * 0.05)) sb.Append(' ');
+                }
+                foreach (var c in ordered[i]) sb.Append(CharText(c.Code));
+            }
+            var visual = sb.ToString();
+            if (!RtlText.ContainsRtl(visual)) return visual;
+            // reordering is its own inverse: visual text through the bidi algorithm gives reading order
+            return RtlText.ToVisual(visual, new RtlOptions { Direction = rtl ? BaseDirection.Rtl : BaseDirection.Ltr, ShapeArabic = false, MirrorBrackets = true });
         }
 
         private static double Along(PdfChar c, float angle)
@@ -243,6 +392,7 @@ namespace TextX.Core.Documents.Layout
             score = 0;
             var last = block.Lines[block.Lines.Count - 1];
             if (block.IsRotated || last.IsRotated) return false;
+            if ((last.Chars.Count == 0) != (line.Chars.Count == 0)) return false; // OCR text and real text stay apart
             if (ListStart.IsMatch(line.Text) && block.Lines.Count > 0) return false;
             float size = Math.Max(last.FontSize, line.FontSize);
             if (size <= 0) return false;
@@ -295,14 +445,14 @@ namespace TextX.Core.Documents.Layout
             // classification
             int len = b.Source.Length;
             bool endsSentence = Regex.IsMatch(b.Source, @"[\.\!\?。！？:;]\s*$");
-            float pageH = page.UserHeight;
+            float pageH = page.Height; // blocks are in the page frame: 0..Height, y up
             if (ListStart.IsMatch(b.Source)) b.Kind = BlockKind.ListItem;
             else if (lines.Count <= 3 && len <= 140 && LanguageGuess.HasWords(b.Source) && !TextSegmenter.IsCodeLike(b.Source.Trim()) && (b.FontSize >= bodySize * 1.2f || (b.Bold && b.FontSize >= bodySize * 0.95f && !endsSentence)))
             {
                 b.Kind = BlockKind.Heading;
                 b.Level = b.FontSize >= bodySize * 1.75f ? 1 : b.FontSize >= bodySize * 1.3f ? 2 : 3;
             }
-            else if (len <= 90 && lines.Count <= 2 && (b.Box.B > page.OriginY + pageH * 0.93f || b.Box.T < page.OriginY + pageH * 0.07f))
+            else if (len <= 90 && lines.Count <= 2 && (b.Box.B > pageH * 0.93f || b.Box.T < pageH * 0.07f))
                 b.Kind = BlockKind.HeaderFooter;
             else if (b.FontSize > 0 && b.FontSize <= bodySize * 0.85f && len <= 200)
                 b.Kind = BlockKind.Caption;

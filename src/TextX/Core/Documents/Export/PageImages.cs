@@ -41,7 +41,41 @@ namespace TextX.Core.Documents.Export
             var px = new byte[w * h * 4];
             for (int y = 0; y < h; y++)
                 Buffer.BlockCopy(_image.Pixels, ((y0 + y) * _image.Width + x0) * 4, px, y * w * 4, w * 4);
+            // a picture filling a large sheet is shrunk: Word shows it at most a page wide
+            int factor = (int)Math.Ceiling(Math.Max(w, h) / (double)MaxSide);
+            if (factor > 1) px = Shrink(px, ref w, ref h, factor);
             return PngWriter.FromBgra(px, w, h);
+        }
+
+        /// <summary>Longest side of a crop in pixels.</summary>
+        public int MaxSide = 1800;
+
+        /// <summary>Averages blocks of factor x factor pixels (BGRA).</summary>
+        internal static byte[] Shrink(byte[] px, ref int w, ref int h, int factor)
+        {
+            int nw = Math.Max(1, w / factor), nh = Math.Max(1, h / factor);
+            var result = new byte[nw * nh * 4];
+            for (int y = 0; y < nh; y++)
+                for (int x = 0; x < nw; x++)
+                {
+                    int b = 0, g = 0, r = 0, a = 0, n = 0;
+                    for (int dy = 0; dy < factor; dy++)
+                    {
+                        int sy = y * factor + dy;
+                        if (sy >= h) break;
+                        for (int dx = 0; dx < factor; dx++)
+                        {
+                            int sx = x * factor + dx;
+                            if (sx >= w) break;
+                            int i = (sy * w + sx) * 4;
+                            b += px[i]; g += px[i + 1]; r += px[i + 2]; a += px[i + 3]; n++;
+                        }
+                    }
+                    int o = (y * nw + x) * 4;
+                    result[o] = (byte)(b / n); result[o + 1] = (byte)(g / n); result[o + 2] = (byte)(r / n); result[o + 3] = (byte)(a / n);
+                }
+            w = nw; h = nh;
+            return result;
         }
 
         private static int Clamp(int v, int max)

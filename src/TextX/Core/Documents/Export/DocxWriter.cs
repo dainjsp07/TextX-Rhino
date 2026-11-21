@@ -23,7 +23,7 @@ namespace TextX.Core.Documents.Export
     public sealed class DocxOptions
     {
         public ExportText Text = ExportText.Translated;
-        /// <summary>Returns a PNG of an image area of a page (page, box in the page frame), or null to leave it out.</summary>
+        /// <summary>Returns a PNG or JPEG of an image area of a page (page, box in the page frame), or null to leave it out.</summary>
         public Func<DocPage, Box, byte[]> ImageProvider;
         public bool PageBreaks = true;
         public FontCatalog Fonts;
@@ -249,6 +249,12 @@ namespace TextX.Core.Documents.Export
               .Append("</a:graphicData></a:graphic></wp:inline></w:drawing></w:r></w:p>");
         }
 
+        /// <summary>".jpeg" for JPEG data (the image provider may compress photos), else ".png".</summary>
+        internal static string ImageExtension(byte[] data)
+        {
+            return data != null && data.Length > 3 && data[0] == 0xFF && data[1] == 0xD8 && data[2] == 0xFF ? ".jpeg" : ".png";
+        }
+
         private static string SectionProperties(DocPage page)
         {
             int w = page == null ? 11906 : (int)Math.Round(page.Width * 20);
@@ -268,7 +274,7 @@ namespace TextX.Core.Documents.Export
             {
                 var ct = new StringBuilder("<?xml version=\"1.0\" encoding=\"UTF-8\" standalone=\"yes\"?><Types xmlns=\"http://schemas.openxmlformats.org/package/2006/content-types\">" +
                     "<Default Extension=\"rels\" ContentType=\"application/vnd.openxmlformats-package.relationships+xml\"/><Default Extension=\"xml\" ContentType=\"application/xml\"/>" +
-                    "<Default Extension=\"png\" ContentType=\"image/png\"/>" +
+                    "<Default Extension=\"png\" ContentType=\"image/png\"/><Default Extension=\"jpeg\" ContentType=\"image/jpeg\"/>" +
                     "<Override PartName=\"/word/document.xml\" ContentType=\"application/vnd.openxmlformats-officedocument.wordprocessingml.document.main+xml\"/>" +
                     "<Override PartName=\"/word/styles.xml\" ContentType=\"application/vnd.openxmlformats-officedocument.wordprocessingml.styles+xml\"/>" +
                     "<Override PartName=\"/docProps/core.xml\" ContentType=\"application/vnd.openxmlformats-package.core-properties+xml\"/>" +
@@ -282,8 +288,9 @@ namespace TextX.Core.Documents.Export
                     "<Relationship Id=\"rIdStyles\" Type=\"http://schemas.openxmlformats.org/officeDocument/2006/relationships/styles\" Target=\"styles.xml\"/>");
                 for (int i = 0; i < images.Count; i++)
                 {
-                    rels.Append("<Relationship Id=\"rIdImg").Append(i + 1).Append("\" Type=\"http://schemas.openxmlformats.org/officeDocument/2006/relationships/image\" Target=\"media/image").Append(i + 1).Append(".png\"/>");
-                    var e = zip.CreateEntry("word/media/image" + (i + 1) + ".png", CompressionLevel.NoCompression);
+                    var ext = ImageExtension(images[i]);
+                    rels.Append("<Relationship Id=\"rIdImg").Append(i + 1).Append("\" Type=\"http://schemas.openxmlformats.org/officeDocument/2006/relationships/image\" Target=\"media/image").Append(i + 1).Append(ext).Append("\"/>");
+                    var e = zip.CreateEntry("word/media/image" + (i + 1) + ext, CompressionLevel.NoCompression);
                     using (var s = e.Open()) s.Write(images[i], 0, images[i].Length);
                 }
                 rels.Append("</Relationships>");

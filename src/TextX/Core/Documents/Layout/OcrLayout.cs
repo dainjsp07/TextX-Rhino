@@ -12,12 +12,15 @@ namespace TextX.Core.Documents.Layout
     {
         /// <param name="scale">Pixels per point of the image that was read.</param>
         /// <param name="image">The page image that was read: when given, each line's ink colour and weight (bold) are measured.</param>
-        public static List<DocLine> BuildLines(OcrResult ocr, DocPage page, float scale, float minConfidence = 30f, RenderedImageInfo image = null)
+        public static List<DocLine> BuildLines(OcrResult ocr, DocPage page, float scale, float minConfidence = 30f, RenderedImageInfo image = null, bool drawing = false)
         {
             var lines = new List<DocLine>();
-            foreach (var group in ocr.Words.Where(w => w.Confidence >= minConfidence || w.Text.Length > 2).GroupBy(w => w.Line))
+            foreach (var w in ocr.Words) w.Text = StripMarks(w.Text);
+            foreach (var group in ocr.Words.Where(w => w.Text.Length > 0 && (w.Confidence >= minConfidence || w.Text.Length > 2)).GroupBy(w => w.Line))
             {
                 var words = group.OrderBy(w => w.Left).ToList();
+                if (drawing) words = DrawingWords(words);
+                if (words.Count == 0) continue;
                 if (words.Count == 0) continue;
                 // split a line at wide gaps (separate labels on a drawing)
                 var part = new List<OcrWord> { words[0] };
@@ -35,6 +38,37 @@ namespace TextX.Core.Documents.Layout
             }
             // top to bottom, then left to right (the order Tesseract reports blocks can jump around)
             return lines.OrderByDescending(l => Math.Round(l.Baseline / Math.Max(2f, l.FontSize * 0.5f))).ThenBy(l => l.Box.L).ToList();
+        }
+
+        /// <summary>Removes the direction marks Tesseract puts around left-to-right words in right-to-left lines.</summary>
+        internal static string StripMarks(string text)
+        {
+            if (string.IsNullOrEmpty(text)) return string.Empty;
+            var sb = new StringBuilder(text.Length);
+            foreach (var c in text)
+                if (!(c == '\u200E' || c == '\u200F' || c == '\u061C' || (c >= '\u202A' && c <= '\u202E') || (c >= '\u2066' && c <= '\u2069'))) sb.Append(c);
+            return sb.ToString().Trim();
+        }
+
+        /// <summary>
+        /// On a drawing, OCR also "reads" hatching, arrows and line work. Keeps words with letters or
+        /// digits that the engine is fairly sure of; in a right-to-left line, unsure Latin words are
+        /// misread letters rather than real English.
+        /// </summary>
+        internal static List<OcrWord> DrawingWords(List<OcrWord> words)
+        {
+            bool rtlLine = words.Count(w => RtlText.ContainsRtl(w.Text)) * 2 >= words.Count && words.Any(w => RtlText.ContainsRtl(w.Text));
+            return words.Where(w =>
+            {
+                int letters = w.Text.Count(char.IsLetter), digits = w.Text.Count(char.IsDigit);
+                if (letters + digits == 0) return false;
+                if (letters + digits == 1 && w.Confidence < 85) return false;
+                if (w.Confidence < 55) return false;
+                bool latinOnly = letters > 0 && digits == 0 && !RtlText.ContainsRtl(w.Text);
+                if (rtlLine && latinOnly && w.Confidence < 85) return false;
+                if (latinOnly && letters <= 3 && w.Confidence < 75) return false;
+                return true;
+            }).ToList();
         }
 
         private static DocLine MakeLine(List<OcrWord> words, DocPage page, float scale, RenderedImageInfo image)

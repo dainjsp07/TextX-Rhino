@@ -11,7 +11,8 @@ namespace TextX.Core.Documents.Schedules
     {
         /// <summary>Read the translated text (when the document has been translated) instead of the original.</summary>
         public bool UseTranslation;
-        public bool Dimensions = true;
+        /// <summary>List every dimension on drawings (off by default: drawings carry hundreds).</summary>
+        public bool Dimensions;
     }
 
     /// <summary>
@@ -23,10 +24,10 @@ namespace TextX.Core.Documents.Schedules
     public static class ScheduleExtractor
     {
         public const string Code = "Code", Category = "Category", Description = "Description", Material = "Material", Finish = "Finish",
-            Colour = "Colour", Size = "Size", Qty = "Qty", Tagged = "Tagged", Manufacturer = "Manufacturer", Model = "Model",
+            Colour = "Colour", Hardware = "Hardware", Size = "Size", Qty = "Qty", Tagged = "Tagged", Manufacturer = "Manufacturer", Model = "Model",
             Location = "Location", PageColumn = "Page", Notes = "Notes";
 
-        public static readonly string[] ProductColumns = { Code, Category, Description, Material, Finish, Colour, Size, Qty, Tagged, Manufacturer, Model, Location, PageColumn, Notes };
+        public static readonly string[] ProductColumns = { Code, Category, Description, Material, Finish, Hardware, Colour, Size, Qty, Tagged, Manufacturer, Model, Location, PageColumn, Notes };
 
         private const string CodeCore = @"[A-Z]{1,4}[\-‐‑–.]?\d{1,4}[A-Z]?(?:[.\-]\d{1,3})?";
         internal static readonly Regex CodeToken = new Regex(@"(?<![\p{L}\p{N}\-/.])(?<code>" + CodeCore + @")(?![\p{L}\p{N}]|[\-/]\d|\.\d)", RegexOptions.Compiled);
@@ -37,6 +38,7 @@ namespace TextX.Core.Documents.Schedules
         private static readonly Regex QtyInText = new Regex(@"(?:\b(?:qty|quantity|qt[eé]|quantit[eé]|menge|anzahl|cantidad|quantit[aà]|nb|aantal|stk)\.?\s*[:=]?\s*(?<n>\d{1,4})\b)|(?:\b(?<n>\d{1,4})\s*(?:no\.?|nos|pcs|pc|pieces|pièces|stk\.?|stück|uds?\.?|pz|st\.)(?![\p{L}]))|(?:\(\s*[x×]\s?(?<n>\d{1,4})\s*\))", RegexOptions.Compiled | RegexOptions.IgnoreCase);
         private static readonly Regex MakerInText = new Regex(@"(?:\b(?:manufacturer|supplier|brand|make|fabricant|fournisseur|marque|hersteller|lieferant|marke|fabricante|proveedor|marca|produttore|fornitore|fabrikant|merk)\s*[:\-]\s*)(?<v>[^,;\n]{2,40})", RegexOptions.Compiled | RegexOptions.IgnoreCase);
         private static readonly Regex ModelInText = new Regex(@"(?:\b(?:model|modèle|modele|modell|modelo|modello|art\.?\s*no\.?|art\.-nr\.?|article\s*no\.?|product\s*code|ref\.?)\s*[:#\-]?\s*)(?<v>[A-Z0-9][\w\-./]{1,30})", RegexOptions.Compiled | RegexOptions.IgnoreCase);
+        private static readonly Regex MakerWords = new Regex(@"(?:made by|manufactured by|supplied by|fabrique par|hergestellt von|fabricado por|prodotto da|(?:\u05D1|\u05DE)?\u05EA\u05D5\u05E6\u05E8\u05EA|\u05E9\u05DC \u05D7\u05D1\u05E8\u05EA|\u05DE\u05D7\u05D1\u05E8\u05EA)\s+(?<v>[\p{L}\d][\p{L}\d&.\-]*(?:\s+[A-Z][\w&.\-]*)?)", RegexOptions.Compiled | RegexOptions.IgnoreCase);
         private static readonly Regex FirmWords = new Regex(@"\b(?:architect(?:s|e|es|ure)?|architekt(?:en|ur)?|arquitect(?:o|os|ura)|architett(?:o|i|ura)|atelier|studio|associates|associes|design|interiors|partners|ltd|llp|gmbh|sarl|sas|s\.a\.|s\.l\.|srl|spa|inc|llc|b\.v\.)\b", RegexOptions.Compiled | RegexOptions.IgnoreCase);
         private static readonly Regex NoteStart = new Regex(@"^\s*(?:note|notes|n\.?b\.?|nota|hinweis|remarque|opmerking)\s*[:\-.]", RegexOptions.Compiled | RegexOptions.IgnoreCase);
         private static readonly Regex NumberedItem = new Regex(@"(?:(?<=^)|(?<=\s))(?=\d{1,2}[.)]\s+\p{L})", RegexOptions.Compiled);
@@ -63,6 +65,7 @@ namespace TextX.Core.Documents.Schedules
             public bool HasBox;
             public readonly List<string> Blocks = new List<string>();
             public int Tags;
+            public bool SheetItem;
         }
 
         public static ScheduleSet Extract(DocProject project, ExtractOptions options = null)
@@ -83,6 +86,7 @@ namespace TextX.Core.Documents.Schedules
             var fields = new HashSet<DocBlock>();        // title-block labels and values (not materials)
             var describing = new HashSet<DocBlock>();    // blocks that describe an item
             var pageTitles = new Dictionary<int, string>();
+            var pageLocations = new Dictionary<int, string>();
 
             foreach (var page in project.Pages.Where(p => p.Extracted))
             {
@@ -90,23 +94,73 @@ namespace TextX.Core.Documents.Schedules
                 bool drawing = IsDrawing(page);
 
                 // 1. tables
+                var rawTables = new List<KeyValuePair<Schedule, List<DocBlock>>>();
+                var productCells = new HashSet<DocBlock>();
                 foreach (var group in blocks.Where(b => b.Kind == BlockKind.TableCell && b.Table >= 0).GroupBy(b => b.Table))
-                    ReadTable(group.ToList(), page, text, info, items, tables, fields);
+                    if (ReadTable(group.ToList(), page, text, info, items, rawTables, fields)) productCells.UnionWith(group);
 
-                // 2. title block fields outside tables
-                ReadFields(blocks, page, text, info, fields);
+                // 2. title block fields and an item's properties (finishes, hardware ...) outside tables
+                var itemFields = ReadFields(blocks.Where(b => !productCells.Contains(b)).ToList(), page, text, info, fields);
                 used.UnionWith(fields);
+                // tables that were really label / value strips are not listed again
+                foreach (var t in rawTables)
+                {
+                    int letters = t.Value.Count(b => LanguageGuess.HasWords(text(b)));
+                    // two-row grids on drawings are mostly dimension chains or label pairs: worth listing from three rows
+                    if (t.Key.Rows.Count < 3 || t.Key.Columns.Count < 2 || letters * 10 < t.Value.Count * 4) continue;
+                    if (t.Value.Count(b => used.Contains(b)) * 2 >= t.Value.Count) continue;
+                    t.Key.Title = "Table " + (tables.Count + 1) + " (page " + (page.Index + 1) + ")";
+                    tables.Add(t.Key);
+                }
 
                 // 3. notes
                 ReadNotes(blocks, page, text, notes, used);
 
+                // 3b. a sheet about one item: its code in the view titles ("JN-01.1 rear elevation"),
+                // its name in the title block, its finishes and hardware in the labelled strip
+                var sheetCode = SheetCode(blocks, text) ?? CodeInDrawingNumber(info, page, items, blocks, text);
+                if (sheetCode != null)
+                {
+                    var item = ItemFor(items, sheetCode);
+                    var name = info.Rows.FirstOrDefault(r => r.Page == page.Index && r[0] == "Drawing title");
+                    if (name != null && !string.Equals(CodeKey(name[1]), CodeKey(sheetCode), StringComparison.Ordinal))
+                    {
+                        Offer(item, 1, Description, name[1]);
+                        item.Texts.Insert(0, name[1]);
+                    }
+                    AddItemFields(item, itemFields);
+                    var anchor = blocks.FirstOrDefault(b => text(b).Contains(sheetCode));
+                    if (anchor != null) Place(item, page, anchor);
+                    item.SheetItem = true;
+                }
+                // where the page's items are: the title block's location or room
+                var place = info.Rows.FirstOrDefault(r => r.Page == page.Index && (r[0] == "Location" || r[0] == "Room"));
+                if (place != null) pageLocations[page.Index] = place[1];
                 // drawing title of the page: from the title block, else its main heading
                 var title = info.Rows.FirstOrDefault(r => r.Page == page.Index && r[0] == "Drawing title");
+                DocBlock mainHeading = null;
                 if (title != null) pageTitles[page.Index] = title[1];
                 else
                 {
-                    var heading = blocks.Where(b => b.Kind == BlockKind.Heading && !used.Contains(b) && LanguageGuess.HasWords(text(b))).OrderBy(b => b.Level).ThenBy(b => b.Order).FirstOrDefault();
-                    if (heading != null) pageTitles[page.Index] = text(heading);
+                    // the biggest heading with a few words (a lone word is usually a name in the title block)
+                    mainHeading = blocks.Where(b => b.Kind == BlockKind.Heading && !used.Contains(b) && LanguageGuess.HasWords(text(b)))
+                                        .OrderBy(b => text(b).Trim().Contains(" ") ? 0 : 1).ThenBy(b => b.Level).ThenByDescending(b => b.FontSize).ThenBy(b => b.Order).FirstOrDefault();
+                    if (mainHeading != null) pageTitles[page.Index] = text(mainHeading);
+                }
+                // no code, but finishes and hardware listed: they belong to the item the sheet is named after
+                // (its "item name" field, else the drawing title or main heading)
+                List<string> named;
+                string itemName = itemFields.TryGetValue("Name", out named) ? named[0] : null;
+                if (sheetCode == null && itemFields.Count > 0 && (itemName != null || pageTitles.ContainsKey(page.Index)))
+                {
+                    var name = itemName ?? pageTitles[page.Index];
+                    var item = ItemFor(items, null, name);
+                    Offer(item, 1, Description, name);
+                    if (!item.Texts.Contains(name)) item.Texts.Insert(0, name);
+                    AddItemFields(item, itemFields);
+                    var anchor = (itemName != null ? null : mainHeading) ?? blocks.FirstOrDefault(b => text(b) == name);
+                    if (anchor != null) { Place(item, page, anchor); describing.Add(anchor); }
+                    item.SheetItem = true;
                 }
 
                 // 4. legends ("P-01  Oak veneer") and tags ("P-01" alone on the drawing)
@@ -168,7 +222,9 @@ namespace TextX.Core.Documents.Schedules
                     foreach (var b in free.Where(b => !describing.Contains(b) && (b.Kind == BlockKind.Label || b.Lines.Count <= 3)))
                     {
                         var t = text(b);
-                        if (!(Vocabulary.Materials.Contains(t) || Vocabulary.Finishes.Contains(t) || Vocabulary.Products.Contains(t) || ColourCode.IsMatch(t))) continue;
+                        bool material = Vocabulary.Materials.Contains(t) || Vocabulary.Finishes.Contains(t) || ColourCode.IsMatch(t);
+                        bool product = Vocabulary.Products.Contains(t) && t.Length <= 40 && t.IndexOf(',') < 0;
+                        if (!material && !product) continue;
                         var key = "~" + Vocabulary.Fold(t);
                         Item item;
                         if (!items.TryGetValue(key, out item)) items[key] = item = new Item { Key = key, Priority = 3 };
@@ -197,7 +253,7 @@ namespace TextX.Core.Documents.Schedules
             {
                 Complete(item);
                 string location;
-                pageTitles.TryGetValue(item.Page, out location);
+                if (!pageLocations.TryGetValue(item.Page, out location)) pageTitles.TryGetValue(item.Page, out location);
                 var row = products.Add(item.Page);
                 foreach (var col in ProductColumns)
                 {
@@ -207,7 +263,8 @@ namespace TextX.Core.Documents.Schedules
                 }
                 row[products.Column(Code)] = item.Code;
                 row[products.Column(Tagged)] = item.Tags > 0 ? item.Tags.ToString(CultureInfo.InvariantCulture) : string.Empty;
-                if (string.IsNullOrEmpty(row[products.Column(Location)])) row[products.Column(Location)] = location ?? string.Empty;
+                if (string.IsNullOrEmpty(row[products.Column(Location)]) && !SameText(location, row[products.Column(Description)]))
+                    row[products.Column(Location)] = location ?? string.Empty;
                 row[products.Column(PageColumn)] = item.Page >= 0 ? (item.Page + 1).ToString(CultureInfo.InvariantCulture) : string.Empty;
                 if (item.HasBox) { row.Box = item.Box; row.HasBox = true; }
                 row.Blocks.AddRange(item.Blocks.Distinct());
@@ -230,7 +287,8 @@ namespace TextX.Core.Documents.Schedules
 
         // ------------------------------------------------------------------ tables
 
-        private static void ReadTable(List<DocBlock> cells, DocPage page, Func<DocBlock, string> text, Schedule info, Dictionary<string, Item> items, List<Schedule> tables, HashSet<DocBlock> used)
+        /// <summary>Reads one table; true when it was a product schedule.</summary>
+        private static bool ReadTable(List<DocBlock> cells, DocPage page, Func<DocBlock, string> text, Schedule info, Dictionary<string, Item> items, List<KeyValuePair<Schedule, List<DocBlock>>> tables, HashSet<DocBlock> used)
         {
             int rows = cells.Max(c => c.Row) + 1, cols = cells.Max(c => c.Col) + 1;
             var grid = new string[rows, cols];
@@ -256,7 +314,7 @@ namespace TextX.Core.Documents.Schedules
                     if (gridBlocks[r, 1] != null) SetPlace(row, gridBlocks[r, 1]);
                 }
                 foreach (var c in cells) used.Add(c);
-                return;
+                return false;
             }
 
             // a header row naming the columns
@@ -293,11 +351,11 @@ namespace TextX.Core.Documents.Schedules
                     if (first != null) Place(item, page, first);
                     for (int c = 0; c < cols; c++) if (gridBlocks[r, c] != null) item.Blocks.Add(gridBlocks[r, c].Id);
                 }
-                return;
+                return true;
             }
 
             // any other table is kept as it is
-            var table = new Schedule(ScheduleKind.Table, "Table " + (tables.Count + 1) + " (page " + (page.Index + 1) + ")");
+            var table = new Schedule(ScheduleKind.Table, "Table");
             int start = hasHeader ? 1 : 0;
             for (int c = 0; c < cols; c++) table.Columns.Add(hasHeader && at(0, c).Length > 0 ? at(0, c) : "Column " + (c + 1));
             for (int r = start; r < rows; r++)
@@ -306,55 +364,111 @@ namespace TextX.Core.Documents.Schedules
                 var first = Enumerable.Range(0, cols).Select(c => gridBlocks[r, c]).FirstOrDefault(b => b != null);
                 if (first != null) SetPlace(row, first);
             }
-            if (table.Rows.Count > 0) tables.Add(table);
+            if (table.Rows.Count > 0) tables.Add(new KeyValuePair<Schedule, List<DocBlock>>(table, cells));
+            return false;
         }
 
         // ------------------------------------------------------------------ title block fields
 
-        private static void ReadFields(List<DocBlock> blocks, DocPage page, Func<DocBlock, string> text, Schedule info, HashSet<DocBlock> used)
+        private static bool IsFieldLabel(string t)
         {
+            return t.Length <= 40 && (Vocabulary.TitleFields.Exactly(t) != null || Vocabulary.ItemFields.Exactly(t) != null);
+        }
+
+        /// <summary>
+        /// Title-block fields ("Scale 1:20", "Architect ...") go to the project information; an item's
+        /// properties ("Exterior finish: ...", "Hardware: ...") are returned for the sheet's item. Values sit
+        /// after the label in reading order: to the right, or to the left for right-to-left labels, or below.
+        /// </summary>
+        private static Dictionary<string, List<string>> ReadFields(List<DocBlock> blocks, DocPage page, Func<DocBlock, string> text, Schedule info, HashSet<DocBlock> used)
+        {
+            var itemFields = new Dictionary<string, List<string>>();
+            Action<string, string> addItem = (f, v) =>
+            {
+                List<string> list;
+                if (!itemFields.TryGetValue(f, out list)) itemFields[f] = list = new List<string>();
+                if (!list.Contains(v)) list.Add(v);
+            };
             foreach (var b in blocks)
             {
                 if (used.Contains(b)) continue;
                 var t = text(b);
-                if (t.Length > 120) continue;
+                if (t.Length > 200) continue;
                 // "Scale: 1:20" in one text
                 int colon = t.IndexOf(':');
                 if (colon > 0 && colon < 40 && colon < t.Length - 1)
                 {
-                    var f = Vocabulary.TitleFields.Exactly(t.Substring(0, colon));
+                    var label = t.Substring(0, colon);
                     var v = t.Substring(colon + 1).Trim();
-                    if (f != null && v.Length > 0 && !(f == "Scale" && !v.Any(char.IsDigit)))
+                    var f = Vocabulary.TitleFields.Exactly(label);
+                    if (f != null && FieldValueOk(f, v))
                     {
                         var row = info.Add(page.Index, f, v, (page.Index + 1).ToString(CultureInfo.InvariantCulture));
                         SetPlace(row, b);
                         used.Add(b);
                         continue;
                     }
+                    var itf = Vocabulary.ItemFields.Exactly(label);
+                    if (itf != null && v.Length > 1 && v.Any(char.IsLetterOrDigit)) { addItem(itf, v); used.Add(b); continue; }
                 }
-                var field = t.Split(' ').Length <= 4 ? Vocabulary.TitleFields.Exactly(t) : null;
-                if (field == null) continue;
-                // the value: beside the label on the same line, or just below it
+                // a cell holding two labels on two lines ("item name" over "description") is read by its first
+                if (b.Lines.Count == 2 && b.Lines.All(l => IsFieldLabel(l.Text.Trim(' ', ':'))) && text(b) == b.Source) t = b.Lines[0].Text.Trim();
+                bool shortLabel = t.Length <= 40 && t.Split(' ').Length <= 4;
+                var field = shortLabel ? Vocabulary.TitleFields.Exactly(t) : null;
+                var itemField = shortLabel && field == null ? Vocabulary.ItemFields.Exactly(t) : null;
+                if (field == null && itemField == null) continue;
+                bool rtl = b.SourceRtl || TextX.Core.Text.RtlText.ContainsRtl(t);
                 float size = Math.Max(4f, b.FontSize);
+                float reach = itemField != null ? page.Width * 0.3f : Math.Min(page.Width * 0.25f, size * 18);
                 DocBlock value = null;
                 float best = float.MaxValue;
                 foreach (var o in blocks)
                 {
-                    if (o == b || used.Contains(o) || Vocabulary.TitleFields.Exactly(text(o)) != null) continue;
+                    if (o == b || used.Contains(o) || IsFieldLabel(text(o))) continue;
+                    if (field != null ? !FieldValueOk(field, text(o)) : !text(o).Any(char.IsLetterOrDigit)) continue;
+                    if (Vocabulary.NotesHeadings.Exactly(text(o)) != null || (text(o).TrimEnd().EndsWith(":", StringComparison.Ordinal) && text(o).Length <= 40)) continue; // another label
+                    float overlap = Math.Min(o.Box.T, b.Box.T) - Math.Max(o.Box.B, b.Box.B);
+                    bool sameLine = overlap > Math.Min(o.Box.H, b.Box.H) * 0.4f;
                     float d;
-                    bool sameLine = o.Box.L >= b.Box.R - 1 && Math.Min(o.Box.T, b.Box.T) - Math.Max(o.Box.B, b.Box.B) > Math.Min(o.Box.H, b.Box.H) * 0.4f;
-                    if (sameLine) d = o.Box.L - b.Box.R;
-                    else if (o.Box.T <= b.Box.B + 1 && Math.Abs(o.Box.L - b.Box.L) < size * 1.5f) d = (b.Box.B - o.Box.T) * 1.5f + size;
+                    if (sameLine && !rtl && o.Box.L >= b.Box.R - 1) d = o.Box.L - b.Box.R;
+                    else if (sameLine && rtl && o.Box.R <= b.Box.L + 1) d = b.Box.L - o.Box.R;
+                    else if (o.Box.T <= b.Box.B + 1 && b.Box.B - o.Box.T < size * 2.2f)
+                    {
+                        // below: aligned with the label's start edge, or starting under the label (title-block cells)
+                        float edge = rtl ? Math.Abs(o.Box.R - b.Box.R) : Math.Abs(o.Box.L - b.Box.L);
+                        bool under = rtl ? o.Box.R <= b.Box.R + size && o.Box.R >= b.Box.L - size * 4 : o.Box.L >= b.Box.L - size && o.Box.L <= b.Box.R + size * 4;
+                        if (edge >= size * 1.5f && !under) continue;
+                        d = (b.Box.B - o.Box.T) * 1.5f + size + (edge < size * 1.5f ? 0 : size);
+                    }
                     else continue;
-                    if (d < best && d < Math.Max(page.Width * 0.3f, size * 25)) { best = d; value = o; }
+                    if (d < best && d < reach) { best = d; value = o; }
                 }
-                if (value != null)
+                if (value == null) continue;
+                used.Add(b);
+                used.Add(value);
+                if (field != null)
                 {
                     var row = info.Add(page.Index, field, text(value), (page.Index + 1).ToString(CultureInfo.InvariantCulture));
                     SetPlace(row, value);
-                    used.Add(b);
-                    used.Add(value);
+                    continue;
                 }
+                // a property's text may go on over the lines below (not a name, a quantity or a size)
+                var parts = new List<string> { text(value) };
+                var last = value;
+                int more = itemField == "Name" || itemField == "Quantity" || itemField == "Size" ? 0 : 5;
+                for (int k = 0; k < more; k++)
+                {
+                    float lineSize = Math.Max(4f, last.FontSize);
+                    var next = blocks.Where(o => !used.Contains(o) && o.Box.T <= last.Box.B + 1 && last.Box.B - o.Box.T < lineSize * 1.2f &&
+                                                 (rtl ? Math.Abs(o.Box.R - last.Box.R) : Math.Abs(o.Box.L - last.Box.L)) < lineSize * 2 && !IsFieldLabel(text(o)) &&
+                                                 !blocks.Any(l => l != o && SameLine(l.Box, o.Box) && IsFieldLabel(text(l))))   // the value of the next label
+                                     .OrderByDescending(o => o.Box.T).FirstOrDefault();
+                    if (next == null) break;
+                    parts.Add(text(next));
+                    used.Add(next);
+                    last = next;
+                }
+                addItem(itemField, string.Join("; ", parts));
             }
             // a firm's name in the title block area (bottom right) without a label
             if (!info.Rows.Any(r => r.Page == page.Index && (r[0] == "Architect" || r[0] == "Interior designer")))
@@ -368,6 +482,125 @@ namespace TextX.Core.Documents.Schedules
                     used.Add(firm);
                 }
             }
+            return itemFields;
+        }
+
+        private static bool SameLine(Box a, Box b)
+        {
+            float overlap = Math.Min(a.T, b.T) - Math.Max(a.B, b.B);
+            return overlap > Math.Min(a.H, b.H) * 0.4f;
+        }
+
+        private static readonly Regex ScaleValue = new Regex(@"(^|[^\d])1\s*[:/]\s*\d+|\bN\.?\s?T\.?\s?S\b|\bas\s+shown\b|\bwithout\b|ללא", RegexOptions.IgnoreCase | RegexOptions.CultureInvariant);
+
+        /// <summary>Whether a text can be the value of a title-block field (a scale looks like 1:20, a phone has digits ...).</summary>
+        internal static bool FieldValueOk(string field, string value)
+        {
+            value = (value ?? string.Empty).Trim();
+            if (value.Length == 0 || value.Length > 120 || !value.Any(char.IsLetterOrDigit)) return false;
+            int digits = value.Count(char.IsDigit), letters = value.Count(char.IsLetter);
+            switch (field)
+            {
+                case "Scale": return ScaleValue.IsMatch(value);
+                case "Telephone": return digits >= 6 && letters <= 3;
+                case "Email": return value.Contains("@");
+                case "Website": return value.Contains(".") && !value.Contains(" ");
+                case "Date": return digits >= 2;
+                case "Revision":
+                case "Sheet": return value.Length <= 20;
+                case "Drawing number":
+                case "Project number": return digits > 0 && value.Length <= 40;
+                case "Paper size": return Regex.IsMatch(value, @"\b[AB][0-4]\b|\d", RegexOptions.IgnoreCase);
+                case "Client":
+                case "Architect":
+                case "Interior designer":
+                case "Contractor":
+                case "Manufacturer":
+                case "Engineer":
+                case "Drawn by":
+                case "Checked by":
+                case "Approved by":
+                    // a name: mostly letters, not a phone number or a date
+                    return letters >= 2 && digits * 2 <= letters && value.Length <= 80;
+                default: return letters + digits >= 2 || digits == 1 && value.Length == 1;
+            }
+        }
+
+        /// <summary>
+        /// The item code inside the sheet's drawing number ("ABC-P10-JN-23-L07" is the sheet of JN-23),
+        /// when exactly one of its parts is a code already seen in the set.
+        /// </summary>
+        private static string CodeInDrawingNumber(Schedule info, DocPage page, Dictionary<string, Item> items, List<DocBlock> blocks, Func<DocBlock, string> text)
+        {
+            var number = info.Rows.FirstOrDefault(r => r.Page == page.Index && r[0] == "Drawing number");
+            if (number == null) return null;
+            var parts = number[1].Split('-', '_', ' ');
+            var found = new List<string>();
+            for (int i = 0; i + 1 < parts.Length; i++)
+            {
+                var candidate = parts[i] + "-" + parts[i + 1];
+                if (!IsCode(candidate)) continue;
+                // a sub-number ("JN-01.1") stays with its code
+                var key = CodeKey(candidate);
+                bool elsewhere = blocks.Any(b => !text(b).Contains(number[1]) && CodeToken.Matches(text(b)).Cast<Match>().Any(m => CodeKey(m.Groups["code"].Value) == key));
+                if (items.ContainsKey("#" + key) || elsewhere) found.Add(candidate);
+            }
+            return found.Count == 1 ? found[0] : null;
+        }
+
+        /// <summary>The code a sheet is about: named in most of its view titles ("JN-01.1 rear elevation").</summary>
+        private static string SheetCode(List<DocBlock> blocks, Func<DocBlock, string> text)
+        {
+            var counts = new Dictionary<string, KeyValuePair<string, int>>();
+            foreach (var b in blocks)
+            {
+                if (b.Kind == BlockKind.Paragraph || b.Kind == BlockKind.ListItem || b.Kind == BlockKind.HeaderFooter) continue;
+                var t = text(b);
+                if (t.Length > 60) continue;
+                var codes = CodeToken.Matches(t).Cast<Match>().Select(m => m.Groups["code"].Value).Where(IsCode).Distinct().ToList();
+                if (codes.Count != 1) continue;
+                var rest = Regex.Replace(t.Replace(codes[0], " "), @"[\d\W_]+", " ");
+                if (!Regex.IsMatch(rest, @"\p{L}{2,}")) continue;   // a view title has words besides the code
+                var key = CodeKey(codes[0]);
+                KeyValuePair<string, int> c;
+                counts.TryGetValue(key, out c);
+                counts[key] = new KeyValuePair<string, int>(c.Key ?? codes[0], c.Value + 1);
+            }
+            if (counts.Count == 0) return null;
+            var ordered = counts.Values.OrderByDescending(v => v.Value).ToList();
+            if (ordered[0].Value < 2 && counts.Count > 1) return null;
+            if (ordered.Count > 1 && ordered[1].Value == ordered[0].Value) return null;
+            return ordered[0].Key;
+        }
+
+        private static void AddItemFields(Item item, Dictionary<string, List<string>> fields)
+        {
+            Func<string, string> get = f => { List<string> l; return fields.TryGetValue(f, out l) ? string.Join("; ", l) : null; };
+            var finishes = new List<string>();
+            var ext = get("Exterior finish");
+            var inside = get("Interior finish");
+            var plain = get("Finish");
+            if (ext != null) finishes.Add("Exterior: " + ext);
+            if (inside != null) finishes.Add("Interior: " + inside);
+            if (plain != null) finishes.Add(plain);
+            if (finishes.Count > 0) Offer(item, 1, Finish, string.Join(" | ", finishes));
+            var hardware = get("Hardware");
+            if (hardware != null) Offer(item, 1, Hardware, hardware);
+            var material = get("Material");
+            if (material != null) Offer(item, 1, Material, material);
+            var colour = get("Colour");
+            if (colour != null) Offer(item, 1, Colour, colour);
+            var qty = get("Quantity");
+            if (qty != null && Regex.IsMatch(qty, @"^\s*\d+\s*$")) Offer(item, 1, Qty, qty.Trim());
+            var size = get("Size");
+            if (size != null && size.Any(char.IsDigit)) Offer(item, 1, Size, size);
+            var other = new List<string>();
+            var light = get("Lighting");
+            if (light != null) other.Add("Lighting: " + light);
+            var power = get("Electrical");
+            if (power != null) other.Add("Electrical: " + power);
+            if (other.Count > 0) Offer(item, 1, Notes, string.Join("; ", other));
+            foreach (var l in fields.Values) item.Texts.AddRange(l);
         }
 
         private static Schedule Dedupe(Schedule info)
@@ -520,7 +753,7 @@ namespace TextX.Core.Documents.Schedules
             var prefix = m.Groups[1].Value;
             if (NotCodePrefixes.Contains(prefix)) return false;
             if (Regex.IsMatch(code, @"^A[0-4]$")) return false;                                        // paper sizes
-            if (prefix.Length == 1 && m.Groups[2].Value.Length == 0 && m.Groups[3].Value.Length >= 3 && "HLRT".IndexOf(prefix[0]) >= 0) return false; // H900: a dimension
+            if (prefix.Length == 1 && m.Groups[2].Value.Length == 0 && "HLRT".IndexOf(prefix[0]) >= 0) return false; // R50, H900: dimensions
             return true;
         }
 
@@ -562,8 +795,8 @@ namespace TextX.Core.Documents.Schedules
             Func<string, bool> missing = f => { string v; return !item.Fields.TryGetValue(f, out v) || string.IsNullOrWhiteSpace(v); };
             foreach (var t in texts)
             {
-                if (missing(Material)) { var s = Spans(Vocabulary.Materials, t); if (s.Count > 0) item.Fields[Material] = Nice(string.Join(", ", s.Select(x => x.Value))); }
-                if (missing(Finish)) { var s = Spans(Vocabulary.Finishes, t); if (s.Count > 0) item.Fields[Finish] = Nice(string.Join(", ", s.Select(x => x.Value))); }
+                if (missing(Material)) { var s = Spans(Vocabulary.Materials, t); if (s.Count > 0) item.Fields[Material] = Nice(string.Join(", ", s.Select(x => x.Value).Distinct(StringComparer.OrdinalIgnoreCase))); }
+                if (missing(Finish)) { var s = Spans(Vocabulary.Finishes, t); if (s.Count > 0) item.Fields[Finish] = Nice(string.Join(", ", s.Select(x => x.Value).Distinct(StringComparer.OrdinalIgnoreCase))); }
                 if (missing(Colour))
                 {
                     var codes = ColourCode.Matches(t).Cast<Match>().Select(m => Regex.Replace(m.Value, @"\s+", " ")).ToList();
@@ -572,13 +805,20 @@ namespace TextX.Core.Documents.Schedules
                 }
                 if (missing(Size)) { var s = SizeInText.Matches(t).Cast<Match>().Select(m => m.Value.Trim()).Distinct().ToList(); if (s.Count > 0) item.Fields[Size] = string.Join(", ", s); }
                 if (missing(Qty)) { var m = QtyInText.Match(t); if (m.Success) item.Fields[Qty] = m.Groups["n"].Value; }
-                if (missing(Manufacturer)) { var m = MakerInText.Match(t); if (m.Success) item.Fields[Manufacturer] = m.Groups["v"].Value.Trim(); }
+                if (missing(Manufacturer)) { var m = MakerInText.Match(t); if (!m.Success) m = MakerWords.Match(t); if (m.Success) item.Fields[Manufacturer] = m.Groups["v"].Value.Trim(); }
                 if (missing(Model)) { var m = ModelInText.Match(t); if (m.Success && m.Groups["v"].Value.Any(char.IsDigit)) item.Fields[Model] = m.Groups["v"].Value.Trim(); }
             }
             if (missing(Category))
             {
                 string category = null;
-                foreach (var t in texts) { var p = Vocabulary.Products.First(t); if (p != null) { category = Nice(p.Canonical); break; } }
+                // what the item is comes from its name first; hinges and handles in its hardware are not the item
+                string desc, hardware;
+                item.Fields.TryGetValue(Description, out desc);
+                item.Fields.TryGetValue(Hardware, out hardware);
+                var named = new List<string>();
+                if (!string.IsNullOrWhiteSpace(desc)) named.Add(desc);
+                named.AddRange(texts.Where(t => string.IsNullOrEmpty(hardware) || hardware.IndexOf(t, StringComparison.Ordinal) < 0));
+                foreach (var t in named) { var p = Vocabulary.Products.First(t); if (p != null) { category = Nice(p.Canonical); break; } }
                 if (category == null && item.Code.Length > 0)
                 {
                     var prefix = Regex.Match(item.Code.ToUpperInvariant(), @"^[A-Z]+").Value;
@@ -651,10 +891,14 @@ namespace TextX.Core.Documents.Schedules
             return m.Success && m.Index == 0 && IsCode(m.Groups["code"].Value);
         }
 
+        private static readonly Regex DrawingNumberLike = new Regex(@"^[A-Z0-9]+(?:[\-_.][A-Z0-9]+){3,}$", RegexOptions.CultureInvariant);
+
         private static bool IsDescriptive(DocBlock b, string t)
         {
             if (!LanguageGuess.HasWords(t) || t.Length > 140 || b.Lines.Count > 4) return false;
             if (TagOnly.IsMatch(t) || DimensionOnly.IsMatch(t)) return false;
+            if (TextX.Core.Translation.TextSegmenter.IsCodeLike(t.Trim()) || DrawingNumberLike.IsMatch(t.Trim())) return false;   // "ABC-P10-JN-02-L09"
+            if (t.TrimEnd().EndsWith(":", StringComparison.Ordinal) && t.Length <= 40) return false;                                  // a label ("Front:")
             if (b.Kind == BlockKind.Heading && b.Level <= 1) return false;
             if (Vocabulary.TitleFields.Exactly(t) != null || Vocabulary.NotesHeadings.Exactly(t) != null) return false;
             return true;

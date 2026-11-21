@@ -53,7 +53,7 @@ namespace TextX.Tests
             Equal("veneer oak", string.Join(" ", Vocabulary.Materials.Find("plaqué chêne").Select(m => m.Canonical)), "material names");
 
             var project = ScheduleSample();
-            var set = ScheduleExtractor.Extract(project);
+            var set = ScheduleExtractor.Extract(project, new ExtractOptions { Dimensions = true });
             var products = set.Find(ScheduleKind.Products);
             Func<string, int> col = products.Column;
             Func<string, ScheduleRow> byCode = c => products.Rows.FirstOrDefault(r => r[col("Code")] == c);

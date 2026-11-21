@@ -36,6 +36,56 @@ namespace TextX.Tests
             return this;
         }
 
+        /// <summary>A right-to-left line (Hebrew) in logical order, ending at <paramref name="right"/>; digits and Latin runs stay left to right.</summary>
+        public FakePage RtlLine(string text, float right, float baseline, float size, bool bold = false)
+        {
+            float w = size * CharWidth;
+            // visual positions: lay the runs out right to left, each LTR run (digits, Latin) left to right inside
+            var runs = new List<string>();
+            var sb = new System.Text.StringBuilder();
+            bool? ltr = null;
+            foreach (var ch in text)
+            {
+                bool isLtr = char.IsLetterOrDigit(ch) && !(ch >= '\u0590' && ch <= '\u05FF');
+                bool neutral = !char.IsLetterOrDigit(ch);
+                bool cur = neutral ? (ltr ?? false) && sb.Length > 0 && !(ch == ' ') : isLtr;
+                if (ltr.HasValue && cur != ltr.Value) { runs.Add((ltr.Value ? "L" : "R") + sb); sb.Clear(); }
+                ltr = cur;
+                sb.Append(ch);
+            }
+            if (sb.Length > 0) runs.Add((ltr == true ? "L" : "R") + sb);
+            float cx = right;
+            foreach (var run in runs)
+            {
+                var body = run.Substring(1);
+                if (run[0] == 'R')
+                {
+                    foreach (var ch in body) { cx -= w; Chars.Add(Char(ch, cx, w, baseline, size, bold)); }
+                }
+                else
+                {
+                    float start = cx - w * body.Length;
+                    float x = start;
+                    foreach (var ch in body) { Chars.Add(Char(ch, x, w, baseline, size, bold)); x += w; }
+                    cx = start;
+                }
+            }
+            Chars.Add(new PdfChar { Index = Chars.Count, Code = '\r', Generated = true });
+            Chars.Add(new PdfChar { Index = Chars.Count, Code = '\n', Generated = true });
+            return this;
+        }
+
+        private PdfChar Char(char ch, float x, float w, float baseline, float size, bool bold)
+        {
+            return new PdfChar
+            {
+                Index = Chars.Count, Code = ch, Generated = ch == ' ',
+                Left = x, Right = x + (ch == ' ' ? 0 : w), Bottom = baseline - size * 0.22f, Top = baseline + size * 0.78f,
+                OriginX = x, OriginY = baseline, FontSize = size,
+                FontName = bold ? "Arial-BoldMT" : "ArialMT", Bold = bold, Color = 0xFF000000,
+            };
+        }
+
         public DocPage Analyze(float width = 595, float height = 842)
         {
             var page = new DocPage { Index = 0, Width = width, Height = height };

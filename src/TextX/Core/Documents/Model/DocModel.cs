@@ -151,6 +151,7 @@ namespace TextX.Core.Documents
         public float OriginX, OriginY;    // lower-left of the visible area in user space
         public bool Scanned;              // image-only page read by OCR
         public bool HasOcrLayer;          // scanned page that already had an invisible text layer
+        public bool OutlinedText;         // drawing whose words are outlines, read by OCR
         public float OcrConfidence;
         public string OcrLanguages;
         public bool Extracted;
@@ -304,7 +305,7 @@ namespace TextX.Core.Documents
                 pages.Add(new Dictionary<string, object>
                 {
                     { "i", (double)p.Index }, { "w", Box.Round(p.Width) }, { "h", Box.Round(p.Height) }, { "rot", (double)p.Rotation },
-                    { "ox", Box.Round(p.OriginX) }, { "oy", Box.Round(p.OriginY) }, { "scan", p.Scanned }, { "ocrl", p.HasOcrLayer },
+                    { "ox", Box.Round(p.OriginX) }, { "oy", Box.Round(p.OriginY) }, { "scan", p.Scanned }, { "ocrl", p.HasOcrLayer }, { "outl", p.OutlinedText },
                     { "ocrc", Box.Round(p.OcrConfidence) }, { "ocrlang", p.OcrLanguages ?? string.Empty }, { "x", p.Extracted },
                     { "img", p.Images.Select(i => (object)i.ToJson()).ToList() }, { "tables", (double)p.TableCount }, { "blocks", blocks },
                 });
@@ -348,7 +349,7 @@ namespace TextX.Core.Documents
                 var page = new DocPage
                 {
                     Index = (int)Num(pd, "i"), Width = (float)Num(pd, "w"), Height = (float)Num(pd, "h"), Rotation = (int)Num(pd, "rot"),
-                    OriginX = (float)Num(pd, "ox"), OriginY = (float)Num(pd, "oy"), Scanned = Bool(pd, "scan"), HasOcrLayer = Bool(pd, "ocrl"),
+                    OriginX = (float)Num(pd, "ox"), OriginY = (float)Num(pd, "oy"), Scanned = Bool(pd, "scan"), HasOcrLayer = Bool(pd, "ocrl"), OutlinedText = Bool(pd, "outl"),
                     OcrConfidence = (float)Num(pd, "ocrc"), OcrLanguages = Json.GetString(pd, "ocrlang"), Extracted = Bool(pd, "x"),
                     TableCount = (int)Num(pd, "tables"),
                 };

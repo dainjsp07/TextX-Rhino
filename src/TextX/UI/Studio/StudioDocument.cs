@@ -668,7 +668,7 @@ namespace TextX.UI.Studio
                 await Task.Run(() =>
                 {
                     using (var images = new PageImages(project.PdfPath))
-                        DocxWriter.Write(project, path, new DocxOptions { Text = mode, ImageProvider = images.Crop, Fonts = DocumentServices.Fonts });
+                        DocxWriter.Write(project, path, new DocxOptions { Text = mode, ImageProvider = (pg, box) => DocumentServices.CompactImage(images.Crop(pg, box)), Fonts = DocumentServices.Fonts });
                 }, ct);
             });
             if (!ok) return;
