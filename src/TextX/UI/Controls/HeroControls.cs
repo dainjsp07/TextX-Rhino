@@ -2,6 +2,7 @@ using System;
 using Eto.Drawing;
 using Eto.Forms;
 using TextX.Core;
+using TextX.Core.Motion;
 using TextX.Core.Text;
 using TextX.UI.Motion;
 using TextX.UI.Theming;
