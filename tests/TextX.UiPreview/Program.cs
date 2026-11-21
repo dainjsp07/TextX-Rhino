@@ -148,6 +148,14 @@ namespace TextX.UiPreview
             _window.ClientSize = new Eto.Drawing.Size(940, 820);
             await Task.Delay(2000);
             Capture("studio-9-home-narrow.png");
+
+            // the tiles beside a narrow translator (as in a window just wider than the build machine's screen)
+            typeof(StudioWindow).GetField("HomeWideFrom", BindingFlags.Static | BindingFlags.NonPublic).SetValue(null, 700);
+            typeof(StudioWindow).GetField("_homeWide", BindingFlags.Instance | BindingFlags.NonPublic).SetValue(_window, null);
+            Call("ArrangeHome");
+            source.Text = "Ground floor plan - Scale 1:50";
+            await Task.Delay(4000);
+            Capture("studio-9b-home-wide-compact.png");
         }
 
         private static void Point(TextX.UI.Controls.BentoTile tile, int stop)

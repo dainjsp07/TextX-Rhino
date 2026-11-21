@@ -33,7 +33,8 @@ Without the .NET SDK, `tools\build-roslyn.ps1` builds with the Roslyn compiler t
 | `src/TextX/Core` | No Rhino dependency, fully unit-tested: Unicode bidi algorithm (`Text/Bidi.cs`), Arabic shaping, RTL composition and wrapping, translation engine, providers, glossary, memory, JSON, versions and update feed (`Updates/`) |
 | `src/TextX/Integration` | Rhino side: reading / writing annotations (`AnnotationEngine`), metadata, print / PDF switching (`PrintSwapManager`), settings (`TextXSettings`), update checks (`UpdateService`), diagnostics |
 | `src/TextX/Commands` | The `TR…` commands |
-| `src/TextX/UI` | `TextXWindow` (the TR window), dialogs (`SettingsDialog`, `ManageDialog`, `AboutDialog`), `FormatPanel`, viewport preview conduit |
+| `src/TextX/UI` | Dialogs (`SettingsDialog`, `ManageDialog`, `AboutDialog`), `FormatPanel` (Rhino's text properties), `RhinoTranslatorBridge` (the Rhino side of the translator on Studio's Home), viewport preview conduit |
+| `src/TextX/UI/Studio` | Text X Studio, the window of `TR` and `TRStudio`: Home with the translator (`StudioTranslator`), Document, Schedules, Picture or screenshot |
 | `src/TextX/UI/Theming` | Colours (`ThemeColors`: Graphite and Deep Navy, plus light), fonts, vector icons |
 | `src/TextX/UI/Controls` | Custom-drawn Eto controls: buttons, cards, tabs, object list, pickers, options, sheet preview |
 | `src/TextX/BuildInfo.cs` | Version, package name and update location as compiled in from `VERSION` / `Directory.Build.props` |
