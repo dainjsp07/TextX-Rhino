@@ -187,6 +187,7 @@ namespace TextX.UI.Studio
             int w = ClientSize.Width - _tabs.Width;
             if (w <= 0) return;
             _pageHint.Visible = w >= 950;
+            FitDocumentToolbar(w);
             bool small = w < 820;
             if (_headerSmall == small) return;
             _headerSmall = small;

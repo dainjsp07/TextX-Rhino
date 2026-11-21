@@ -41,6 +41,7 @@ namespace TextX.UI.Studio
         {
             _docTitle = Ui.Label(_scope, "No document open", 15f, true);
             _docInfo = Ui.Label(_scope, "Open a PDF to translate it.", 12.5f, false, p => p.Muted);
+            _docInfo.Wrap = WrapMode.None;
             _checkPill = new Pill(string.Empty, p => p.WarningSoft, p => p.Warning) { Visible = false, Backdrop = p => p.Window };
 
             _translate = new FlatButton("Translate", IconKind.Translate, ButtonKind.Primary, 32) { ToolTip = "Translate the whole document into the language chosen at the top" };
@@ -60,6 +61,7 @@ namespace TextX.UI.Studio
 
             var toolbar = new TableLayout { Spacing = new Size(8, 0) };
             toolbar.Rows.Add(new TableRow(new TableCell(Ui.Row(10, _docInfo, _checkPill), true), new TableCell(Ui.Row(8, _newPdf, summary, check, schedule, export, _translate), false)));
+            _docSmallButtons = new[] { _newPdf, summary, check, schedule };
 
             // the page is the hero: a stage card with the page(s) and a floating pill toolbar
             var prev = new FlatButton(string.Empty, IconKind.Prev, ButtonKind.Secondary, 32) { ToolTip = "Previous page (Page Up)", Backdrop = p => p.Surface };
@@ -105,6 +107,24 @@ namespace TextX.UI.Studio
 
         private Control _docEmpty;
         private FlatButton _newPdf;
+        private FlatButton[] _docSmallButtons;
+        private string[] _docButtonNames;
+        private bool? _docSmall;
+
+        /// <summary>Smaller windows: New PDF, Summary, Check and Schedule keep only their icons (the names stay in their tooltips).</summary>
+        private void FitDocumentToolbar(int width)
+        {
+            if (_docSmallButtons == null) return;
+            bool small = width < 1000;
+            if (_docSmall == small) return;
+            _docSmall = small;
+            if (_docButtonNames == null) _docButtonNames = _docSmallButtons.Select(x => x.Text).ToArray();
+            for (int i = 0; i < _docSmallButtons.Length; i++)
+            {
+                _docSmallButtons[i].PaddingX = small ? 0 : 14;
+                _docSmallButtons[i].Text = small ? string.Empty : _docButtonNames[i];
+            }
+        }
 
         /// <summary>Closes the open document (it stays in Recent) and asks for another PDF.</summary>
         private void NewPdf()
@@ -378,7 +398,7 @@ namespace TextX.UI.Studio
             _docTitle.Text = project.Name;
             if (_viewerHost != null && _viewerHost.Content == _docEmpty) LayoutViewer();
             int scanned = project.Pages.Count(p => p.Scanned);
-            string src = string.IsNullOrEmpty(project.SourceLang) ? "language detected when translating" : Languages.EnglishName(project.SourceLang);
+            string src = string.IsNullOrEmpty(project.SourceLang) ? "Auto-detect" : Languages.EnglishName(project.SourceLang);
             int pct = project.TotalBlocks == 0 ? 0 : (int)Math.Round(100.0 * project.TranslatedBlocks / project.TotalBlocks);
             _docInfo.Text = project.PageCount + (project.PageCount == 1 ? " page" : " pages") + (scanned > 0 ? " (" + scanned + " scanned)" : string.Empty) +
                             "   ·   " + src + " → " + Languages.EnglishName(project.TargetLang) +
