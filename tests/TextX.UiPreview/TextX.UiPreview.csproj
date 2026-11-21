@@ -1,0 +1,42 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!--
+    Preview harness for Text X Studio (development builds only, run by tools/ui-preview.ps1 on CI).
+    Runs the real Studio window on Eto/WPF outside Rhino (Rhino calls are stubbed in Shims.cs),
+    drives it through a document, schedules and the tools, and saves screenshots of each screen.
+  -->
+
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net48</TargetFramework>
+    <LangVersion>7.3</LangVersion>
+    <Nullable>disable</Nullable>
+    <UseWPF>true</UseWPF>
+    <PlatformTarget>x64</PlatformTarget>
+    <AssemblyName>TextX.UiPreview</AssemblyName>
+    <RootNamespace>TextX</RootNamespace>
+    <AssemblyTitle>Text X</AssemblyTitle>
+    <NoWarn>$(NoWarn);CS1591;NU1701;CS0108</NoWarn>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Eto.Platform.Wpf" Version="2.*" />
+    <PackageReference Include="Microsoft.NETFramework.ReferenceAssemblies" Version="1.0.3" PrivateAssets="all" />
+    <Reference Include="System.Net.Http" />
+    <Reference Include="System.IO.Compression" />
+    <Reference Include="System.IO.Compression.FileSystem" />
+    <Reference Include="System.Drawing" />
+    <Reference Include="System.Security" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Compile Include="..\..\src\TextX\Core\**\*.cs" Link="Core\%(RecursiveDir)%(Filename)%(Extension)" />
+    <Compile Include="..\..\src\TextX\UI\Controls\**\*.cs" Link="UI\Controls\%(RecursiveDir)%(Filename)%(Extension)" />
+    <Compile Include="..\..\src\TextX\UI\Theming\**\*.cs" Link="UI\Theming\%(RecursiveDir)%(Filename)%(Extension)" />
+    <Compile Include="..\..\src\TextX\UI\Studio\**\*.cs" Link="UI\Studio\%(RecursiveDir)%(Filename)%(Extension)" />
+    <Compile Include="..\..\src\TextX\Integration\DocumentServices.cs" Link="Integration\DocumentServices.cs" />
+    <Compile Include="..\..\src\TextX\Integration\Diagnostics.cs" Link="Integration\Diagnostics.cs" />
+    <Compile Include="..\..\src\TextX\BuildInfo.cs" Link="BuildInfo.cs" />
+  </ItemGroup>
+
+</Project>

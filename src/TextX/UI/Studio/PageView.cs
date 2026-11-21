@@ -1,0 +1,151 @@
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using Eto.Drawing;
+using Eto.Forms;
+using TextX.Core.Documents;
+using TextX.UI.Theming;
+
+namespace TextX.UI.Studio
+{
+    /// <summary>
+    /// Shows one rendered PDF page fitted to the control, with the selected paragraph outlined and
+    /// paragraphs to check marked. Clicking text on the page selects its paragraph.
+    /// </summary>
+    public sealed class PageView : Drawable
+    {
+        private Bitmap _image;
+        private DocPage _page;
+        private float _pixelsPerPoint = 1f;
+        private string _placeholder = string.Empty;
+
+        public event EventHandler<DocBlock> BlockClicked;
+
+        public PageView()
+        {
+            CanFocus = false;
+            BackgroundColor = Theme.Current.Window;
+        }
+
+        /// <summary>Paragraphs drawn with a warning outline.</summary>
+        public HashSet<DocBlock> Flagged { get; } = new HashSet<DocBlock>();
+
+        public DocBlock Selected { get; private set; }
+
+        public string Caption { get; set; }
+
+        public void SetImage(Bitmap image, DocPage page, float pixelsPerPoint)
+        {
+            var old = _image;
+            _image = image;
+            _page = page;
+            _pixelsPerPoint = pixelsPerPoint <= 0 ? 1f : pixelsPerPoint;
+            _placeholder = string.Empty;
+            if (old != null && !ReferenceEquals(old, image)) old.Dispose();
+            Invalidate();
+        }
+
+        public void SetPlaceholder(string text)
+        {
+            if (_image != null) { _image.Dispose(); _image = null; }
+            _placeholder = text ?? string.Empty;
+            Invalidate();
+        }
+
+        public void Select(DocBlock block)
+        {
+            Selected = block;
+            Invalidate();
+        }
+
+        private RectangleF ImageRect()
+        {
+            if (_image == null) return RectangleF.Empty;
+            float pad = 14f, top = string.IsNullOrEmpty(Caption) ? pad : 30f;
+            float aw = Math.Max(10, Width - 2 * pad), ah = Math.Max(10, Height - top - pad);
+            float s = Math.Min(aw / _image.Width, ah / _image.Height);
+            float w = _image.Width * s, h = _image.Height * s;
+            return new RectangleF((Width - w) / 2f, top + (ah - h) / 2f, w, h);
+        }
+
+        /// <summary>A paragraph's box (page points) on screen.</summary>
+        private RectangleF ToScreen(Box b, RectangleF rect)
+        {
+            if (_page == null || _image == null) return RectangleF.Empty;
+            float l, t, w, h;
+            _page.DisplayRect(b, out l, out t, out w, out h);
+            float s = rect.Width / _image.Width * _pixelsPerPoint;
+            return new RectangleF(rect.X + l * s, rect.Y + t * s, w * s, h * s);
+        }
+
+        protected override void OnPaint(PaintEventArgs e)
+        {
+            var g = e.Graphics;
+            var p = Theme.Current;
+            g.FillRectangle(p.Window, new RectangleF(0, 0, Width, Height));
+            if (!string.IsNullOrEmpty(Caption))
+                g.DrawText(Theme.UiFont(11.5f, true), p.Muted, new PointF(14, 8), Caption.ToUpperInvariant());
+            if (_image == null)
+            {
+                if (!string.IsNullOrEmpty(_placeholder))
+                {
+                    var font = Theme.UiFont(13f);
+                    var size = g.MeasureString(font, _placeholder);
+                    g.DrawText(font, p.Muted, new PointF((Width - size.Width) / 2f, (Height - size.Height) / 2f), _placeholder);
+                }
+                return;
+            }
+            var rect = ImageRect();
+            g.FillRectangle(ThemeColors.WithAlpha(Colors.Black, p.IsDark ? 0.35f : 0.12f), new RectangleF(rect.X + 2, rect.Y + 3, rect.Width, rect.Height));
+            g.ImageInterpolation = ImageInterpolation.High;
+            g.DrawImage(_image, rect);
+            g.DrawRectangle(p.Border, rect);
+            foreach (var b in Flagged)
+            {
+                var r = ToScreen(b.Box, rect);
+                r.Inflate(2, 2);
+                g.DrawRectangle(new Pen(p.Warning, 1.4f), r);
+            }
+            if (Selected != null && _page != null && Selected.Page == _page.Index)
+            {
+                var r = ToScreen(Selected.Box, rect);
+                r.Inflate(3, 3);
+                g.FillRectangle(ThemeColors.WithAlpha(p.AccentInk, 0.12f), r);
+                g.DrawRectangle(new Pen(p.AccentInk, 2f), r);
+            }
+        }
+
+        protected override void OnMouseDown(MouseEventArgs e)
+        {
+            base.OnMouseDown(e);
+            if (_page == null || _image == null) return;
+            var rect = ImageRect();
+            var hit = _page.Blocks
+                .Where(b => ToScreen(b.Box, rect).Contains(e.Location) || Inflated(ToScreen(b.Box, rect), 3).Contains(e.Location))
+                .OrderBy(b => b.Box.W * b.Box.H).FirstOrDefault();
+            if (hit == null) return;
+            Select(hit);
+            var h = BlockClicked;
+            if (h != null) h(this, hit);
+            e.Handled = true;
+        }
+
+        private static RectangleF Inflated(RectangleF r, float d)
+        {
+            r.Inflate(d, d);
+            return r;
+        }
+
+        protected override void OnSizeChanged(EventArgs e)
+        {
+            base.OnSizeChanged(e);
+            Invalidate();
+        }
+
+        protected override void Dispose(bool disposing)
+        {
+            if (disposing && _image != null) { _image.Dispose(); _image = null; }
+            base.Dispose(disposing);
+        }
+    }
+}

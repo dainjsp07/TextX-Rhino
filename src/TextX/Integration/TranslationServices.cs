@@ -58,6 +58,25 @@ namespace TextX.Integration
             return new TranslationEngine(provider, fallback, Glossary, Cache);
         }
 
+        /// <summary>
+        /// The engine for documents: services that take one text per request get many paragraphs
+        /// joined into each request (much faster for long documents).
+        /// </summary>
+        public static TranslationEngine CreateDocumentEngine()
+        {
+            var s = Settings;
+            var provider = ProviderFactory.Create(s.ProviderId, s.GetProviderSettings(s.ProviderId));
+            if (JoiningProvider.ShouldWrap(provider)) provider = new JoiningProvider(provider);
+            ITranslationProvider fallback = null;
+            var fb = s.FallbackProviderId;
+            if (!string.IsNullOrEmpty(fb) && fb != s.ProviderId && fb != ProviderIds.Manual)
+            {
+                fallback = ProviderFactory.Create(fb, s.GetProviderSettings(fb));
+                if (JoiningProvider.ShouldWrap(fallback)) fallback = new JoiningProvider(fallback);
+            }
+            return new TranslationEngine(provider, fallback, Glossary, Cache);
+        }
+
         public static void SaveCache()
         {
             try

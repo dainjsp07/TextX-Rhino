@@ -241,6 +241,41 @@ namespace TextX.Integration
         }
 
         /// <summary>Last window position and size as "x,y,width,height" (screen units).</summary>
+        // ------------------------------------------------------------ Text X Studio
+        public string DocumentsDirectory { get { return Path.Combine(SettingsDirectory, "documents"); } }
+        public string TessDataDirectory { get { return Path.Combine(SettingsDirectory, "tessdata"); } }
+
+        public string StudioSourceLanguage
+        {
+            get { return _s.GetString("StudioSource", Core.Languages.AutoDetect); }
+            set { _s.SetString("StudioSource", value ?? Core.Languages.AutoDetect); }
+        }
+
+        public string StudioTargetLanguage
+        {
+            get { return _s.GetString("StudioTarget", "en"); }
+            set { _s.SetString("StudioTarget", value ?? "en"); }
+        }
+
+        public string StudioBounds
+        {
+            get { return _s.GetString("StudioBounds", string.Empty); }
+            set { _s.SetString("StudioBounds", value ?? string.Empty); }
+        }
+
+        /// <summary>Schedules read the translation (true) or the original text.</summary>
+        public bool SchedulesFromTranslation
+        {
+            get { return _s.GetBool("SchedulesFromTranslation", true); }
+            set { _s.SetBool("SchedulesFromTranslation", value); }
+        }
+
+        public double ScheduleTextHeight
+        {
+            get { return _s.GetDouble("ScheduleTextHeight", 0); }
+            set { _s.SetDouble("ScheduleTextHeight", value); }
+        }
+
         public string WindowBounds
         {
             get { return _s.GetString("WindowBounds", string.Empty); }

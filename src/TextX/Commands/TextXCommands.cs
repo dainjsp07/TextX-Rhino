@@ -804,4 +804,68 @@ namespace TextX.Commands
             return task.GetAwaiter().GetResult();
         }
     }
+
+    /// <summary>TRStudio: opens Text X Studio (documents, schedules, pictures, voice, writing).</summary>
+    [Guid("2d0d6d3e-5a63-4c51-9f0f-6a1d4a7b9e11")]
+    public class TrStudioCommand : Command
+    {
+        public override string EnglishName { get { return "TRStudio"; } }
+
+        protected override Result RunCommand(RhinoDoc doc, RunMode mode)
+        {
+            TextX.UI.Studio.StudioWindow.ShowWindow(doc);
+            return Result.Success;
+        }
+    }
+
+    /// <summary>Draws the schedule shown in Text X Studio as a table (text and lines, grouped) at a picked point.</summary>
+    [Guid("2d0d6d3e-5a63-4c51-9f0f-6a1d4a7b9e12")]
+    public class TrPlaceScheduleCommand : Command
+    {
+        public override string EnglishName { get { return "TRPlaceSchedule"; } }
+
+        protected override Result RunCommand(RhinoDoc doc, RunMode mode)
+        {
+            var studio = TextX.UI.Studio.StudioWindow.Instance;
+            var schedule = studio == null ? null : studio.CurrentSchedule;
+            if (schedule == null || schedule.Rows.Count == 0)
+            {
+                RhinoApp.WriteLine("Text X: open a document in Text X Studio (TRStudio), read its schedules, then place one.");
+                return Result.Nothing;
+            }
+            var style = doc.DimStyles.Current;
+            double height = CommandHelpers.Settings.ScheduleTextHeight > 0 ? CommandHelpers.Settings.ScheduleTextHeight : style.TextHeight * Math.Max(1e-6, style.DimensionScale);
+            var heightOption = new OptionDouble(height, 1e-6, 1e6);
+            var titleOption = new OptionToggle(true, "No", "Yes");
+
+            TableLayoutResult table = null;
+            var gp = new GetPoint();
+            gp.SetCommandPrompt("Top-left corner of the schedule");
+            gp.AddOptionDouble("TextHeight", ref heightOption);
+            gp.AddOptionToggle("Title", ref titleOption);
+            gp.DynamicDraw += (s, e) =>
+            {
+                if (table == null) return;
+                var plane = AnnotationEngine.PlacementPlane(e.Viewport.ParentView, e.CurrentPoint, 0);
+                var corners = new[] { plane.Origin, plane.PointAt(table.Width, 0), plane.PointAt(table.Width, -table.Height), plane.PointAt(0, -table.Height), plane.Origin };
+                e.Display.DrawPolyline(corners, System.Drawing.Color.FromArgb(230, 120, 0), 2);
+            };
+            while (true)
+            {
+                table = ScheduleTable.Layout(doc, style, schedule, heightOption.CurrentValue, titleOption.CurrentValue ? studio.CurrentDocumentName : null);
+                var r = gp.Get();
+                if (r == GetResult.Option) continue;
+                if (r != GetResult.Point) return Result.Cancel;
+                break;
+            }
+            CommandHelpers.Settings.ScheduleTextHeight = heightOption.CurrentValue;
+            table = ScheduleTable.Layout(doc, style, schedule, heightOption.CurrentValue, titleOption.CurrentValue ? studio.CurrentDocumentName : null);
+            var view = gp.View();
+            var placement = AnnotationEngine.PlacementPlane(view, gp.Point(), 0);
+            int count = ScheduleTable.Add(doc, view, placement, table);
+            doc.Views.Redraw();
+            studio.OnSchedulePlaced(count);
+            return count > 0 ? Result.Success : Result.Failure;
+        }
+    }
 }

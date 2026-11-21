@@ -66,6 +66,13 @@ jobs:
           name: textx-package
           path: dist/**
 
+      # Development branches: Text X Studio is run outside Rhino and each screen is captured.
+      - name: UI preview
+        if: github.event_name == 'push' && startsWith(github.ref, 'refs/heads/dev/')
+        continue-on-error: true
+        shell: pwsh
+        run: ./tools/ui-preview.ps1
+
       # Development branches: the engine tests' output (rendered pages, exported files) is pushed to the
       # 'ci-preview' branch so it can be reviewed without downloading artifacts.
       - name: Share test output

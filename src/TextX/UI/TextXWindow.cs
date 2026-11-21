@@ -228,7 +228,9 @@ namespace TextX.UI
             var about = new FlatButton(string.Empty, IconKind.Info, ButtonKind.Ghost, 34) { ToolTip = "About " + BuildInfo.ProductName + " and updates (TRAbout)" };
             about.Click += (s, e) => AboutDialog.ShowFor(this);
 
-            var row = Ui.Row(10, group, _provider, Ui.Spring(), about, settings);
+            var studio = new FlatButton("Studio", IconKind.File, ButtonKind.Secondary, 34) { ToolTip = "Text X Studio: translate PDFs keeping their layout, product schedules from drawings, text from pictures, voice and writing check (TRStudio)" };
+            studio.Click += (s, e) => TextX.UI.Studio.StudioWindow.ShowWindow(Doc);
+            var row = Ui.Row(10, group, _provider, Ui.Spring(), studio, about, settings);
             var panel = new Panel { Content = row, Padding = new Padding(14, 11) };
             return _scope.Bind(panel, (x, p) => x.BackgroundColor = p.Window);
         }
@@ -1180,6 +1182,32 @@ namespace TextX.UI
                 _format.ResetDirty();
             }
             SetStatus("Editing a new text. Use Place text or Place leader to add it to the model or a layout.");
+        }
+
+        /// <summary>
+        /// Starts a new text from Text X Studio (text read from a picture, dictated, or typed there),
+        /// ready to place in the model or a layout.
+        /// </summary>
+        public void StartNewText(string source, string translation, string sourceLang, string targetLang)
+        {
+            if (_items.Count > 0) ClearItems();
+            _suppress = true;
+            try
+            {
+                if (!string.IsNullOrEmpty(sourceLang) && _srcLang.Contains(sourceLang)) { _srcLang.SelectedKey = sourceLang; Settings.SourceLanguage = sourceLang; }
+                if (!string.IsNullOrEmpty(targetLang) && _tgtLang.Contains(targetLang)) { _tgtLang.SelectedKey = targetLang; Settings.TargetLanguage = targetLang; }
+            }
+            finally { _suppress = false; }
+            UpdateLanguageLabels();
+            _newItem.Source = source ?? string.Empty;
+            _newItem.Translation = translation ?? string.Empty;
+            _newItem.TranslationEdited = false;
+            ShowItem(_newItem);
+            RefreshList();
+            RefreshSheetPreview();
+            SchedulePreview();
+            if (string.IsNullOrEmpty(translation) && !string.IsNullOrWhiteSpace(source)) TranslateCurrent(false);
+            SetStatus("Text from Text X Studio. Use Place text or Place leader to add it to the model or a layout.");
         }
 
         // ------------------------------------------------------------------ requests for commands
