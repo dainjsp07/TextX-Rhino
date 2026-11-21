@@ -87,6 +87,24 @@ namespace TextX.Tests
                     _log.WriteLine("  EXCEPTION in " + t.Method.Name + ": " + ex);
                 }
             }
+            _log.WriteLine("== Document engine (PDFium, Tesseract)");
+            if (NativeDocumentTests.Available(_log))
+            {
+                foreach (var t in new Action[]
+                {
+                    NativeDocumentTests.Smoke,
+                })
+                {
+                    var sw = System.Diagnostics.Stopwatch.StartNew();
+                    try { t(); }
+                    catch (Exception ex)
+                    {
+                        _failures++;
+                        _log.WriteLine("  EXCEPTION in " + t.Method.Name + ": " + ex);
+                    }
+                    _log.WriteLine("  " + t.Method.Name + " " + sw.ElapsedMilliseconds + " ms");
+                }
+            }
             _log.WriteLine(string.Format("== Unit assertions: {0} passed, {1} failed", _passes, _failures));
             return _failures;
         }
