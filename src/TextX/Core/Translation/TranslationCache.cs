@@ -50,6 +50,17 @@ namespace TextX.Core.Translation
             }
         }
 
+        public bool Remove(string key)
+        {
+            lock (_lock)
+            {
+                if (!_map.Remove(key)) return false;
+                _order.Remove(key);
+                _dirty = true;
+                return true;
+            }
+        }
+
         public void Clear()
         {
             lock (_lock)

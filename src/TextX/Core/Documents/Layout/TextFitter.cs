@@ -1,0 +1,170 @@
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Text;
+using TextX.Core.Documents.Fonts;
+using TextX.Core.Text;
+
+namespace TextX.Core.Documents.Layout
+{
+    public sealed class FittedLine
+    {
+        public string Logical = string.Empty;  // reading order
+        public string Visual = string.Empty;   // drawing order (RTL lines reordered and shaped)
+        public List<TextRun> Runs = new List<TextRun>();
+        public float Width;
+    }
+
+    public sealed class FitResult
+    {
+        public float Size;          // font size used
+        public float Pitch;         // distance between baselines, points
+        public List<FittedLine> Lines = new List<FittedLine>();
+        public bool Overflow;       // did not fit even at the smallest size
+        public float Scale;         // Size / requested size
+        public float Height { get { return Lines.Count == 0 ? 0 : Size + (Lines.Count - 1) * Pitch; } }
+    }
+
+    /// <summary>
+    /// Fits translated text into the box the original text used: wraps it at the box width with
+    /// exact font metrics and reduces the size step by step (down to <c>minScale</c>) until it fits.
+    /// Labels prefer to stay on one line. Right-to-left lines are wrapped in reading order and
+    /// then reordered for drawing.
+    /// </summary>
+    public static class TextFitter
+    {
+        private const string NoLineStart = "、。，．・：；？！）」』】〕〉》〟’”…‥ー々ゝゞヽヾ,.!?)]}:;%";
+
+        public static FitResult Fit(string text, float width, float height, float size, float pitchFactor, bool singleLine,
+                                    bool rtl, FontFace primary, IList<FontFace> fallbacks, float minScale = 0.55f)
+        {
+            text = (text ?? string.Empty).Replace("\r\n", "\n").Replace('\r', '\n');
+            if (pitchFactor < 0.9f || pitchFactor > 3f) pitchFactor = 1.2f;
+            width = Math.Max(width, size * 2);
+            float minSize = Math.Max(3.5f, size * minScale);
+            FitResult best = null;
+            // labels: first try to stay on one line at any allowed size, then allow wrapping
+            for (int pass = singleLine ? 0 : 1; pass < 2; pass++)
+            {
+                for (float s = size; ; s *= 0.94f)
+                {
+                    if (s < minSize) s = minSize;
+                    var lines = Wrap(text, width * 1.02f, s, primary, fallbacks);
+                    var r = new FitResult { Size = s, Pitch = s * pitchFactor, Scale = s / size };
+                    r.Lines = lines.Select(l => MakeLine(l, s, rtl, primary, fallbacks)).ToList();
+                    bool fitsHeight = r.Height <= height + s * 0.35f;
+                    if (fitsHeight && (pass == 1 || lines.Count <= 1)) return r;
+                    if (best == null || pass == 1) best = r;
+                    if (s <= minSize) break;
+                }
+            }
+            // nothing fits: keep the smallest size; a label stays on one line
+            if (singleLine)
+            {
+                var one = MakeLine(text.Replace('\n', ' '), minSize, rtl, primary, fallbacks);
+                best = new FitResult { Size = minSize, Pitch = minSize * pitchFactor, Scale = minSize / size, Lines = new List<FittedLine> { one } };
+            }
+            best.Overflow = true;
+            return best;
+        }
+
+        private static FittedLine MakeLine(string logical, float size, bool rtl, FontFace primary, IList<FontFace> fallbacks)
+        {
+            var line = new FittedLine { Logical = logical };
+            line.Visual = rtl || RtlText.ContainsRtl(logical)
+                ? RtlText.ToVisual(logical, new RtlOptions { Direction = rtl ? BaseDirection.Rtl : BaseDirection.Ltr })
+                : logical;
+            line.Runs = FontCatalog.Runs(line.Visual, primary, fallbacks, size);
+            line.Width = line.Runs.Sum(r => r.Width);
+            return line;
+        }
+
+        /// <summary>Greedy word wrap at <paramref name="width"/>; explicit newlines are kept.</summary>
+        public static List<string> Wrap(string text, float width, float size, FontFace primary, IList<FontFace> fallbacks)
+        {
+            var result = new List<string>();
+            foreach (var paragraph in text.Split('\n'))
+            {
+                var tokens = Tokens(paragraph);
+                var line = new StringBuilder();
+                float lineWidth = 0;
+                foreach (var token in tokens)
+                {
+                    float w = FontCatalog.Measure(token, primary, fallbacks, size);
+                    if (line.Length > 0 && lineWidth + w > width && !string.IsNullOrWhiteSpace(token) && !NoLineStart.Contains(token[0]))
+                    {
+                        result.Add(line.ToString().TrimEnd());
+                        line.Clear();
+                        lineWidth = 0;
+                        if (token == " ") continue;
+                    }
+                    if (line.Length == 0 && token == " ") continue;
+                    if (w > width && token.Length > 1 && !string.IsNullOrWhiteSpace(token))
+                    {
+                        // a word longer than the line: break it between characters
+                        foreach (var ch in SplitChars(token))
+                        {
+                            float cw = FontCatalog.Measure(ch, primary, fallbacks, size);
+                            if (line.Length > 0 && lineWidth + cw > width)
+                            {
+                                result.Add(line.ToString());
+                                line.Clear();
+                                lineWidth = 0;
+                            }
+                            line.Append(ch);
+                            lineWidth += cw;
+                        }
+                        continue;
+                    }
+                    line.Append(token);
+                    lineWidth += w;
+                }
+                result.Add(line.ToString().TrimEnd());
+            }
+            while (result.Count > 1 && result[result.Count - 1].Length == 0) result.RemoveAt(result.Count - 1);
+            return result;
+        }
+
+        /// <summary>
+        /// Words with their trailing punctuation; spaces as separate tokens; CJK characters one by one.
+        /// Scripts without spaces and with combining marks (Thai, Khmer ...) stay whole and are only
+        /// split when longer than a line.
+        /// </summary>
+        private static List<string> Tokens(string s)
+        {
+            var tokens = new List<string>();
+            var word = new StringBuilder();
+            for (int i = 0; i < s.Length; i++)
+            {
+                char c = s[i];
+                if (c == ' ' || c == '\t' || c == 0x3000)
+                {
+                    if (word.Length > 0) { tokens.Add(word.ToString()); word.Clear(); }
+                    tokens.Add(" ");
+                }
+                else if (LayoutAnalyzer.IsCjk(c))
+                {
+                    if (word.Length > 0) { tokens.Add(word.ToString()); word.Clear(); }
+                    tokens.Add(c.ToString());
+                }
+                else
+                {
+                    word.Append(c);
+                    // allow a break after a hyphen or slash inside long words
+                    if ((c == '-' || c == '/') && word.Length > 3) { tokens.Add(word.ToString()); word.Clear(); }
+                }
+            }
+            if (word.Length > 0) tokens.Add(word.ToString());
+            return tokens;
+        }
+
+        private static IEnumerable<string> SplitChars(string s)
+        {
+            for (int i = 0; i < s.Length; i++)
+            {
+                if (char.IsHighSurrogate(s[i]) && i + 1 < s.Length) { yield return s.Substring(i, 2); i++; }
+                else yield return s[i].ToString();
+            }
+        }
+    }
+}

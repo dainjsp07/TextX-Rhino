@@ -82,6 +82,11 @@ namespace TextX.Tests
                 CoreTests.PageFrame,
                 CoreTests.OcrLines,
                 CoreTests.ProjectJson,
+                CoreTests.Fonts,
+                CoreTests.Fitting,
+                CoreTests.Translator,
+                CoreTests.Joining,
+                CoreTests.Guessing,
             })
             {
                 try { t(); }
@@ -98,6 +103,7 @@ namespace TextX.Tests
                 {
                     NativeDocumentTests.Smoke,
                     NativeDocumentTests.Ocr,
+                    NativeDocumentTests.Pipeline,
                 })
                 {
                     var sw = System.Diagnostics.Stopwatch.StartNew();

@@ -47,6 +47,17 @@ namespace TextX.Core.Translation
             _entries.Add(new GlossaryEntry { SourceLang = sourceLang, TargetLang = targetLang, Source = source.Trim(), Target = target.Trim() });
         }
 
+        /// <summary>Entries that apply to a language pair.</summary>
+        public IEnumerable<GlossaryEntry> For(string sourceLang, string targetLang)
+        {
+            return _entries.Where(e => string.Equals(e.TargetLang, targetLang, StringComparison.OrdinalIgnoreCase) && LangMatches(e.SourceLang, sourceLang));
+        }
+
+        public bool Remove(GlossaryEntry entry)
+        {
+            return _entries.Remove(entry);
+        }
+
         private static bool LangMatches(string entryLang, string lang)
         {
             return string.IsNullOrEmpty(entryLang) || entryLang == "*" || lang == Languages.AutoDetect ||

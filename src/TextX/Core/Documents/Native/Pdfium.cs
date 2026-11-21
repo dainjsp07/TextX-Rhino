@@ -467,8 +467,8 @@ namespace TextX.Core.Documents.Native
             }
         }
 
-        /// <summary>Adds one line of text with its baseline origin at (x, y) points.</summary>
-        public void AddText(IntPtr font, float size, string text, double x, double y, uint argb)
+        /// <summary>Adds one line of text with its baseline origin at (x, y) points, rotated by <paramref name="angle"/> radians.</summary>
+        public void AddText(IntPtr font, float size, string text, double x, double y, uint argb, double angle = 0)
         {
             if (string.IsNullOrEmpty(text)) return;
             lock (Pdfium.Sync)
@@ -477,7 +477,9 @@ namespace TextX.Core.Documents.Native
                 if (obj == IntPtr.Zero) throw new PdfException("Could not create text.");
                 N.FPDFText_SetText(obj, text);
                 N.FPDFPageObj_SetFillColor(obj, (argb >> 16) & 0xFF, (argb >> 8) & 0xFF, argb & 0xFF, (argb >> 24) & 0xFF);
-                N.FPDFPageObj_Transform(obj, 1, 0, 0, 1, x, y);
+                double cos = Math.Cos(angle), sin = Math.Sin(angle);
+                if (Math.Abs(sin) < 1e-6) { cos = Math.Sign(cos); sin = 0; }
+                N.FPDFPageObj_Transform(obj, cos, sin, -sin, cos, x, y);
                 N.FPDFPage_InsertObject(_page, obj);
             }
         }

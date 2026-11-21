@@ -205,6 +205,34 @@ namespace TextX.Core.Translation.Providers
             }
         }
 
+        /// <summary>Detects the language of <paramref name="text"/> (a sample is enough). Returns a Text X code, e.g. "he".</summary>
+        public async Task<string> DetectAsync(string text, CancellationToken ct)
+        {
+            if (string.IsNullOrWhiteSpace(text)) return null;
+            if (text.Length > 1200) text = text.Substring(0, 1200);
+            var url = "https://translate.googleapis.com/translate_a/single?client=gtx&dt=t&sl=auto&tl=en&q=" + Uri.EscapeDataString(text);
+            using (var req = new HttpRequestMessage(HttpMethod.Get, url))
+            {
+                var body = await SendAsync(req, ct).ConfigureAwait(false);
+                return ParseDetectedLanguage(body);
+            }
+        }
+
+        /// <summary>The language Google detected (element 2 of the response), as a Text X code.</summary>
+        public static string ParseDetectedLanguage(string body)
+        {
+            var root = Json.Parse(body) as List<object>;
+            var code = root != null && root.Count > 2 ? root[2] as string : null;
+            if (string.IsNullOrEmpty(code)) return null;
+            switch (code)
+            {
+                case "iw": return "he";
+                case "jw": return "jv";
+                case "zh": case "zh-CN": return "zh-CN";
+                default: return code;
+            }
+        }
+
         public static string ParseResponse(string body)
         {
             var root = Json.Parse(body) as List<object>;
