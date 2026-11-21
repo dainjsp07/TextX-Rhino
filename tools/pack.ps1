@@ -88,6 +88,10 @@ $items = @(
 foreach ($dll in $tessDlls) { $items += @{ File = $dll.FullName; Name = 'x64/' + $dll.Name } }
 $yakPath = Join-Path $OutDir $yakName
 New-TextXZip -Path $yakPath -Items $items
+Add-Type -AssemblyName System.IO.Compression.FileSystem
+$zip = [System.IO.Compression.ZipFile]::OpenRead($yakPath)
+try { Write-Host "Package contents:"; foreach ($e in $zip.Entries) { Write-Host ("  {0,12:N0}  {1}" -f $e.Length, $e.FullName) } }
+finally { $zip.Dispose() }
 
 # ---- the shareable zip
 $guide = (Get-Content -Raw -Encoding UTF8 (Join-Path $root 'packaging/INSTALL.txt'))
