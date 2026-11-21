@@ -97,6 +97,7 @@ namespace TextX.UI.Studio
             DocumentServices.Configure();
             BuildLanguageControls();
             Content = BuildLayout();
+            SizeChanged += (s, e) => FitHeader();
             RestoreStudioBounds();
             ShowHome();
             // once the window is on screen, the Home figures show what they do
@@ -153,9 +154,10 @@ namespace TextX.UI.Studio
 
         private Control BuildHeader()
         {
-            _pageTitle = new Label { Text = PageTitles[0], Font = Theme.DisplayFont(20f), VerticalAlignment = VerticalAlignment.Center };
+            _pageTitle = new Label { Text = PageTitles[0], Font = Theme.DisplayFont(20f), VerticalAlignment = VerticalAlignment.Center, Wrap = WrapMode.None };
             _scope.Bind(_pageTitle, (x, p) => x.TextColor = p.Text);
             _pageHint = Ui.Label(_scope, PageHints[0], 12f, false, p => p.Muted);
+            _pageHint.Wrap = WrapMode.None;
             var titles = new TableLayout { Spacing = new Size(0, 0) };
             titles.Rows.Add(new TableRow(_pageTitle));
             titles.Rows.Add(new TableRow(_pageHint));
@@ -168,10 +170,28 @@ namespace TextX.UI.Studio
             _provider.ExtraCommands.Add(new KeyValuePair<string, Action>("Service settings...", OpenSettings));
             var open = new FlatButton("Open a file", IconKind.Plus, ButtonKind.Strong, 32) { ToolTip = "Open a PDF or a picture (you can also drop files on the window)" };
             open.Click += (s, e) => OpenFileDialog();
+            _openFile = open;
             var row = new TableLayout { Spacing = new Size(12, 0) };
             row.Rows.Add(new TableRow(new TableCell(titles, true), new TableCell(Ui.Row(8, languages, _provider, open), false)));
             var panel = new Panel { Content = row, Padding = new Padding(4, 12, 16, 8) };
             return _scope.Bind(panel, (x, p) => x.BackgroundColor = p.Window);
+        }
+
+        private FlatButton _openFile;
+        private bool? _headerSmall;
+
+        /// <summary>Small windows: the page hint goes and Open a file keeps only its icon, so the title stays on one line.</summary>
+        private void FitHeader()
+        {
+            if (_pageHint == null || _openFile == null) return;
+            int w = ClientSize.Width - _tabs.Width;
+            if (w <= 0) return;
+            _pageHint.Visible = w >= 950;
+            bool small = w < 820;
+            if (_headerSmall == small) return;
+            _headerSmall = small;
+            _openFile.PaddingX = small ? 0 : 14;
+            _openFile.Text = small ? string.Empty : "Open a file";
         }
 
         /// <summary>
