@@ -404,7 +404,7 @@ namespace TextX.UI
                     }
                     var pending = svc.PendingVersion;
                     _updateResult.Text = svc.UpdateAvailable
-                        ? BuildInfo.ProductName + " " + t.Result.Version + " is available. Run TRUpdate or use the button in the Text X window."
+                        ? BuildInfo.ProductName + " " + t.Result.Version + " is available. Run TRUpdate or use Install update in Text X Studio."
                         : pending != null
                             ? BuildInfo.ProductName + " " + pending + " is installed and will be used the next time you start Rhino."
                             : "You have the latest version (" + BuildInfo.VersionText + ").";

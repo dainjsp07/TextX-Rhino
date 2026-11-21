@@ -115,7 +115,7 @@ namespace TextX.UI.Studio
         private static readonly string[] PageTitles = { "Text X Studio", "Document", "Schedules", "Picture or screenshot" };
         private static readonly string[] PageHints =
         {
-            "Translate the text in Rhino, documents, drawings and pictures. No account needed.",
+            "Translate the text in Rhino, documents, drawings and pictures.",
             "Translate a PDF and keep its layout. Click any text to edit it.",
             "Products, materials, finishes and title blocks from your drawings.",
             "Its text is read on this computer and translated.",

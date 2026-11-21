@@ -21,6 +21,7 @@ namespace TextX.UI.Studio
         private Label _recentEmpty;
         private FlatButton _recentManage;
         private Panel _homeHost;
+        private Scrollable _homeScroll;
         private Control _heroCard, _featuredTile, _tileGrid;
         private bool? _homeWide;
 
@@ -59,7 +60,6 @@ namespace TextX.UI.Studio
             var recent = Ui.Row(12, Ui.Section(_scope, "Recent"), _recentEmpty, _recent, Ui.Spring(), _recentManage);
 
             _homeHost = new Panel();
-            _homeHost.SizeChanged += (s, e) => ArrangeHome();
             ArrangeHome();
 
             var layout = new TableLayout { Spacing = new Size(0, 12), Padding = new Padding(4, 0, 16, 8) };
@@ -67,6 +67,9 @@ namespace TextX.UI.Studio
             layout.Rows.Add(new TableRow(recent));
             // the page fills the window and scrolls only when the window is shorter than its content
             var scroll = new Scrollable { Content = _scope.Bind(new Panel { Content = layout }, (x, p) => x.BackgroundColor = p.Window), Border = BorderType.None, ExpandContentWidth = true, ExpandContentHeight = true };
+            _homeScroll = scroll;
+            // the arrangement follows the visible width (not the content's, which may be wider)
+            scroll.SizeChanged += (s, e) => ArrangeHome();
             return _scope.Bind(scroll, (x, p) => x.BackgroundColor = p.Window);
         }
 
@@ -77,7 +80,7 @@ namespace TextX.UI.Studio
         private void ArrangeHome()
         {
             if (_homeHost == null) return;
-            int w = _homeHost.Width;
+            int w = _homeScroll == null ? 0 : _homeScroll.Width - 20;
             bool wide = w <= 0 || w >= HomeWideFrom;
             if (_homeWide == wide) return;
             _homeWide = wide;

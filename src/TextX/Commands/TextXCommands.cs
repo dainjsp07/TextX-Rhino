@@ -82,7 +82,7 @@ namespace TextX.Commands
         }
     }
 
-    /// <summary>Select text / leader objects and load them into the Text X window.</summary>
+    /// <summary>Select text / leader objects and load them into the translator on Text X Studio's Home.</summary>
     [Guid("2d0d6d3e-5a63-4c51-9f0f-6a1d4a7b9e02")]
     public class TrEditCommand : Command
     {
@@ -98,7 +98,7 @@ namespace TextX.Commands
         }
     }
 
-    /// <summary>Places the text from the Text X window at a picked point (like the Text command).</summary>
+    /// <summary>Places the translator's text at a picked point (like the Text command).</summary>
     [Guid("2d0d6d3e-5a63-4c51-9f0f-6a1d4a7b9e03")]
     public class TrPlaceTextCommand : Command
     {
@@ -169,7 +169,7 @@ namespace TextX.Commands
         }
     }
 
-    /// <summary>Places the text from the Text X window as a leader (like the Leader command).</summary>
+    /// <summary>Places the translator's text as a leader (like the Leader command).</summary>
     [Guid("2d0d6d3e-5a63-4c51-9f0f-6a1d4a7b9e04")]
     public class TrPlaceLeaderCommand : Command
     {
@@ -250,7 +250,7 @@ namespace TextX.Commands
         }
     }
 
-    /// <summary>Applies the Text X window edits to the loaded objects (undoable).</summary>
+    /// <summary>Applies the translator's edits to the loaded objects (undoable).</summary>
     [Guid("2d0d6d3e-5a63-4c51-9f0f-6a1d4a7b9e05")]
     public class TrApplyCommand : Command
     {
