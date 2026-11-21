@@ -55,6 +55,7 @@ namespace TextX.Tests
             {
                 if (c.Code == '\n') sb.Append('\n');
                 else if (c.Code == 0xA0) sb.Append(' ');
+                else if (c.Code == 0xAD) sb.Append('-');   // the sample's own full fonts share one glyph for both hyphens
                 else if (c.Code >= 32 && c.Code <= 0x10FFFF && (c.Code < 0xD800 || c.Code > 0xDFFF)) sb.Append(char.ConvertFromUtf32(c.Code));
             }
             return sb.ToString();

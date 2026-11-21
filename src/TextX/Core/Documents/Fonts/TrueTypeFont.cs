@@ -22,6 +22,8 @@ namespace TextX.Core.Documents.Fonts
 
         public string FamilyName { get; private set; }
         public string FullName { get; private set; }
+        public string SubfamilyName { get; private set; }
+        public string PostScriptName { get; private set; }
         public int UnitsPerEm { get; private set; }
         public int Ascender { get; private set; }
         public int Descender { get; private set; }  // negative
@@ -178,13 +180,15 @@ namespace TextX.Core.Documents.Fonts
             {
                 int rec = t + 6 + 12 * i;
                 int platform = U16(_data, rec), nameId = U16(_data, rec + 6), len = U16(_data, rec + 8), off = U16(_data, rec + 10);
-                if (nameId != 1 && nameId != 4) continue;
+                if (nameId != 1 && nameId != 2 && nameId != 4 && nameId != 6) continue;
                 if (strings + off + len > _data.Length) continue;
                 string value = platform == 3 || platform == 0
                     ? Encoding.BigEndianUnicode.GetString(_data, strings + off, len)
                     : Encoding.ASCII.GetString(_data, strings + off, len);
                 if (nameId == 1 && (FamilyName == null || platform == 3)) FamilyName = value;
                 if (nameId == 4 && (FullName == null || platform == 3)) FullName = value;
+                if (nameId == 2 && (SubfamilyName == null || platform == 3)) SubfamilyName = value;
+                if (nameId == 6 && (PostScriptName == null || platform == 3)) PostScriptName = value;
             }
         }
 
@@ -276,6 +280,16 @@ namespace TextX.Core.Documents.Fonts
         /// </summary>
         public byte[] Subset(ICollection<int> codePoints)
         {
+            return Subset(codePoints, null);
+        }
+
+        /// <summary>
+        /// The subset's PostScript name gets the six-letter tag PDF uses for subsets ("ABCDEF+Arial-BoldMT").
+        /// Besides convention this matters: PDF writers match fonts by name, and an untagged subset could be
+        /// mistaken for the document's own full font of the same name (drawing the wrong glyphs).
+        /// </summary>
+        public byte[] Subset(ICollection<int> codePoints, string tag)
+        {
             if (IsCff || !_tables.ContainsKey("glyf") || !_tables.ContainsKey("loca") || !_tables.ContainsKey("hmtx")) return ToStandaloneFont();
             int numGlyphs = GlyphCount;
             int head = Table("head");
@@ -354,8 +368,10 @@ namespace TextX.Core.Documents.Fonts
             foreach (var kv in chars) map[kv.Key] = newId[kv.Value];
 
             var tables = new SortedDictionary<string, byte[]>(StringComparer.Ordinal);
-            foreach (var tag in new[] { "head", "hhea", "maxp", "name", "OS/2", "cvt ", "fpgm", "prep", "gasp" })
-                if (_tables.ContainsKey(tag)) tables[tag] = Slice(tag);
+            foreach (var t in new[] { "head", "hhea", "maxp", "OS/2", "cvt ", "fpgm", "prep", "gasp" })
+                if (_tables.ContainsKey(t)) tables[t] = Slice(t);
+            if (string.IsNullOrEmpty(tag)) tag = SubsetTag(this, chars.Keys);
+            tables["name"] = BuildNames(this, tag);
             WU16(tables["head"], 50, 1);        // indexToLocFormat: long
             WU16(tables["hhea"], 34, count);    // numberOfHMetrics
             WU16(tables["maxp"], 4, count);     // numGlyphs
@@ -368,6 +384,54 @@ namespace TextX.Core.Documents.Fonts
             WU32(post, 0, 0x00030000); // no glyph names
             tables["post"] = post;
             return BuildFont(tables);
+        }
+
+        /// <summary>Six capital letters derived from the face and the characters (stable for the same input).</summary>
+        public static string SubsetTag(TrueTypeFont font, IEnumerable<int> codePoints)
+        {
+            unchecked
+            {
+                ulong h = 14695981039346656037UL;
+                foreach (var ch in (font.PostScriptName ?? font.FullName ?? string.Empty)) { h ^= ch; h *= 1099511628211UL; }
+                foreach (var cp in codePoints.OrderBy(c => c)) { h ^= (ulong)cp; h *= 1099511628211UL; }
+                var sb = new StringBuilder(6);
+                for (int i = 0; i < 6; i++) { sb.Append((char)('A' + (int)(h % 26))); h /= 26; }
+                return sb.ToString();
+            }
+        }
+
+        private static byte[] BuildNames(TrueTypeFont font, string tag)
+        {
+            string family = font.FamilyName ?? "Font";
+            string style = font.SubfamilyName ?? "Regular";
+            string ps = font.PostScriptName;
+            if (string.IsNullOrEmpty(ps)) ps = new string((font.FullName ?? family).Where(c => c > 32 && c < 127 && "[](){}<>/%".IndexOf(c) < 0).ToArray());
+            ps = tag + "+" + ps;
+            if (ps.Length > 63) ps = ps.Substring(0, 63);
+            string full = font.FullName ?? (family + " " + style);
+            var records = new List<KeyValuePair<int, string>>
+            {
+                new KeyValuePair<int, string>(1, family), new KeyValuePair<int, string>(2, style),
+                new KeyValuePair<int, string>(3, ps), new KeyValuePair<int, string>(4, full), new KeyValuePair<int, string>(6, ps),
+            };
+            var strings = new System.IO.MemoryStream();
+            var entries = new List<int[]>(); // platform, encoding, language, id, length, offset
+            foreach (var platform in new[] { 1, 3 })
+                foreach (var r in records)
+                {
+                    byte[] bytes = platform == 3 ? Encoding.BigEndianUnicode.GetBytes(r.Value)
+                                                 : Encoding.ASCII.GetBytes(r.Value.All(c => c >= 32 && c < 127) ? r.Value : ps.Substring(tag.Length + 1));
+                    entries.Add(new[] { platform, platform == 3 ? 1 : 0, platform == 3 ? 0x409 : 0, r.Key, bytes.Length, (int)strings.Length });
+                    strings.Write(bytes, 0, bytes.Length);
+                }
+            int header = 6 + 12 * entries.Count;
+            var table = new byte[header + strings.Length];
+            WU16(table, 2, entries.Count);
+            WU16(table, 4, header);
+            for (int i = 0; i < entries.Count; i++)
+                for (int k = 0; k < 6; k++) WU16(table, 6 + 12 * i + 2 * k, entries[i][k]);
+            Buffer.BlockCopy(strings.ToArray(), 0, table, header, (int)strings.Length);
+            return table;
         }
 
         private byte[] Slice(string tag)

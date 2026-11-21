@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 using TextX.Core.Documents;
@@ -83,6 +84,9 @@ namespace TextX.Tests
             True(reparsed.HasChar('H') && reparsed.HasChar('-') && !reparsed.HasChar('Z'), "subset covers exactly the requested characters");
             True(Math.Abs(reparsed.Measure("Hello - Hello", 10) - sans.Font.Measure("Hello - Hello", 10)) < 0.01, "subset measures the same");
             True(Math.Abs(reparsed.AscentFactor - sans.Font.AscentFactor) < 0.001, "subset keeps the metrics");
+            True(reparsed.PostScriptName != null && System.Text.RegularExpressions.Regex.IsMatch(reparsed.PostScriptName, "^[A-Z]{6}\\+") && reparsed.PostScriptName.EndsWith(sans.Font.PostScriptName ?? "?") && reparsed.FamilyName == sans.Font.FamilyName,
+                "subset named with a tag: " + reparsed.PostScriptName);
+            True(TrueTypeFont.SubsetTag(sans.Font, new[] { 65, 66 }) != TrueTypeFont.SubsetTag(sans.Font, new[] { 65, 67 }), "different subsets get different tags");
             if (zh != null)
             {
                 var zsub = zh.Font.Subset(new[] { (int)'中', '文', 'A' });
@@ -215,6 +219,106 @@ namespace TextX.Tests
             var txt = TextExporter.Build(project, ExportText.Translated);
             True(txt.Contains("[fr] Kitchen Cabinets") && txt.Contains("\t"), "text export with tab-separated table: " + txt.Replace("\n", " | "));
             Equal("a b -", TranslatedPdfWriter.NormalizeForPdf("a\u00A0b \u00AD\u2011"), "PDF text normalised");
+        }
+
+        public static void Quality()
+        {
+            var page = new FakePage()
+                .Line("Delivery in 12 weeks for 1,200 units.", 72, 780, 11)
+                .Line("Contact sales@example.com for samples.", 72, 740, 11)
+                .Line("The oak doors are finished with a clear matt lacquer on both faces.", 72, 700, 11)
+                .Line("Fitted by the joinery team on site.", 72, 660, 11)
+                .Line("Plinth height", 72, 620, 11)
+                .Line("Worktops are templated after installation.", 72, 580, 11)
+                .Analyze();
+            var project = new DocProject { Name = "q", PageCount = 1, SourceLang = "en", TargetLang = "ru" };
+            project.Pages.Add(page);
+            var by = page.Blocks.ToDictionary(b => b.Source);
+            Action<string, string> set = (src, tr) => { by[src].Translation = tr; by[src].State = BlockState.Translated; };
+            set("Delivery in 12 weeks for 1,200 units.", "Доставка через 21 неделю для 1 200 единиц.");
+            set("Contact sales@example.com for samples.", "Свяжитесь с sales@exemple.com для образцов.");
+            set("The oak doors are finished with a clear matt lacquer on both faces.", "Дубовые двери.");
+            set("Fitted by the joinery team on site.", "Fitted by the joinery team on site.");
+            set("Worktops are templated after installation.", "Worktops werden nach der Montage vermessen.");
+            by["Plinth height"].State = BlockState.Failed;
+            var glossary = new Glossary();
+            glossary.Add("en", "ru", "oak", "дуб");
+            var issues = QualityChecker.Check(project, glossary);
+            Func<string, QualityIssueKind, bool> has = (src, k) => issues.Any(i => i.Block == by[src] && i.Kind == k);
+            True(has("Delivery in 12 weeks for 1,200 units.", QualityIssueKind.NumbersDiffer), "changed number found: " + string.Join(" / ", issues));
+            True(!has("Delivery in 12 weeks for 1,200 units.", QualityIssueKind.WrongAlphabet), "Cyrillic translation accepted");
+            True(has("Contact sales@example.com for samples.", QualityIssueKind.LinkChanged), "changed e-mail found");
+            True(has("The oak doors are finished with a clear matt lacquer on both faces.", QualityIssueKind.LengthUnusual), "truncated translation found");
+            True(has("The oak doors are finished with a clear matt lacquer on both faces.", QualityIssueKind.GlossaryMissing) == false, "glossary term present (case-insensitive: Дубовые contains дуб)");
+            True(has("Fitted by the joinery team on site.", QualityIssueKind.NotTranslated), "untranslated text found");
+            True(has("Worktops are templated after installation.", QualityIssueKind.WrongAlphabet), "Latin text in a Russian translation found");
+            True(has("Plinth height", QualityIssueKind.Failed), "failed block reported");
+            Equal(0, QualityChecker.Check(new DocProject()).Count, "empty project has no issues");
+            True(QualityChecker.Similarity("The doors are made of oak", "The door is made of oak") > 0.5, "similar sentences");
+            True(QualityChecker.Similarity("The doors are made of oak", "Delivery takes twelve weeks") < 0.2, "different sentences");
+        }
+
+        public static void Summary()
+        {
+            var sentences = new List<string>
+            {
+                "The kitchen cabinets are made of oak veneer with a matt lacquer finish.",
+                "All cabinet doors use soft-close hinges from the same supplier.",
+                "The weather was pleasant during the site visit last Tuesday afternoon.",
+                "Oak veneer panels are edged with solid oak strips on visible edges.",
+                "Worktops are quartz composite, twenty millimetres thick, with polished edges.",
+                "Cabinet carcasses are moisture-resistant board with oak veneer on exposed faces.",
+                "Parking is available behind the building for delivery vans and cars.",
+                "The lacquer finish on oak veneer must be matt and applied in two coats.",
+                "Drawer runners are full-extension with soft-close dampers on all cabinets.",
+                "Quartz worktops are templated on site after the cabinets are installed.",
+            };
+            var top = Summarizer.Rank(sentences, null, 3);
+            Equal(3, top.Count, "three key points");
+            True(top.All(s => s.Contains("oak") || s.Contains("abinet") || s.Contains("uartz")), "central sentences chosen: " + string.Join(" | ", top));
+            True(!top.Any(s => s.Contains("weather") || s.Contains("Parking")), "off-topic sentences left out");
+            True(sentences.IndexOf(top[0]) < sentences.IndexOf(top[1]) && sentences.IndexOf(top[1]) < sentences.IndexOf(top[2]), "key points in document order");
+            Equal(3, Summarizer.SplitSentences("First one here. Second one there! Third? 这是第一句。这是第二句。").Count() - 2, "sentences split (Latin)");
+            Equal(5, Summarizer.SplitSentences("First one here. Second one there! Third? 这是第一句。这是第二句。").Count(), "sentences split (CJK)");
+
+            var page = new FakePage()
+                .Line("Kitchen Specification", 72, 780, 22, bold: true)
+                .Line("Cabinets", 72, 740, 15, bold: true)
+                .Line(sentences[0] + " " + sentences[1], 72, 715, 10)
+                .Analyze();
+            var project = new DocProject { Name = "s", PageCount = 1, SourceLang = "en", TargetLang = "fr" };
+            project.Pages.Add(page);
+            var sum = Summarizer.Summarize(project, false);
+            True(sum.Outline.Count == 2 && sum.Outline[0].Text == "Kitchen Specification" && sum.Outline[0].Level < sum.Outline[1].Level, "outline from headings: " + string.Join(", ", sum.Outline.Select(h => h.Level + " " + h.Text)));
+            True(sum.Words > 20 && sum.ToText().Contains("Key points") && sum.ToText().Contains("Contents"), "summary text:\n" + sum.ToText());
+        }
+
+        public static void Library()
+        {
+            var root = Path.Combine(Path.GetTempPath(), "textx-lib-" + Guid.NewGuid().ToString("N"));
+            try
+            {
+                var pdf = Path.Combine(Path.GetTempPath(), "textx-lib-sample.pdf");
+                File.WriteAllBytes(pdf, Encoding.ASCII.GetBytes("%PDF-1.4\n% test file\n"));
+                var lib = new DocumentLibrary(root);
+                var p = lib.Add(pdf, "de");
+                True(File.Exists(p.StoredPdf) && p.StoredPdf.StartsWith(root), "PDF copied into the library");
+                p.Pages.Add(new FakePage().Line("Hello world", 72, 700, 12).Analyze());
+                p.PageCount = 1;
+                p.Pages[0].Blocks[0].Translation = "Hallo Welt";
+                p.Pages[0].Blocks[0].State = BlockState.Translated;
+                lib.Save(p);
+                var again = lib.Add(pdf, "de");
+                Equal(p.Id, again.Id, "same file reopens the same project");
+                Equal("Hallo Welt", again.Pages[0].Blocks[0].Translation, "translation kept in history");
+                var list = lib.List();
+                Equal(1, list.Count, "one entry");
+                True(list[0].IsTranslated && list[0].TargetLang == "de" && list[0].PageCount == 1, "entry summary");
+                lib.Delete(p.Id);
+                Equal(0, lib.List().Count, "deleted");
+                File.Delete(pdf);
+            }
+            finally { if (Directory.Exists(root)) Directory.Delete(root, true); }
         }
 
         public static void Joining()
