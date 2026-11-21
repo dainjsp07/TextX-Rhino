@@ -97,7 +97,10 @@ namespace TextX.UI.Studio
             DocumentServices.Configure();
             BuildLanguageControls();
             Content = BuildLayout();
+            // the window can be resized by the system (a screen smaller than the saved size) without SizeChanged
             SizeChanged += (s, e) => FitHeader();
+            Shown += (s, e) => FitHeader();
+            _page.SizeChanged += (s, e) => FitHeader();
             RestoreStudioBounds();
             ShowHome();
             // once the window is on screen, the Home figures show what they do
