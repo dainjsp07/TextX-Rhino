@@ -216,9 +216,9 @@ namespace TextX.UI
 
         private Control BuildHeader()
         {
-            var swap = new FlatButton(string.Empty, IconKind.Swap, ButtonKind.Soft, 30) { ToolTip = "Swap languages", Backdrop = p => p.Surface, Radius = 7 };
+            var swap = new FlatButton(string.Empty, IconKind.Swap, ButtonKind.Strong, 30) { ToolTip = "Swap languages", Backdrop = p => p.Surface };
             swap.Click += (s, e) => SwapLanguages();
-            var group = new Card(Ui.Row(4, _srcLang, swap, _tgtLang), new Padding(4), p => p.Surface, p => p.Border, 10f);
+            var group = new Card(Ui.Row(4, _srcLang, swap, _tgtLang), new Padding(10, 4), p => p.Surface, p => p.Border, 19f);
 
             _provider.DotColor = p => StatusDot(p);
             _provider.ToolTip = "Translation service (click to change)";
@@ -316,7 +316,7 @@ namespace TextX.UI
             _updateLater = new FlatButton("Later", IconKind.None, ButtonKind.Ghost, 28) { Backdrop = p => p.AccentSoft };
             _updateLater.Click += (s, e) => UpdateService.Instance.Dismiss();
             var row = Ui.Row(8, _updateText, Ui.Spring(), _updateInstall, _updateDownload, _updateNotes, _updateLater);
-            var card = new Card(row, new Padding(12, 6), p => p.AccentSoft, p => p.AccentLine, 8f);
+            var card = new Card(row, new Padding(14, 6), p => p.AccentSoft, p => p.AccentLine, 18f);
             _updateBar = new Panel { Content = card, Padding = new Padding(14, 10, 14, 0), Visible = false };
             return _scope.Bind((Panel)_updateBar, (x, p) => x.BackgroundColor = p.Window);
         }

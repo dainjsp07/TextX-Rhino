@@ -18,8 +18,10 @@ namespace TextX.UI.Studio
             float size = Math.Min(area.Width, area.Height);
             if (size < 80) return;
             g.AntiAlias = true;
-            float r = Math.Min(size * 0.27f, 92f);
-            float cx = area.Right - r * 1.85f, cy = area.Y + area.Height * 0.5f;
+            float r = Math.Min(Math.Min(size * 0.27f, (area.Width - 110f) / 3.4f), 92f);
+            if (r < 22) return;
+            // keep the chips on the orbit inside the card (the widest one reaches about 50 px past it)
+            float cx = Math.Max(area.X + r * 1.7f, area.Right - r * 1.6f - 62f), cy = area.Y + area.Height * 0.5f;
 
             // orbits
             using (var pen = new Pen(ThemeColors.WithAlpha(p.Accent, 0.5f), 1.2f))
