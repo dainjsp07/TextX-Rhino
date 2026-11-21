@@ -22,7 +22,7 @@ namespace TextX.UI.Studio
     {
         private readonly PageView _originalView = new PageView { Caption = "Original" };
         private readonly PageView _translatedView = new PageView { Caption = "Translation" };
-        private readonly SegmentedControl _viewMode = new SegmentedControl("Side by side", "Translation", "Original");
+        private readonly SegmentedControl _viewMode = new SegmentedControl("Both", "Translation", "Original");
         private readonly GridView _blocks = new GridView { AllowMultipleSelection = false, ShowHeader = true, GridLines = GridLines.Horizontal };
         private Label _docTitle, _docInfo, _pageLabel, _blocksTitle;
         private TextArea _editOriginal, _editTranslation;
@@ -62,7 +62,8 @@ namespace TextX.UI.Studio
             var next = new FlatButton(string.Empty, IconKind.Next, ButtonKind.Secondary, 34) { ToolTip = "Next page (Page Down)", Backdrop = p => p.Surface };
             next.Click += (s, e) => GoToPage(_pageIndex + 1);
             _pageLabel = Ui.Label(_scope, string.Empty, 12.5f, true);
-            _viewMode.Width = 330;
+            _viewMode.Width = 280;
+            _viewMode.ToolTip = "Show both pages side by side, or only one";
             _viewMode.Backdrop = p => p.Surface;
             _viewMode.SelectedIndexChanged += (s, e) => LayoutViewer();
             var pager = new Card(Ui.Row(10, prev, _pageLabel, next, new Panel { Width = 6 }, _viewMode), new Padding(6, 5, 6, 5), p => p.Surface, p => p.Border, 22f) { Backdrop = p => p.Stage };
@@ -141,7 +142,7 @@ namespace TextX.UI.Studio
             save.Click += (s, e) => SaveEditor();
             var again = new FlatButton("Again", IconKind.Refresh, ButtonKind.Secondary, 30) { ToolTip = "Translate the selected paragraph again (your edit is replaced)", Backdrop = p => p.Surface };
             again.Click += (s, e) => RetranslateSelected();
-            var keep = new FlatButton("Keep original", IconKind.Undo, ButtonKind.Secondary, 30) { ToolTip = "Leave the selected text untranslated", Backdrop = p => p.Surface };
+            var keep = new FlatButton("Keep", IconKind.Undo, ButtonKind.Secondary, 30) { ToolTip = "Leave the selected text untranslated", Backdrop = p => p.Surface };
             keep.Click += (s, e) => KeepSelected();
             var term = new FlatButton("Glossary", IconKind.Plus, ButtonKind.Soft, 30) { ToolTip = "Always translate a word or phrase your way", Backdrop = p => p.Surface };
             term.Click += (s, e) => AddGlossaryTerm();
@@ -156,7 +157,7 @@ namespace TextX.UI.Studio
             panel.Rows.Add(new TableRow(Ui.FieldBox(_editTranslation)));
             panel.Rows.Add(new TableRow(Ui.Row(6, save, again, keep, Ui.Spring(), term)));
             var card = new Card(panel, new Padding(16, 16, 16, 14), p => p.Surface, p => p.Border, 24f);
-            return new Panel { Content = card, Width = 440 };
+            return new Panel { Content = card, Width = 410 };
         }
 
         private static string Short(string s)

@@ -41,9 +41,17 @@ namespace TextX.UI.Studio
             heroBody.Rows.Add(new TableRow(new Panel { Height = 8 }));
             heroBody.Rows.Add(new TableRow(Ui.Row(10, open, paste, Ui.Spring())));
             heroBody.Rows.Add(new TableRow { ScaleHeight = true });
+            heroText.Width = 400;
             var heroRow = new TableLayout { Spacing = new Size(16, 0) };
-            heroRow.Rows.Add(new TableRow(new TableCell(heroBody, true), new TableCell(new HeroArt { Width = 230 }, false)) { ScaleHeight = true });
+            heroRow.Rows.Add(new TableRow(new TableCell(heroBody, false), new TableCell(null, true)) { ScaleHeight = true });
             var hero = new Card(heroRow, new Padding(30, 26, 22, 24), p => p.Hero, p => p.IsDark ? p.Border : p.Hero, 26f) { Height = 352 };
+            // the picture sits in the free space at the right (drawn behind the text)
+            hero.Paint += (s, e) =>
+            {
+                try { HeroArt.Draw(e.Graphics, new RectangleF(460, 0, Math.Max(0, hero.Width - 460), hero.Height)); }
+                catch (Exception ex) { Diagnostics.Log("hero art: " + ex.Message); }
+            };
+            hero.SizeChanged += (s, e) => hero.Invalidate();
 
             // what can be done
             var translate = new BentoTile(IconKind.Translate, "Translate a PDF", "Any language, layout kept. Compare side by side, edit, save as PDF, Word or text.", "Documents") { Featured = true };
@@ -59,7 +67,7 @@ namespace TextX.UI.Studio
             side.Rows.Add(new TableRow(translate));
             side.Rows.Add(new TableRow(schedule));
             var top = new TableLayout { Spacing = new Size(16, 0) };
-            top.Rows.Add(new TableRow(new TableCell(hero, true), new TableCell(new Panel { Content = side, Width = 340 }, false)));
+            top.Rows.Add(new TableRow(new TableCell(hero, true), new TableCell(new Panel { Content = side, Width = 300 }, false)));
             var second = new TableLayout { Spacing = new Size(16, 0) };
             second.Rows.Add(new TableRow(new TableCell(picture, true), new TableCell(speak, true), new TableCell(BuildHistoryCard(), true)));
 

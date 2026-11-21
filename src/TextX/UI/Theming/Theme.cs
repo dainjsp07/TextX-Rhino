@@ -58,8 +58,10 @@ namespace TextX.UI.Theming
             var sb = new System.Text.StringBuilder(t.Length * 2);
             for (int i = 0; i < t.Length; i++)
             {
-                sb.Append(t[i]);
-                if (i < t.Length - 1 && t[i] != ' ' && t[i + 1] != ' ') sb.Append('\u200A');
+                char c = t[i];
+                if (c == ' ') { sb.Append('\u2002'); continue; }          // en space between words
+                sb.Append(c);
+                if (i < t.Length - 1 && t[i + 1] != ' ') sb.Append('\u2009'); // thin space between letters
             }
             return sb.ToString();
         }

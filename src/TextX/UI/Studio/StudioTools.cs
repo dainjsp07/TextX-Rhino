@@ -122,6 +122,7 @@ namespace TextX.UI.Studio
 
             _toolMode.Width = 600;
             _toolMode.Height = 40;
+            _toolMode.Backdrop = p => p.Window;
             _toolMode.SelectedIndex = 0;
             _toolMode.SelectedIndexChanged += (s, e) => ShowTool(_toolMode.SelectedIndex);
             _scope.Bind(_toolBar, (x, p) => x.BackgroundColor = p.Window);

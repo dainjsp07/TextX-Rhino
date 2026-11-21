@@ -15,20 +15,39 @@ namespace TextX.UI.Controls
     /// </summary>
     public static class NativeTheme
     {
-        private static readonly Type BrushType = Type.GetType("System.Windows.Media.SolidColorBrush, PresentationCore");
-        private static readonly Type MediaColor = Type.GetType("System.Windows.Media.Color, PresentationCore");
-        private static readonly Type StyleType = Type.GetType("System.Windows.Style, PresentationFramework");
-        private static readonly Type SetterType = Type.GetType("System.Windows.Setter, PresentationFramework");
-        private static readonly Type ControlType = Type.GetType("System.Windows.Controls.Control, PresentationFramework");
-        private static readonly Type HeaderType = Type.GetType("System.Windows.Controls.Primitives.DataGridColumnHeader, PresentationFramework");
-        private static readonly Type ThicknessType = Type.GetType("System.Windows.Thickness, PresentationFramework");
-        private static readonly Type FontWeights = Type.GetType("System.Windows.FontWeights, PresentationCore");
+        private static readonly System.Collections.Generic.Dictionary<string, Type> Types = new System.Collections.Generic.Dictionary<string, Type>();
+
+        /// <summary>A WPF type by its full name, from the assemblies already loaded (WPF is loaded by then).</summary>
+        private static Type Find(string fullName)
+        {
+            Type t;
+            if (Types.TryGetValue(fullName, out t) && t != null) return t;
+            t = null;
+            foreach (var a in AppDomain.CurrentDomain.GetAssemblies())
+            {
+                try { t = a.GetType(fullName, false); }
+                catch (Exception) { t = null; }
+                if (t != null) break;
+            }
+            Types[fullName] = t;
+            return t;
+        }
+
+        private static Type BrushType { get { return Find("System.Windows.Media.SolidColorBrush"); } }
+        private static Type MediaColor { get { return Find("System.Windows.Media.Color"); } }
+        private static Type StyleType { get { return Find("System.Windows.Style"); } }
+        private static Type SetterType { get { return Find("System.Windows.Setter"); } }
+        private static Type ControlType { get { return Find("System.Windows.Controls.Control"); } }
+        private static Type HeaderType { get { return Find("System.Windows.Controls.Primitives.DataGridColumnHeader"); } }
+        private static Type ThicknessType { get { return Find("System.Windows.Thickness"); } }
+        private static Type FontWeights { get { return Find("System.Windows.FontWeights"); } }
 
         public static void StyleGrid(GridView grid, ThemeColors p)
         {
-            if (grid == null || BrushType == null || MediaColor == null) return;
+            if (grid == null) return;
             try
             {
+                if (BrushType == null || MediaColor == null) return;
                 var native = grid.ControlObject;
                 if (native == null || native.GetType().GetProperty("RowBackground") == null) return;
                 Set(native, "Background", Brush(p.Surface));
