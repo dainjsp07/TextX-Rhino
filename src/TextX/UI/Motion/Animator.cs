@@ -40,6 +40,9 @@ namespace TextX.UI.Motion
 
         public static double Now { get { return Watch.Elapsed.TotalMilliseconds; } }
 
+        /// <summary>Follow "Show animations in Windows" (true), or animate regardless (previews and recordings).</summary>
+        public static bool FollowWindowsSetting { get; set; } = true;
+
         public static Board Register(Control owner, Func<double, double, bool> tick)
         {
             return new Board(owner, tick);
@@ -109,6 +112,7 @@ namespace TextX.UI.Motion
         /// <summary>Reads "Show animations in Windows" at most every 5 seconds.</summary>
         private static void CheckMotion()
         {
+            if (!FollowWindowsSetting) { Clock.Reduced = false; return; }
             double now = Now;
             if (now - _checked < 5000) return;
             _checked = now;

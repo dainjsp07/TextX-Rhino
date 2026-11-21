@@ -55,6 +55,8 @@ namespace TextX.UiPreview
 
         private static async Task Walk(string sample)
         {
+            // the build machine has Windows animations off; the preview records the motion anyway
+            TextX.UI.Motion.Animator.FollowWindowsSetting = false;
             _window = StudioWindow.ShowWindow(null);
             _window.ClientSize = new Eto.Drawing.Size(1360, 860);
             await Task.Delay(1500);
@@ -169,6 +171,8 @@ namespace TextX.UiPreview
             {
                 var fe = control.ControlObject as System.Windows.FrameworkElement;
                 if (fe == null) { Problem("no WPF element for " + name); return; }
+                fe.InvalidateVisual();
+                fe.UpdateLayout();
                 int w = (int)Math.Ceiling(fe.ActualWidth), h = (int)Math.Ceiling(fe.ActualHeight);
                 if (w < 2 || h < 2) { Problem("empty control for " + name); return; }
                 var dv = new System.Windows.Media.DrawingVisual();
