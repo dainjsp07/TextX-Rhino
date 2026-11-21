@@ -108,9 +108,9 @@ namespace TextX.Core.Documents
                 ct.ThrowIfCancellationRequested();
                 if (options.Status != null) options.Status.Report("Reading page " + (index + 1) + " with OCR");
                 var ocr = await Task.Run(() => OcrEngine.Recognize(gray, background.Width, background.Height, dpi, languages, options.SparseOcr), ct).ConfigureAwait(false);
-                var lines = OcrLayout.BuildLines(ocr, page, scale);
-                page.Blocks = LayoutAnalyzer.BuildBlocks(page, lines);
                 var info = Info(background);
+                var lines = OcrLayout.BuildLines(ocr, page, scale, 30f, info);
+                page.Blocks = LayoutAnalyzer.BuildBlocks(page, lines);
                 foreach (var b in page.Blocks)
                 {
                     b.FromOcr = true;

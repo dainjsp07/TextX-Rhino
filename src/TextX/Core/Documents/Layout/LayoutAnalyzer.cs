@@ -4,6 +4,7 @@ using System.Globalization;
 using System.Linq;
 using System.Text;
 using System.Text.RegularExpressions;
+using TextX.Core.Translation;
 using TextX.Core.Documents.Native;
 using TextX.Core.Text;
 
@@ -254,7 +255,8 @@ namespace TextX.Core.Documents.Layout
             if (block.Lines.Count >= 2)
             {
                 float prevPitch = block.Lines[block.Lines.Count - 2].Baseline - last.Baseline;
-                if (Math.Abs(pitch - prevPitch) > size * 0.45f) return false; // paragraph spacing
+                // paragraph spacing (OCR baselines are estimates, so allow them more play)
+                if (Math.Abs(pitch - prevPitch) > size * (line.FontName == string.Empty && last.FontName == string.Empty ? 0.6f : 0.45f)) return false;
             }
             // horizontal: overlapping columns, or the same left / right / centre alignment
             float overlap = block.Box.OverlapX(line.Box);
@@ -295,7 +297,7 @@ namespace TextX.Core.Documents.Layout
             bool endsSentence = Regex.IsMatch(b.Source, @"[\.\!\?。！？:;]\s*$");
             float pageH = page.UserHeight;
             if (ListStart.IsMatch(b.Source)) b.Kind = BlockKind.ListItem;
-            else if (lines.Count <= 3 && len <= 140 && (b.FontSize >= bodySize * 1.2f || (b.Bold && b.FontSize >= bodySize * 0.95f && !endsSentence)))
+            else if (lines.Count <= 3 && len <= 140 && LanguageGuess.HasWords(b.Source) && !TextSegmenter.IsCodeLike(b.Source.Trim()) && (b.FontSize >= bodySize * 1.2f || (b.Bold && b.FontSize >= bodySize * 0.95f && !endsSentence)))
             {
                 b.Kind = BlockKind.Heading;
                 b.Level = b.FontSize >= bodySize * 1.75f ? 1 : b.FontSize >= bodySize * 1.3f ? 2 : 3;

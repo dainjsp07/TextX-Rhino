@@ -321,6 +321,46 @@ namespace TextX.Tests
             finally { if (Directory.Exists(root)) Directory.Delete(root, true); }
         }
 
+        public static void Room()
+        {
+            var page = new FakePage()
+                .Line("Code", 62, 605, 9.5f, bold: true).Line("Designation", 142, 605, 9.5f, bold: true).Line("Finition", 342, 605, 9.5f, bold: true)
+                .Line("P-01", 62, 583, 9.5f).Line("Porte haute", 142, 583, 9.5f).Line("Chene laque mat", 342, 583, 9.5f)
+                .Line("T-02", 62, 561, 9.5f).Line("Tiroir", 142, 561, 9.5f).Line("Blanc RAL 9010", 342, 561, 9.5f)
+                .Line("POIGNEE INOX", 400, 300, 9f)
+                .Analyze();
+            var cell = page.Blocks.First(b => b.Source == "Tiroir");
+            Equal(BlockKind.TableCell, cell.Kind, "cell found");
+            float room = TranslatedPdfWriter.RoomAcross(page, cell, BlockAlign.Left, 9.5f);
+            True(room > 180 && room < 200, "middle cell may use its column: " + room);
+            var last = page.Blocks.First(b => b.Source == "Chene laque mat");
+            room = TranslatedPdfWriter.RoomAcross(page, last, BlockAlign.Left, 9.5f);
+            True(room > last.Box.W && room < last.Box.W + 30, "last column stays near the table: " + room + " (text " + last.Box.W + ")");
+            var label = page.Blocks.First(b => b.Source == "POIGNEE INOX");
+            room = TranslatedPdfWriter.RoomAcross(page, label, BlockAlign.Center, 9f);
+            True(room >= label.Box.W * 2 && room <= label.Box.W * 2.5f + 0.1f, "drawing label grows a little: " + room);
+        }
+
+        public static void InkStyle()
+        {
+            // a navy word with regular strokes and a black one with bold strokes, 46 px per em (11 pt at 300 dpi)
+            int w = 400, h = 120;
+            var px = new byte[w * h * 4];
+            for (int i = 0; i < px.Length; i++) px[i] = 250;
+            Action<int, int, int, int, int, int> rect = (x0, y0, x1, y1, rgb, unused) =>
+            {
+                for (int y = y0; y < y1; y++) for (int x = x0; x < x1; x++)
+                    { int p = (y * w + x) * 4; px[p] = (byte)(rgb & 255); px[p + 1] = (byte)((rgb >> 8) & 255); px[p + 2] = (byte)(rgb >> 16); px[p + 3] = 255; }
+            };
+            for (int i = 0; i < 8; i++) rect(10 + i * 18, 10, 14 + i * 18, 44, 0x1A2E5A, 0);   // 4 px stems
+            for (int i = 0; i < 8; i++) rect(210 + i * 20, 10, 217 + i * 20, 44, 0x101010, 0);  // 7 px stems
+            var img = new RenderedImageInfo { Width = w, Height = h, Pixels = px };
+            uint ink; bool bold;
+            True(OcrLayout.InkStyle(img, 5, 5, 160, 48, 46, out ink, out bold) && !bold, "regular strokes");
+            True(Math.Abs((int)((ink >> 16) & 255) - 0x1A) < 8 && Math.Abs((int)(ink & 255) - 0x5A) < 8, "ink colour " + ink.ToString("X8"));
+            True(OcrLayout.InkStyle(img, 205, 5, 380, 48, 46, out ink, out bold) && bold, "bold strokes");
+        }
+
         public static void Joining()
         {
             var fake = new DocFakeProvider();

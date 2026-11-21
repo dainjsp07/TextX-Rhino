@@ -90,6 +90,8 @@ namespace TextX.Tests
                 CoreTests.Quality,
                 CoreTests.Summary,
                 CoreTests.Library,
+                CoreTests.Room,
+                CoreTests.InkStyle,
                 CoreTests.Guessing,
             })
             {

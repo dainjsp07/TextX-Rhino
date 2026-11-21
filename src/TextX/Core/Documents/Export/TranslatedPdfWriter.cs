@@ -237,7 +237,8 @@ namespace TextX.Core.Documents.Export
             var primary = fonts.Primary(FontCatalog.KindOf(b.FontName), b.Bold, b.Italic, lang);
             if (primary == null) throw new InvalidOperationException("No usable font was found on this computer.");
             var fallbacks = fonts.FallbackFaces(lang);
-            uint color = b.FromOcr ? (Luma(b.Background) < 110 ? 0xFFFFFFFFu : 0xFF141414u) : b.Color;
+            uint color = b.Color;
+            if (b.FromOcr && Math.Abs(Luma(b.Color) - Luma(b.Background)) < 80) color = Luma(b.Background) < 110 ? 0xFFFFFFFFu : 0xFF141414u;
             float size = b.FontSize > 0 ? b.FontSize : 10f;
             bool flip = translated && b.SourceRtl != rtl;
 
@@ -254,13 +255,14 @@ namespace TextX.Core.Documents.Export
             }
 
             bool singleLine = b.Lines.Count == 1 && (b.Kind == BlockKind.Label || b.Kind == BlockKind.HeaderFooter || b.Kind == BlockKind.TableCell || b.Kind == BlockKind.Heading);
-            float width = b.Box.W;
-            if (b.Kind == BlockKind.Label || b.Kind == BlockKind.Heading) width *= 1.15f; // short texts may grow a little
+            var align = EffectiveAlign(b.Align, rtl, flip);
+            // short texts may use the free space around them (up to the next text, image or table column)
+            float width = b.Lines.Count == 1 ? RoomAcross(page, b, align, size) : b.Box.W;
             float height = b.Box.H + (b.Lines.Count > 1 ? (b.LinePitch - 1f) * size : 0f);
+            if (b.Lines.Count > 1) height = Math.Max(height, RoomBelow(page, b, size, height));
             var result = TextFitter.Fit(text, width, height, size, b.LinePitch, singleLine, rtl, primary, fallbacks, options.MinScale);
             Note(b, result, plan.Report);
             float baseline = b.Lines[0].Baseline + (size - result.Size) * 0.78f;
-            var align = EffectiveAlign(b.Align, rtl, flip);
             foreach (var line in result.Lines)
             {
                 float x;
@@ -270,6 +272,61 @@ namespace TextX.Core.Documents.Export
                 plan.Ops.Add(new DrawOp { Line = line, Size = result.Size, X = x, Y = baseline, Angle = 0f, Color = color });
                 baseline -= result.Pitch;
             }
+        }
+
+        /// <summary>
+        /// The width a one-line text may take: the gap to the nearest text or image beside it on the same
+        /// line, a table's column, the page margin. Labels on drawings stay close to their spot, since the
+        /// lines of the drawing itself are not known.
+        /// </summary>
+        internal static float RoomAcross(DocPage page, DocBlock b, BlockAlign align, float size)
+        {
+            float gap = Math.Max(2f, size * 0.6f);
+            float margin = Math.Min(18f, Math.Min(b.Box.L, page.Width - b.Box.R));
+            float leftLimit = Math.Min(b.Box.L, margin), rightLimit = Math.Max(b.Box.R, page.Width - margin);
+            float bandB = b.Box.B + b.Box.H * 0.15f, bandT = b.Box.T - b.Box.H * 0.15f;
+            Action<Box> obstacle = o =>
+            {
+                if (o.T <= bandB || o.B >= bandT) return;          // not on this line
+                if (o.L >= b.Box.R - 0.5f) rightLimit = Math.Min(rightLimit, o.L - gap);
+                else if (o.R <= b.Box.L + 0.5f) leftLimit = Math.Max(leftLimit, o.R + gap);
+            };
+            foreach (var o in page.Blocks) if (!ReferenceEquals(o, b)) obstacle(o.Box);
+            foreach (var img in page.Images) if (!img.Contains(b.Box.CX, b.Box.CY)) obstacle(img);
+
+            if (b.Kind == BlockKind.TableCell && b.Table >= 0)
+            {
+                // the outer columns end near their widest cell (the table's border is a drawn line)
+                var column = page.Blocks.Where(o => o.Table == b.Table && o.Col == b.Col).ToList();
+                float colL = column.Min(o => o.Box.L), colR = column.Max(o => o.Box.R);
+                float spare = Math.Max(2f * size, (colR - colL) * 0.25f);
+                if (!page.Blocks.Any(o => o.Table == b.Table && o.Col > b.Col)) rightLimit = Math.Min(rightLimit, colR + spare);
+                if (!page.Blocks.Any(o => o.Table == b.Table && o.Col < b.Col)) leftLimit = Math.Max(leftLimit, colL - spare);
+            }
+            leftLimit = Math.Min(leftLimit, b.Box.L);
+            rightLimit = Math.Max(rightLimit, b.Box.R);
+
+            float room;
+            if (align == BlockAlign.Right) room = b.Box.R - leftLimit;
+            else if (align == BlockAlign.Center) room = 2f * Math.Min(b.Box.CX - leftLimit, rightLimit - b.Box.CX);
+            else room = rightLimit - b.Box.L;
+            if (b.Kind == BlockKind.Label || b.IsRotated) room = Math.Min(room, Math.Max(b.Box.W * 2.5f, b.Box.W + 8f * size));
+            return Math.Max(b.Box.W, room);
+        }
+
+        /// <summary>The height a paragraph may grow to: down to the next text or image below it.</summary>
+        internal static float RoomBelow(DocPage page, DocBlock b, float size, float height)
+        {
+            float limit = Math.Min(b.Box.B, 24f);
+            Action<Box> obstacle = o =>
+            {
+                if (o.T > b.Box.B + 0.5f || o.R <= b.Box.L || o.L >= b.Box.R) return;
+                limit = Math.Max(limit, o.T + size * 0.6f);
+            };
+            foreach (var o in page.Blocks) if (!ReferenceEquals(o, b)) obstacle(o.Box);
+            foreach (var img in page.Images) obstacle(img);
+            float extra = Math.Max(0f, b.Box.B - limit);
+            return height + Math.Min(extra, height * 0.5f);
         }
 
         private static BlockAlign EffectiveAlign(BlockAlign align, bool rtl, bool flip)
