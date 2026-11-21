@@ -264,7 +264,6 @@ namespace TextX.UI.Studio
             layout.Rows.Add(new TableRow(previews));
             layout.Rows.Add(new TableRow(actions));
             var card = new Card(layout, new Padding(16, 12, 16, 12), p => p.Hero, p => p.IsDark ? p.Border : p.Hero, 20f) { MinimumSize = new Size(0, 372) };
-            card.SizeChanged += (s, e) => FitTranslator(card.Width);
             _qTitle2 = title2;
 
             // behaviour

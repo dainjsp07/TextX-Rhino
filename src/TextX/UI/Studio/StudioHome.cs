@@ -82,6 +82,8 @@ namespace TextX.UI.Studio
             if (_homeHost == null) return;
             int w = _homeScroll == null ? 0 : _homeScroll.Width - 20;
             bool wide = w <= 0 || w >= HomeWideFrom;
+            // the translator's own width decides how compact it is (its content would keep it wide otherwise)
+            if (w > 0) FitTranslator(wide ? w - 412 : w);
             if (_homeWide == wide) return;
             _homeWide = wide;
             foreach (var c in new[] { _heroCard, _featuredTile, _tileGrid }) if (c.Parent != null) c.Detach();
