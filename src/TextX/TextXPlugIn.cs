@@ -47,6 +47,8 @@ namespace TextX
                     AppDomain.CurrentDomain.UnhandledException += (s, e) => Diagnostics.Log("UNHANDLED " + e.ExceptionObject);
                 }
                 PrintSwapManager.Instance.Attach();
+                // Text X Studio is the Text X window: its translator talks to Rhino through this bridge
+                TextX.UI.Studio.StudioWindow.BridgeFactory = () => new TextX.UI.RhinoTranslatorBridge();
                 RhinoApp.Closing += OnRhinoClosing;
                 RhinoApp.Idle += OnFirstIdle;
                 return LoadReturnCode.Success;

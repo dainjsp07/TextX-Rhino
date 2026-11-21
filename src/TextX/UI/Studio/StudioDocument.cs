@@ -43,24 +43,28 @@ namespace TextX.UI.Studio
             _docInfo = Ui.Label(_scope, "Open a PDF to translate it.", 12.5f, false, p => p.Muted);
             _checkPill = new Pill(string.Empty, p => p.WarningSoft, p => p.Warning) { Visible = false, Backdrop = p => p.Window };
 
-            _translate = new FlatButton("Translate", IconKind.Translate, ButtonKind.Primary, 38) { ToolTip = "Translate the whole document into the language chosen at the top" };
+            _translate = new FlatButton("Translate", IconKind.Translate, ButtonKind.Primary, 32) { ToolTip = "Translate the whole document into the language chosen at the top" };
             _translate.Click += (s, e) => TranslateDocument(false);
-            var export = new FlatButton("Save as", IconKind.Download, ButtonKind.Strong, 38) { ToolTip = "Save the translation as PDF (same layout), Word or text" };
+            var export = new FlatButton("Save as", IconKind.Download, ButtonKind.Strong, 32) { ToolTip = "Save the translation as PDF (same layout), Word or text" };
             export.Click += (s, e) => ShowExportMenu(export);
-            var summary = new FlatButton("Summary", IconKind.Info, ButtonKind.Secondary, 38) { ToolTip = "Key points, contents and figures of the document" };
+            var summary = new FlatButton("Summary", IconKind.Info, ButtonKind.Secondary, 32) { ToolTip = "Key points, contents and figures of the document" };
             summary.Click += (s, e) => ShowSummary();
-            var check = new FlatButton("Check", IconKind.Check, ButtonKind.Secondary, 38) { ToolTip = "Look for changed numbers, missing text, glossary terms and more" };
+            var check = new FlatButton("Check", IconKind.Check, ButtonKind.Secondary, 32) { ToolTip = "Look for changed numbers, missing text, glossary terms and more" };
             check.Click += (s, e) => ShowCheckMenu(check);
-            var schedule = new FlatButton("Schedule", IconKind.Grid, ButtonKind.Secondary, 38) { ToolTip = "Read product codes, materials and finishes into schedules" };
+            var schedule = new FlatButton("Schedule", IconKind.Grid, ButtonKind.Secondary, 32) { ToolTip = "Read product codes, materials and finishes into schedules" };
             schedule.Click += (s, e) => { ShowTab(SchedulesTab); if (_schedules == null) ReadSchedules(); };
 
+            // a new PDF in place of this one: the open document is closed (it stays in Recent), then a file is chosen
+            _newPdf = new FlatButton("New PDF", IconKind.Plus, ButtonKind.Dashed, 32) { ToolTip = "Close this document and open another PDF", Visible = false };
+            _newPdf.Click += (s, e) => NewPdf();
+
             var toolbar = new TableLayout { Spacing = new Size(8, 0) };
-            toolbar.Rows.Add(new TableRow(new TableCell(Ui.Row(10, _docInfo, _checkPill), true), new TableCell(Ui.Row(8, summary, check, schedule, export, _translate), false)));
+            toolbar.Rows.Add(new TableRow(new TableCell(Ui.Row(10, _docInfo, _checkPill), true), new TableCell(Ui.Row(8, _newPdf, summary, check, schedule, export, _translate), false)));
 
             // the page is the hero: a stage card with the page(s) and a floating pill toolbar
-            var prev = new FlatButton(string.Empty, IconKind.Prev, ButtonKind.Secondary, 34) { ToolTip = "Previous page (Page Up)", Backdrop = p => p.Surface };
+            var prev = new FlatButton(string.Empty, IconKind.Prev, ButtonKind.Secondary, 32) { ToolTip = "Previous page (Page Up)", Backdrop = p => p.Surface };
             prev.Click += (s, e) => GoToPage(_pageIndex - 1);
-            var next = new FlatButton(string.Empty, IconKind.Next, ButtonKind.Secondary, 34) { ToolTip = "Next page (Page Down)", Backdrop = p => p.Surface };
+            var next = new FlatButton(string.Empty, IconKind.Next, ButtonKind.Secondary, 32) { ToolTip = "Next page (Page Down)", Backdrop = p => p.Surface };
             next.Click += (s, e) => GoToPage(_pageIndex + 1);
             _pageLabel = Ui.Label(_scope, string.Empty, 12.5f, true);
             _viewMode.Width = 280;
@@ -87,7 +91,7 @@ namespace TextX.UI.Studio
             var body = new TableLayout { Spacing = new Size(16, 0) };
             body.Rows.Add(new TableRow(new TableCell(stage, true), new TableCell(BuildBlockPanel(), false)) { ScaleHeight = true });
 
-            var layout = new TableLayout { Spacing = new Size(0, 14), Padding = new Padding(10, 4, 24, 6) };
+            var layout = new TableLayout { Spacing = new Size(0, 12), Padding = new Padding(4, 0, 16, 8) };
             layout.Rows.Add(new TableRow(toolbar));
             layout.Rows.Add(new TableRow(body) { ScaleHeight = true });
             KeyDown += (s, e) =>
@@ -100,6 +104,20 @@ namespace TextX.UI.Studio
         }
 
         private Control _docEmpty;
+        private FlatButton _newPdf;
+
+        /// <summary>Closes the open document (it stays in Recent) and asks for another PDF.</summary>
+        private void NewPdf()
+        {
+            if (IsBusy && _cts != null) _cts.Cancel();
+            if (_project != null)
+            {
+                SaveProject();
+                CloseProject();
+                if (_pageTitle != null && _tabs.SelectedIndex == DocumentTab) _pageTitle.Text = PageTitles[DocumentTab];
+            }
+            OpenFileDialog();
+        }
         private FigureView _docEmptyFigure;
 
         /// <summary>No document yet: the pages figure shows what will happen, with one way in.</summary>
@@ -344,6 +362,7 @@ namespace TextX.UI.Studio
         {
             var project = _project;
             if (_docTitle == null) return;
+            if (_newPdf != null) _newPdf.Visible = project != null;
             if (project == null)
             {
                 _docTitle.Text = "No document open";

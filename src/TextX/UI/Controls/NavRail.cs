@@ -199,6 +199,18 @@ namespace TextX.UI.Controls
 
         public bool Featured { get; set; }
 
+        private bool _compact;
+
+        /// <summary>
+        /// A small tile for a grid of four: the figure at the top left without its caption, the arrow in the
+        /// corner, the title and two lines of text.
+        /// </summary>
+        public bool Compact
+        {
+            get { return _compact; }
+            set { _compact = value; Height = value ? 148 : (_figure == null ? 168 : 268); Invalidate(); }
+        }
+
         public event EventHandler<EventArgs> Click;
 
         public BentoTile(IconKind icon, string title, string text, string tag = null, Figure figure = null) : base(true)
@@ -242,7 +254,11 @@ namespace TextX.UI.Controls
 
         private RectangleF FigureRect
         {
-            get { return new RectangleF(10, 34, Width - 20, Height - 34 - 110); }
+            get
+            {
+                if (_compact) return new RectangleF(8, 8, Math.Max(40, Math.Min(150, Width - 60)), 64);
+                return new RectangleF(10, 34, Width - 20, Height - 34 - 110);
+            }
         }
 
         protected override void OnMouseMoveAt(PointF location)
@@ -299,35 +315,50 @@ namespace TextX.UI.Controls
             float h = Hover;
             var r = new RectangleF(0.5f, 0.5f, Width - 1, Height - 1);
             var plate = Featured ? p.Accent : p.Surface;
-            FillRound(g, r, 22, plate);
-            if (!Featured) StrokeRound(g, r, 22, ThemeColors.Mix(p.Border, p.Accent, 0.75f * h), 1f + 0.4f * h);
+            float radius = _compact ? 18 : 20;
+            FillRound(g, r, radius, plate);
+            if (!Featured) StrokeRound(g, r, radius, ThemeColors.Mix(p.Border, p.Accent, 0.75f * h), 1f + 0.4f * h);
 
             var ink = Featured ? p.OnAccent : p.Text;
             var muted = Featured ? ThemeColors.WithAlpha(p.OnAccent, 0.72f) : p.Muted;
 
-            // round arrow button: fills with ink and the arrow leans out while the pointer is on the tile
-            var arrow = new RectangleF(Width - 16 - 34, 14, 34, 34);
+            // round arrow button: fills with the accent and the arrow leans out while the pointer is on the tile
+            float ad = 28;
+            var arrow = new RectangleF(Width - 12 - ad, 12, ad, ad);
             if (Featured) g.FillEllipse(p.OnAccent, arrow);
             else
             {
-                if (h > 0) g.FillEllipse(ThemeColors.WithAlpha(p.Strong, h), arrow);
-                using (var pen = new Pen(ThemeColors.WithAlpha(p.Border, 1 - h), 1.2f)) g.DrawEllipse(pen, arrow);
+                if (h > 0) g.FillEllipse(ThemeColors.WithAlpha(p.Accent, h), arrow);
+                using (var pen = new Pen(ThemeColors.Mix(p.Border, p.Accent, h), 1.2f)) g.DrawEllipse(pen, arrow);
             }
-            var arrowInk = Featured ? p.Accent : ThemeColors.Mix(p.Text, p.OnStrong, h);
-            Icons.Draw(g, IconKind.ArrowUpRight, new RectangleF(arrow.X + 9 + 1.8f * h, arrow.Y + 9 - 1.8f * h, 16, 16), arrowInk, 2.2f);
+            var arrowInk = Featured ? p.Accent : ThemeColors.Mix(p.Text, p.OnAccent, h);
+            Icons.Draw(g, IconKind.ArrowUpRight, new RectangleF(arrow.X + 7 + 1.6f * h, arrow.Y + 7 - 1.6f * h, 14, 14), arrowInk, 2.2f);
 
             float y;
+            if (_figure != null && _compact)
+            {
+                var fr = FigureRect;
+                var inks = FigureInks.On(p, plate);
+                FigurePainter.Paint(g, _figure, _scene, fr, inks, Animator.Now);
+                y = fr.Bottom + 4;
+                DrawLine(g, Theme.UiFont(14f, true), ink, new RectangleF(12, y, Width - 24, 22), _title);
+                using (var brush = new SolidBrush(muted))
+                    g.DrawText(Theme.UiFont(12f), brush, new RectangleF(12, y + 22, Width - 24, Height - y - 22 - 8), _text,
+                        FormattedTextWrapMode.Word, FormattedTextAlignment.Left, FormattedTextTrimming.WordEllipsis);
+                DrawFocus(g, r, radius);
+                return;
+            }
             if (_figure != null)
             {
                 if (!string.IsNullOrEmpty(_tag))
-                    DrawLine(g, Theme.UiFont(10f, true), muted, new RectangleF(20, 14, Width - 80, 34), Theme.Spaced(_tag));
+                    DrawLine(g, Theme.UiFont(11f, true), muted, new RectangleF(16, 12, Width - 70, 28), Theme.Spaced(_tag));
                 var fr = FigureRect;
                 var inks = Featured ? FigureInks.OnAccent(p) : FigureInks.On(p, plate);
                 FigurePainter.Paint(g, _figure, _scene, fr, inks, Animator.Now);
                 // what the figure is showing, in a few words, under it
                 var cap = _figure.Caption ?? string.Empty;
                 var capColor = Featured ? ThemeColors.WithAlpha(p.OnAccent, 0.8f) : (cap.StartsWith("rest", StringComparison.Ordinal) ? p.Muted : p.AccentInk);
-                DrawLine(g, Theme.UiFont(10.5f, true), capColor, new RectangleF(20, fr.Bottom - 2, Width - 40, 18), cap.StartsWith("rest", StringComparison.Ordinal) ? "Point at the picture" : cap, FormattedTextAlignment.Left);
+                DrawLine(g, Theme.UiFont(11f, true), capColor, new RectangleF(16, fr.Bottom - 2, Width - 32, 18), cap.StartsWith("rest", StringComparison.Ordinal) ? "Point at the picture" : cap, FormattedTextAlignment.Left);
                 y = fr.Bottom + 20;
             }
             else
@@ -339,11 +370,11 @@ namespace TextX.UI.Controls
                     DrawLine(g, Theme.UiFont(10f, true), muted, new RectangleF(70, 18, Width - 70 - 64, 42), Theme.Spaced(_tag));
                 y = 76;
             }
-            DrawLine(g, Theme.UiFont(16f, true), ink, new RectangleF(20, y, Width - 40, 26), _title);
+            DrawLine(g, Theme.UiFont(16f, true), ink, new RectangleF(16, y, Width - 32, 24), _title);
             using (var brush = new SolidBrush(muted))
-                g.DrawText(Theme.UiFont(12.5f), brush, new RectangleF(20, y + 28, Width - 40, Height - y - 28 - 12), _text,
+                g.DrawText(Theme.UiFont(12f), brush, new RectangleF(16, y + 26, Width - 32, Height - y - 26 - 10), _text,
                     FormattedTextWrapMode.Word, FormattedTextAlignment.Left, FormattedTextTrimming.WordEllipsis);
-            DrawFocus(g, r, 22);
+            DrawFocus(g, r, radius);
         }
     }
 

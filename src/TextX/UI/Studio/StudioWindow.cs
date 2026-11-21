@@ -12,6 +12,7 @@ using Rhino.UI;
 using TextX.Core;
 using TextX.Core.Documents;
 using TextX.Core.Documents.Schedules;
+using TextX.Core.Translation;
 using TextX.Integration;
 using TextX.UI.Controls;
 using TextX.UI.Theming;
@@ -20,10 +21,10 @@ using Theme = TextX.UI.Theming.Theme;
 namespace TextX.UI.Studio
 {
     /// <summary>
-    /// Text X Studio (command TRStudio): translate PDF documents keeping their layout, read product
-    /// schedules from drawings, get text from pictures and screenshots, dictate, and check writing.
-    /// Open a file (drop it on the window or click Open), pick what to do, get the result.
-    /// No account and no setup: translation uses the service chosen in Text X settings.
+    /// Text X Studio, the Text X window (commands TR and TRStudio). Home holds the translator for Rhino text
+    /// and leaders (type, dictate or load text, check the writing, place text or a leader, update objects);
+    /// the other pages translate PDF documents keeping their layout, read product schedules from drawings,
+    /// and read the text of pictures and screenshots. No account and no setup.
     /// </summary>
     public sealed partial class StudioWindow : Form
     {
@@ -33,12 +34,18 @@ namespace TextX.UI.Studio
         private readonly ThemeScope _scope = new ThemeScope();
         private readonly KeyPicker _srcLang = new KeyPicker("From", false);
         private readonly KeyPicker _tgtLang = new KeyPicker("To", false);
+        private readonly KeyPicker _provider = new KeyPicker(string.Empty, true);
         private readonly NavRail _tabs = new NavRail();
         private Label _pageTitle, _pageHint;
         private readonly Panel _page = new Panel();
         private readonly StatusText _status = new StatusText();
-        private readonly ProgressBar _progress = new ProgressBar { MinValue = 0, MaxValue = 1000, Visible = false, Width = 180 };
+        private readonly ProgressBar _progress = new ProgressBar { MinValue = 0, MaxValue = 1000, Visible = false, Width = 160 };
         private FlatButton _cancel;
+        private Panel _toast;
+        private readonly UITimer _toastTimer = new UITimer();
+        private Panel _updateBar;
+        private Label _updateText;
+        private FlatButton _updateInstall, _updateDownload, _updateNotes, _updateLater;
         private Control[] _pages;
         private CancellationTokenSource _cts;
         private bool _suppress;
@@ -47,7 +54,7 @@ namespace TextX.UI.Studio
         private DocProject _project;
         private ScheduleSet _schedules;
 
-        private const int HomeTab = 0, DocumentTab = 1, SchedulesTab = 2, ToolsTab = 3;
+        private const int HomeTab = 0, DocumentTab = 1, SchedulesTab = 2, PictureTab = 3;
 
         private static TextXSettings Settings { get { return TextXPlugIn.Instance.Options; } }
 
@@ -78,8 +85,8 @@ namespace TextX.UI.Studio
             Minimizable = true;
             Maximizable = true;
             ShowInTaskbar = true;
-            MinimumSize = new Size(900, 620);
-            ClientSize = new Size(1240, 820);
+            MinimumSize = new Size(760, 600);
+            ClientSize = new Size(1280, 760);
             Padding = new Padding(0);
             this.UseRhinoStyle();
             Icons.ApplyWindowIcon(this);
@@ -93,19 +100,25 @@ namespace TextX.UI.Studio
             RestoreStudioBounds();
             ShowHome();
             // once the window is on screen, the Home figures show what they do
-            Shown += (s, e) => Application.Instance.AsyncInvoke(() => { if (_tabs.SelectedIndex == HomeTab) TourTiles(); });
-            SetStatus("Drop a PDF, picture or screenshot on this window, or click Open.");
+            Shown += (s, e) => Application.Instance.AsyncInvoke(() =>
+            {
+                if (_tabs.SelectedIndex == HomeTab) TourTiles();
+                try { if (_tabs.SelectedIndex == HomeTab) _qSource.Focus(); } catch { /* not focusable yet */ }
+            });
+            _toastTimer.Elapsed += (s, e) => { _toastTimer.Stop(); if (!IsBusy) _toast.Visible = false; };
+            try { UpdateService.Instance.Changed += OnUpdateInfoChanged; } catch (Exception ex) { Diagnostics.Log("studio updates: " + ex.Message); }
+            UpdateUpdateBar();
             Diagnostics.Log("studio constructed");
         }
 
         // ------------------------------------------------------------------ layout
-        private static readonly string[] PageTitles = { "Studio", "Document", "Schedules", "Tools" };
+        private static readonly string[] PageTitles = { "Text X Studio", "Document", "Schedules", "Picture or screenshot" };
         private static readonly string[] PageHints =
         {
-            "Translate documents, read drawings and pictures. No account needed.",
+            "Translate the text in Rhino, documents, drawings and pictures. No account needed.",
             "Translate a PDF and keep its layout. Click any text to edit it.",
             "Products, materials, finishes and title-block details from your drawings.",
-            "Pictures, screenshots, dictation and writing checks.",
+            "Take a screenshot or open a picture: its text is read on this computer and translated.",
         };
 
         private Control BuildLayout()
@@ -113,9 +126,9 @@ namespace TextX.UI.Studio
             _tabs.Add("Home", IconKind.Home);
             _tabs.Add("Document", IconKind.File);
             _tabs.Add("Schedules", IconKind.Grid);
-            _tabs.Add("Tools", IconKind.Sparkle);
-            _tabs.SetBottom("Settings (translation service, theme ...)", IconKind.Gear);
-            _tabs.BottomClicked += (s, e) => SettingsDialog.ShowFor(this);
+            _tabs.Add("Picture or screenshot", IconKind.Picture);
+            _tabs.SetBottom("Settings (translation service, theme, updates ...)", IconKind.Gear);
+            _tabs.BottomClicked += (s, e) => OpenSettings();
             _pages = new[] { BuildHome(), BuildDocument(), BuildSchedules(), BuildTools() };
             _page.Content = _pages[0];
             _scope.Bind(_page, (x, p) => x.BackgroundColor = p.Window);
@@ -123,6 +136,7 @@ namespace TextX.UI.Studio
 
             var content = new TableLayout { Spacing = new Size(0, 0) };
             content.Rows.Add(new TableRow(BuildHeader()));
+            content.Rows.Add(new TableRow(BuildUpdateBar()));
             content.Rows.Add(new TableRow(_page) { ScaleHeight = true });
             content.Rows.Add(new TableRow(BuildFooter()));
 
@@ -139,34 +153,139 @@ namespace TextX.UI.Studio
 
         private Control BuildHeader()
         {
-            _pageTitle = new Label { Text = PageTitles[0], Font = Theme.DisplayFont(26f), VerticalAlignment = VerticalAlignment.Center };
+            _pageTitle = new Label { Text = PageTitles[0], Font = Theme.DisplayFont(20f), VerticalAlignment = VerticalAlignment.Center };
             _scope.Bind(_pageTitle, (x, p) => x.TextColor = p.Text);
-            _pageHint = Ui.Label(_scope, PageHints[0], 12.5f, false, p => p.Muted);
+            _pageHint = Ui.Label(_scope, PageHints[0], 12f, false, p => p.Muted);
             var titles = new TableLayout { Spacing = new Size(0, 0) };
             titles.Rows.Add(new TableRow(_pageTitle));
             titles.Rows.Add(new TableRow(_pageHint));
 
-            var swap = new FlatButton(string.Empty, IconKind.Swap, ButtonKind.Strong, 30) { ToolTip = "Swap languages", Backdrop = p => p.Surface };
+            var swap = new FlatButton(string.Empty, IconKind.Swap, ButtonKind.Strong, 24) { ToolTip = "Swap languages", Backdrop = p => p.Surface, IconSize = 12f };
             swap.Click += (s, e) => SwapLanguages();
-            var languages = new Card(Ui.Row(4, _srcLang, swap, _tgtLang), new Padding(10, 4), p => p.Surface, p => p.Border, 19f);
-            var open = new FlatButton("Open a file", IconKind.Plus, ButtonKind.Primary, 38) { ToolTip = "Open a PDF or a picture (you can also drop files on the window)" };
+            var languages = new Card(Ui.Row(4, _srcLang, swap, _tgtLang), new Padding(8, 2), p => p.Surface, p => p.Border, 16f);
+            _provider.DotColor = p => Settings.ProviderId == ProviderIds.Manual ? p.Muted : TranslationEngine.InCooldown(Settings.ProviderId) ? p.Warning : p.Success;
+            _provider.ToolTip = "Translation service, for every page (click to change)";
+            _provider.ExtraCommands.Add(new KeyValuePair<string, Action>("Service settings...", OpenSettings));
+            var open = new FlatButton("Open a file", IconKind.Plus, ButtonKind.Strong, 32) { ToolTip = "Open a PDF or a picture (you can also drop files on the window)" };
             open.Click += (s, e) => OpenFileDialog();
             var row = new TableLayout { Spacing = new Size(12, 0) };
-            row.Rows.Add(new TableRow(new TableCell(titles, true), new TableCell(Ui.Row(12, languages, open), false)));
-            var panel = new Panel { Content = row, Padding = new Padding(10, 18, 24, 10) };
+            row.Rows.Add(new TableRow(new TableCell(titles, true), new TableCell(Ui.Row(8, languages, _provider, open), false)));
+            var panel = new Panel { Content = row, Padding = new Padding(4, 12, 16, 8) };
             return _scope.Bind(panel, (x, p) => x.BackgroundColor = p.Window);
         }
 
+        /// <summary>
+        /// Messages appear in a pill under the page for a few seconds, then go; while a long task runs the pill
+        /// stays with its progress bar and Stop button.
+        /// </summary>
         private Control BuildFooter()
         {
             _status.Backdrop = p => p.Surface;
-            _cancel = new FlatButton("Stop", IconKind.Close, ButtonKind.Strong, 26) { Visible = false, Backdrop = p => p.Surface };
+            _cancel = new FlatButton("Stop", IconKind.Close, ButtonKind.Strong, 24) { Visible = false, Backdrop = p => p.Surface };
             _cancel.Click += (s, e) => { if (_cts != null) _cts.Cancel(); };
-            var row = Ui.Row(10, new StackLayoutItem(_status, true), _progress, _cancel);
-            // a floating status pill under the page
-            var pill = new Card(row, new Padding(14, 5, 8, 5), p => p.Surface, p => p.Border, 18f);
-            var panel = new Panel { Content = pill, Padding = new Padding(10, 4, 24, 14) };
-            return _scope.Bind(panel, (x, p) => x.BackgroundColor = p.Window);
+            var close = new FlatButton(string.Empty, IconKind.Close, ButtonKind.Ghost, 24) { Backdrop = p => p.Surface, ToolTip = "Hide", IconSize = 12f };
+            close.Click += (s, e) => { if (!IsBusy) _toast.Visible = false; };
+            var row = Ui.Row(8, new StackLayoutItem(_status, true), _progress, _cancel, close);
+            var pill = new Card(row, new Padding(12, 4, 6, 4), p => p.Surface, p => p.Border, 16f);
+            _toast = new Panel { Content = pill, Padding = new Padding(4, 0, 16, 12), Visible = false };
+            return _scope.Bind(_toast, (x, p) => x.BackgroundColor = p.Window);
+        }
+
+        private Control BuildUpdateBar()
+        {
+            _updateText = Ui.Label(_scope, string.Empty, 12.5f, false, p => p.Text);
+            _updateInstall = new FlatButton("Install update", IconKind.Download, ButtonKind.Primary, 28) { Backdrop = p => p.AccentSoft };
+            _updateInstall.Click += (s, e) => InstallUpdateNow();
+            _updateDownload = new FlatButton("Download", IconKind.Download, ButtonKind.Primary, 28) { Backdrop = p => p.AccentSoft };
+            _updateDownload.Click += (s, e) =>
+            {
+                var latest = UpdateService.Instance.Latest;
+                if (latest != null) UpdateService.OpenUrl(latest.BestUrl);
+            };
+            _updateNotes = new FlatButton("What's new", IconKind.None, ButtonKind.Ghost, 28) { Backdrop = p => p.AccentSoft };
+            _updateNotes.Click += (s, e) =>
+            {
+                var latest = UpdateService.Instance.Latest;
+                UpdateService.OpenUrl(latest != null && !string.IsNullOrEmpty(latest.PageUrl) ? latest.PageUrl : BuildInfo.Website);
+            };
+            _updateLater = new FlatButton("Later", IconKind.None, ButtonKind.Ghost, 28) { Backdrop = p => p.AccentSoft };
+            _updateLater.Click += (s, e) => UpdateService.Instance.Dismiss();
+            var row = Ui.Row(8, _updateText, Ui.Spring(), _updateInstall, _updateDownload, _updateNotes, _updateLater);
+            var card = new Card(row, new Padding(14, 4), p => p.AccentSoft, p => p.AccentLine, 18f);
+            _updateBar = new Panel { Content = card, Padding = new Padding(4, 0, 16, 8), Visible = false };
+            return _scope.Bind(_updateBar, (x, p) => x.BackgroundColor = p.Window);
+        }
+
+        private void OnUpdateInfoChanged(object sender, EventArgs e)
+        {
+            OnUi(UpdateUpdateBar);
+        }
+
+        private void UpdateUpdateBar()
+        {
+            try
+            {
+                var svc = UpdateService.Instance;
+                bool installing = svc.IsInstalling;
+                bool available = svc.ShouldNotify;
+                bool restart = !available && svc.ShouldShowRestartNotice;
+                if (installing)
+                    _updateText.Text = "Downloading and installing " + BuildInfo.ProductName + " " + (svc.Latest != null ? svc.Latest.Version.ToString() : string.Empty) + "...";
+                else if (available)
+                    _updateText.Text = BuildInfo.ProductName + " " + svc.Latest.Version + " is available (you have " + BuildInfo.VersionText + ").";
+                else if (restart)
+                    _updateText.Text = BuildInfo.ProductName + " " + svc.PendingVersion + " is installed. Restart Rhino to start using it.";
+                _updateInstall.Visible = available && !installing && svc.CanInstallLatest;
+                _updateDownload.Visible = available && !installing && !svc.CanInstallLatest;
+                _updateNotes.Visible = restart && !installing;
+                _updateLater.Visible = !installing;
+                _updateLater.Text = restart ? "OK" : "Later";
+                _updateBar.Visible = installing || available || restart;
+            }
+            catch (Exception ex)
+            {
+                Diagnostics.Log("studio update bar: " + ex.Message);
+            }
+        }
+
+        private void InstallUpdateNow()
+        {
+            var svc = UpdateService.Instance;
+            var latest = svc.Latest;
+            if (latest == null || svc.IsInstalling) return;
+            svc.InstallAsync(latest, CancellationToken.None).ContinueWith(t => OnUi(() =>
+            {
+                if (t.IsFaulted)
+                {
+                    var ex = t.Exception == null ? null : t.Exception.GetBaseException();
+                    SetStatus("Update failed: " + (ex == null ? "unknown error" : ex.Message), StatusText.Level.Error);
+                }
+                else
+                {
+                    SetStatus(BuildInfo.ProductName + " " + latest.Version + " is installed. Restart Rhino to start using it.", StatusText.Level.Success);
+                }
+                UpdateUpdateBar();
+            }));
+            UpdateUpdateBar();
+        }
+
+        private void OpenSettings()
+        {
+            var before = Settings.ThemeMode;
+            SettingsDialog.ShowFor(this);
+            _suppress = true;
+            try { if (_provider.Contains(Settings.ProviderId)) _provider.SelectedKey = Settings.ProviderId; }
+            finally { _suppress = false; }
+            _provider.Invalidate();
+            if (_qLive != null) _qLive.Checked = Settings.RealTimeTranslation;
+            if (Theme.Refresh() || before != Settings.ThemeMode)
+            {
+                _scope.ApplyAll(this);
+                Invalidate();
+            }
+            UpdateUpdateBar();
+            if (_qPrintInfo != null) UpdateQPrintInfo();
+            RefreshQPreviews();
         }
 
         private void ShowTab(int index)
@@ -180,6 +299,7 @@ namespace TextX.UI.Studio
                 _pageHint.Text = PageHints[index];
             }
             if (index == HomeTab) { RefreshHistory(); if (Loaded) TourTiles(); }
+            if (index == PictureTab) UpdateToolLabels();
             if (index == DocumentTab) RefreshDocument();
             if (index == SchedulesTab) RefreshSchedules();
             // an empty page's figure walks through what will happen, once the page is on screen
@@ -199,7 +319,7 @@ namespace TextX.UI.Studio
 
         // ------------------------------------------------------------------ languages
         private string SourceLang { get { return _srcLang.SelectedKey ?? Languages.AutoDetect; } }
-        private string TargetLang { get { return _tgtLang.SelectedKey ?? "en"; } }
+        private string TargetLang { get { return _tgtLang.SelectedKey ?? "he"; } }
 
         private void BuildLanguageControls()
         {
@@ -214,12 +334,46 @@ namespace TextX.UI.Studio
             src[1].SeparatorBefore = true;
             _srcLang.SetItems(src);
             _tgtLang.SetItems(tgt);
+            _provider.ShowSecondary = false;
+            _provider.SetItems(ProviderIds.All.Select(id => new PickerItem { Key = id, Text = ShortProviderName(id), Secondary = ProviderDetail(id) }));
+            // one language pair for the whole app: Rhino text, documents and pictures
             _suppress = true;
-            _srcLang.SelectedKey = _srcLang.Contains(Settings.StudioSourceLanguage) ? Settings.StudioSourceLanguage : Languages.AutoDetect;
-            _tgtLang.SelectedKey = _tgtLang.Contains(Settings.StudioTargetLanguage) ? Settings.StudioTargetLanguage : "en";
+            _srcLang.SelectedKey = _srcLang.Contains(Settings.SourceLanguage) ? Settings.SourceLanguage : Languages.AutoDetect;
+            _tgtLang.SelectedKey = _tgtLang.Contains(Settings.TargetLanguage) ? Settings.TargetLanguage : "he";
+            _provider.SelectedKey = _provider.Contains(Settings.ProviderId) ? Settings.ProviderId : ProviderIds.GoogleFree;
             _suppress = false;
-            _srcLang.SelectedKeyChanged += (s, e) => { if (_suppress) return; Settings.StudioSourceLanguage = SourceLang; OnLanguagesChanged(); };
-            _tgtLang.SelectedKeyChanged += (s, e) => { if (_suppress) return; Settings.StudioTargetLanguage = TargetLang; OnLanguagesChanged(); };
+            _srcLang.SelectedKeyChanged += (s, e) => { if (_suppress) return; Settings.SourceLanguage = SourceLang; OnLanguagesChanged(); };
+            _tgtLang.SelectedKeyChanged += (s, e) => { if (_suppress) return; Settings.TargetLanguage = TargetLang; OnLanguagesChanged(); };
+            _provider.SelectedKeyChanged += (s, e) =>
+            {
+                if (_suppress) return;
+                Settings.ProviderId = _provider.SelectedKey ?? ProviderIds.GoogleFree;
+                SetStatus("Translation service for every page: " + ShortProviderName(Settings.ProviderId) + ".");
+                OnLanguagesChanged();
+            };
+        }
+
+        private static string ShortProviderName(string id)
+        {
+            switch (id)
+            {
+                case ProviderIds.GoogleFree: return "Google (free)";
+                case ProviderIds.GoogleCloud: return "Google Cloud";
+                case ProviderIds.DeepL: return "DeepL";
+                case ProviderIds.Azure: return "Microsoft Azure";
+                case ProviderIds.Claude: return "Claude";
+                case ProviderIds.LibreTranslate: return "LibreTranslate";
+                case ProviderIds.MyMemory: return "MyMemory";
+                case ProviderIds.Manual: return "Manual";
+                default: return ProviderIds.DisplayName(id) ?? id;
+            }
+        }
+
+        private static string ProviderDetail(string id)
+        {
+            var full = ProviderIds.DisplayName(id) ?? string.Empty;
+            int open = full.IndexOf('(');
+            return open >= 0 ? full.Substring(open).Trim('(', ')', ' ') : string.Empty;
         }
 
         private void SwapLanguages()
@@ -231,8 +385,9 @@ namespace TextX.UI.Studio
             _srcLang.SelectedKey = tgt;
             _tgtLang.SelectedKey = src;
             _suppress = false;
-            Settings.StudioSourceLanguage = SourceLang;
-            Settings.StudioTargetLanguage = TargetLang;
+            Settings.SourceLanguage = SourceLang;
+            Settings.TargetLanguage = TargetLang;
+            OnTranslatorLanguagesSwapped();
             OnLanguagesChanged();
         }
 
@@ -244,6 +399,7 @@ namespace TextX.UI.Studio
                 if (changed) SetStatus("Languages changed: click Translate to translate the document into " + Languages.EnglishName(TargetLang) + ".");
             }
             OnToolLanguagesChanged();
+            OnTranslatorLanguagesChanged();
         }
 
         // ------------------------------------------------------------------ files
@@ -330,7 +486,16 @@ namespace TextX.UI.Studio
                 _progress.Visible = busy;
                 _progress.Indeterminate = busy;
                 _cancel.Visible = busy;
+                if (busy) { _toastTimer.Stop(); _toast.Visible = true; }
+                else ScheduleToastHide(_status.Text);
             });
+        }
+
+        private void ScheduleToastHide(string text)
+        {
+            _toastTimer.Stop();
+            _toastTimer.Interval = Math.Min(9.0, 3.0 + 0.045 * (text ?? string.Empty).Length);
+            _toastTimer.Start();
         }
 
         private void SetProgress(int done, int total)
@@ -345,7 +510,14 @@ namespace TextX.UI.Studio
 
         private void SetStatus(string text, StatusText.Level level = StatusText.Level.Info)
         {
-            OnUi(() => _status.Set(text, level));
+            OnUi(() =>
+            {
+                _status.Set(text, level);
+                if (string.IsNullOrEmpty(text)) { if (!IsBusy) _toast.Visible = false; return; }
+                _toast.Visible = true;
+                if (!IsBusy) ScheduleToastHide(text);
+                _provider.Invalidate();
+            });
         }
 
         private static void OnUi(Action a)
@@ -430,6 +602,9 @@ namespace TextX.UI.Studio
             if (_cts != null) _cts.Cancel();
             SaveProject();
             StopToolTimers();
+            StopTranslator();
+            _toastTimer.Stop();
+            try { UpdateService.Instance.Changed -= OnUpdateInfoChanged; } catch (Exception) { /* not attached */ }
             TranslationServices.SaveCache();
             _instance = null;
             base.OnClosed(e);

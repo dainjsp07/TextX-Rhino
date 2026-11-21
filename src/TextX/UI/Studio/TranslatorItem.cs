@@ -1,11 +1,10 @@
 using System;
 using TextX.Core;
-using TextX.Integration;
 
-namespace TextX.UI
+namespace TextX.UI.Studio
 {
-    /// <summary>One text being edited in the Text X window (a loaded object or a new text).</summary>
-    public sealed class EditItem
+    /// <summary>One text in the translator on Home: a new text, or a text or leader loaded from Rhino.</summary>
+    public sealed class TranslatorItem
     {
         public Guid ObjectId = Guid.Empty;
         public uint DocSerial;
@@ -20,42 +19,21 @@ namespace TextX.UI
         public string Provider = string.Empty;
         public string LoadNote;
         public TranslationRecord OriginalRecord;
-        public TextFormat OriginalFormat;
+        /// <summary>The object's formatting when it was loaded (kept for the Rhino side; a TextFormat).</summary>
+        public object OriginalFormat;
 
         public bool IsNew { get { return ObjectId == Guid.Empty; } }
 
-        // ---- grid bindings
-        public bool? IncludeCell
-        {
-            get { return Include; }
-            set { Include = value ?? false; }
-        }
-
-        public string KindCell
-        {
-            get { return IsNew ? "New" : (IsLeader ? "Leader" : "Text"); }
-        }
-
-        public string TextCell
-        {
-            get { return Shorten(Source); }
-        }
-
-        public string StateCell
+        /// <summary>The first line of the text, shortened, for menus.</summary>
+        public string Title
         {
             get
             {
-                if (string.IsNullOrEmpty(Translation)) return "-";
-                return TranslationEdited ? "edited" : "ok";
+                if (string.IsNullOrWhiteSpace(Source)) return "(empty)";
+                var first = Source.Replace("\r", string.Empty).Split('\n')[0];
+                if (Source.IndexOf('\n') >= 0) first += " ...";
+                return first.Length > 48 ? first.Substring(0, 45) + "..." : first;
             }
-        }
-
-        private static string Shorten(string s)
-        {
-            if (string.IsNullOrEmpty(s)) return "(empty)";
-            var first = s.Replace("\r", string.Empty).Split('\n')[0];
-            if (s.IndexOf('\n') >= 0) first += " ...";
-            return first.Length > 48 ? first.Substring(0, 45) + "..." : first;
         }
 
         /// <summary>Builds the metadata record for this item (languages come from the window).</summary>

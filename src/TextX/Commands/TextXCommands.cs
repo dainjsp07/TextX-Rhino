@@ -41,6 +41,14 @@ namespace TextX.Commands
             return list;
         }
 
+        /// <summary>Opens Text X Studio on Home and loads the given text and leaders into the translator.</summary>
+        public static void OpenTranslator(RhinoDoc doc, IList<RhinoObject> objects)
+        {
+            TextX.UI.Studio.StudioWindow.ShowTranslator(doc);
+            var bridge = RhinoTranslatorBridge.Active;
+            if (bridge != null && objects != null && objects.Count > 0) bridge.LoadObjects(doc, objects);
+        }
+
         public static string OptionName(Language l)
         {
             var chars = l.EnglishName.Where(char.IsLetterOrDigit).ToArray();
@@ -48,7 +56,7 @@ namespace TextX.Commands
         }
     }
 
-    /// <summary>TR: opens the Text X window (loads pre-selected text and leaders).</summary>
+    /// <summary>TR: opens Text X Studio on Home, the translator (loads pre-selected text and leaders).</summary>
     [Guid("2d0d6d3e-5a63-4c51-9f0f-6a1d4a7b9e01")]
     public class TrCommand : Command
     {
@@ -56,9 +64,7 @@ namespace TextX.Commands
 
         protected override Result RunCommand(RhinoDoc doc, RunMode mode)
         {
-            var window = TextXWindow.ShowWindow(doc);
-            var selected = doc.Objects.GetSelectedObjects(false, false).Where(AnnotationEngine.IsSupported).ToList();
-            if (selected.Count > 0) window.LoadObjects(doc, selected);
+            CommandHelpers.OpenTranslator(doc, doc.Objects.GetSelectedObjects(false, false).Where(AnnotationEngine.IsSupported).ToList());
             return Result.Success;
         }
     }
@@ -71,9 +77,7 @@ namespace TextX.Commands
 
         protected override Result RunCommand(RhinoDoc doc, RunMode mode)
         {
-            var window = TextXWindow.ShowWindow(doc);
-            var selected = doc.Objects.GetSelectedObjects(false, false).Where(AnnotationEngine.IsSupported).ToList();
-            if (selected.Count > 0) window.LoadObjects(doc, selected);
+            CommandHelpers.OpenTranslator(doc, doc.Objects.GetSelectedObjects(false, false).Where(AnnotationEngine.IsSupported).ToList());
             return Result.Success;
         }
     }
@@ -89,7 +93,7 @@ namespace TextX.Commands
             var objs = CommandHelpers.GetAnnotations("Select text or leaders to translate / edit");
             if (objs == null) return Result.Cancel;
             if (objs.Count == 0) return Result.Nothing;
-            TextXWindow.ShowWindow(doc).LoadObjects(doc, objs);
+            CommandHelpers.OpenTranslator(doc, objs);
             return Result.Success;
         }
     }
@@ -102,11 +106,11 @@ namespace TextX.Commands
 
         protected override Result RunCommand(RhinoDoc doc, RunMode mode)
         {
-            var window = TextXWindow.Instance;
+            var window = RhinoTranslatorBridge.Active;
             if (window == null)
             {
-                TextXWindow.ShowWindow(doc);
-                RhinoApp.WriteLine("Type the text in the Text X window, then click \"Place text\".");
+                TextX.UI.Studio.StudioWindow.ShowTranslator(doc);
+                RhinoApp.WriteLine("Type the text on Text X Studio's Home, then click \"Place text\".");
                 return Result.Nothing;
             }
             var req = window.CreatePlacementRequest();
@@ -173,11 +177,11 @@ namespace TextX.Commands
 
         protected override Result RunCommand(RhinoDoc doc, RunMode mode)
         {
-            var window = TextXWindow.Instance;
+            var window = RhinoTranslatorBridge.Active;
             if (window == null)
             {
-                TextXWindow.ShowWindow(doc);
-                RhinoApp.WriteLine("Type the text in the Text X window, then click \"Place leader\".");
+                TextX.UI.Studio.StudioWindow.ShowTranslator(doc);
+                RhinoApp.WriteLine("Type the text on Text X Studio's Home, then click \"Place leader\".");
                 return Result.Nothing;
             }
             var req = window.CreatePlacementRequest();
@@ -254,7 +258,7 @@ namespace TextX.Commands
 
         protected override Result RunCommand(RhinoDoc doc, RunMode mode)
         {
-            var window = TextXWindow.Instance;
+            var window = RhinoTranslatorBridge.Active;
             if (window == null) return Result.Nothing;
             var req = window.CreateApplyRequest();
             if (req.Items.Count == 0)
@@ -715,7 +719,7 @@ namespace TextX.Commands
         protected override Result RunCommand(RhinoDoc doc, RunMode mode)
         {
             RhinoApp.WriteLine(string.Format("{0} {1} ({2}) - {3}", BuildInfo.ProductName, BuildInfo.VersionText, BuildInfo.BuildDate, BuildInfo.InstallFolder));
-            if (mode == RunMode.Interactive) AboutDialog.ShowFor(TextXWindow.Instance);
+            if (mode == RunMode.Interactive) AboutDialog.ShowFor(TextX.UI.Studio.StudioWindow.Instance);
             return Result.Success;
         }
     }

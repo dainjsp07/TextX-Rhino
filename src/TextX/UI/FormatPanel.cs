@@ -145,6 +145,23 @@ namespace TextX.UI
             _maskFrame.Enabled = on;
         }
 
+        /// <summary>The layers of the bound document: index and full path (Parent::Child), sorted.</summary>
+        public IList<KeyValuePair<int, string>> LayerChoices
+        {
+            get { return _layers.ToList(); }
+        }
+
+        /// <summary>The layer for new and updated objects; -1 = the current layer. Setting it marks the layer as changed.</summary>
+        public int LayerIndex
+        {
+            get { return _layer.SelectedIndex > 0 && _layer.SelectedIndex - 1 < _layers.Count ? _layers[_layer.SelectedIndex - 1].Key : -1; }
+            set
+            {
+                int li = value < 0 ? -1 : _layers.FindIndex(l => l.Key == value);
+                _layer.SelectedIndex = li < 0 ? 0 : li + 1;
+            }
+        }
+
         public bool AutoRightAlignRtl
         {
             get { return _autoRight.Checked == true; }

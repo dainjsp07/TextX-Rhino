@@ -74,6 +74,12 @@ namespace TextX.Integration
             Directory.CreateDirectory(SettingsDirectory);
             StudioSourceLanguage = Core.Languages.AutoDetect;
             StudioTargetLanguage = "en";
+            SourceLanguage = Core.Languages.AutoDetect;
+            TargetLanguage = "en";
+            ProviderId = ProviderIds.GoogleFree;
+            RealTimeTranslation = true;
+            RealTimeDelayMs = 600;
+            DefaultMode = Core.TranslationDisplayMode.Dual;
             StudioBounds = string.Empty;
             SchedulesFromTranslation = true;
             ThemeMode = Environment.GetEnvironmentVariable("TEXTX_PREVIEW_THEME") == "dark" ? "Dark" : "Light";
@@ -85,6 +91,12 @@ namespace TextX.Integration
         {
             get { return Environment.GetEnvironmentVariable("TEXTX_TESSDATA") ?? Path.Combine(SettingsDirectory, "tessdata"); }
         }
+        public string SourceLanguage { get; set; }
+        public string TargetLanguage { get; set; }
+        public string ProviderId { get; set; }
+        public bool RealTimeTranslation { get; set; }
+        public int RealTimeDelayMs { get; set; }
+        public Core.TranslationDisplayMode DefaultMode { get; set; }
         public string StudioSourceLanguage { get; set; }
         public string StudioTargetLanguage { get; set; }
         public string StudioBounds { get; set; }
@@ -119,20 +131,30 @@ namespace TextX.Integration
     {
         public static Core.Tools.GrayImage ActiveView(Rhino.RhinoDoc doc) { return null; }
     }
+
+    /// <summary>No update checks in the preview.</summary>
+    public sealed class UpdateService
+    {
+        private static readonly UpdateService _instance = new UpdateService();
+        public static UpdateService Instance { get { return _instance; } }
+        public event EventHandler Changed { add { } remove { } }
+        public Core.Updates.ReleaseInfo Latest { get { return null; } }
+        public bool IsInstalling { get { return false; } }
+        public bool ShouldNotify { get { return false; } }
+        public bool ShouldShowRestartNotice { get { return false; } }
+        public bool CanInstallLatest { get { return false; } }
+        public Core.Updates.SemVersion PendingVersion { get { return null; } }
+        public void Dismiss() { }
+        public System.Threading.Tasks.Task<string> InstallAsync(Core.Updates.ReleaseInfo release, System.Threading.CancellationToken ct)
+        {
+            return System.Threading.Tasks.Task.FromResult(string.Empty);
+        }
+        public static bool OpenUrl(string url) { return false; }
+    }
 }
 
 namespace TextX.UI
 {
-    public sealed class TextXWindow
-    {
-        public static TextXWindow ShowWindow(Rhino.RhinoDoc doc) { return new TextXWindow(); }
-
-        public void StartNewText(string source, string translation, string sourceLang, string targetLang)
-        {
-            Console.WriteLine("  (Text X window) " + source + " => " + translation);
-        }
-    }
-
     public static class SettingsDialog
     {
         public static void ShowFor(Eto.Forms.Control parent) { }

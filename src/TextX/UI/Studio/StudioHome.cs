@@ -17,76 +17,86 @@ namespace TextX.UI.Studio
 {
     public sealed partial class StudioWindow
     {
-        private StackLayout _history;
-        private Label _historyEmpty;
+        private StackLayout _recent;
+        private Label _recentEmpty;
+        private FlatButton _recentManage;
+        private Panel _homeHost;
+        private Control _heroCard, _featuredTile, _tileGrid;
+        private bool? _homeWide;
+
+        /// <summary>Width of the page from which the tiles sit beside the translator (Windows "large" windows).</summary>
+        private const int HomeWideFrom = 1000;
 
         private Control BuildHome()
         {
-            // hero: what Studio does, in two lines, and the two ways in
-            var kicker = Ui.Label(_scope, Theme.Spaced("Text X Studio"), 10.5f, true, p => p.Accent);
-            var line1 = new Label { Text = "Translate anything.", Font = Theme.DisplayFont(34f) };
-            _scope.Bind(line1, (x, p) => x.TextColor = p.OnHero);
-            var line2 = new Label { Text = "Keep every layout.", Font = Theme.DisplayFont(34f) };
-            _scope.Bind(line2, (x, p) => x.TextColor = p.Accent);
-            var heroText = Ui.Label(_scope, "Drop a PDF, a drawing or a picture anywhere on this window. Documents keep their layout, drawings become product schedules, pictures become text. No account, nothing to set up.",
-                13f, false, p => ThemeColors.WithAlpha(p.OnHero, 0.72f), true);
-            var open = new FlatButton("Open a file", IconKind.Plus, ButtonKind.Primary, 40) { Backdrop = p => p.Hero };
-            open.Click += (s, e) => OpenFileDialog();
-            var paste = new FlatButton("Paste a picture", IconKind.Picture, ButtonKind.Secondary, 40) { Backdrop = p => p.Hero, ToolTip = "Read the text of a picture or screenshot on the clipboard" };
-            paste.Click += (s, e) => { ShowTab(ToolsTab); PastePicture(); };
-            var heroBody = new TableLayout { Spacing = new Size(0, 6) };
-            heroBody.Rows.Add(new TableRow(kicker));
-            heroBody.Rows.Add(new TableRow(line1));
-            heroBody.Rows.Add(new TableRow(line2));
-            heroBody.Rows.Add(new TableRow(new Panel { Height = 4 }));
-            heroBody.Rows.Add(new TableRow(heroText));
-            heroBody.Rows.Add(new TableRow(new Panel { Height = 8 }));
-            heroBody.Rows.Add(new TableRow(Ui.Row(10, open, paste, Ui.Spring())));
-            heroBody.Rows.Add(new TableRow { ScaleHeight = true });
-            heroText.Width = 400;
-            var heroRow = new TableLayout { Spacing = new Size(16, 0) };
-            heroRow.Rows.Add(new TableRow(new TableCell(heroBody, false), new TableCell(null, true)) { ScaleHeight = true });
-            var hero = new Card(heroRow, new Padding(30, 26, 22, 24), p => p.Hero, p => p.IsDark ? p.Border : p.Hero, 26f) { Height = 340 };
-            // the picture sits in the free space at the right (drawn behind the text)
-            hero.Paint += (s, e) =>
-            {
-                try { HeroArt.Draw(e.Graphics, new RectangleF(0, 0, hero.Width, hero.Height), 26f, new RectangleF(450, 0, Math.Max(0, hero.Width - 450), hero.Height)); }
-                catch (Exception ex) { Diagnostics.Log("hero art: " + ex.Message); }
-            };
-            hero.SizeChanged += (s, e) => hero.Invalidate();
+            // the translator: what the Text X window did, now the heart of Home
+            _heroCard = BuildTranslator();
 
-            // what can be done: each tile has a line figure that answers the pointer and says what it shows
-            var translate = new BentoTile(IconKind.Translate, "Translate a PDF", "Any language, layout kept. Compare side by side, edit, save as PDF, Word or text.", "Documents", new PagesFigure()) { Featured = true, Height = 340 };
+            // what else Studio does: each tile has a line figure that answers the pointer and says what it shows
+            var translate = new BentoTile(IconKind.Translate, "Translate a PDF", "Layout kept. Compare, edit, save as PDF, Word or text.", "Documents", new PagesFigure()) { Featured = true, Height = 212 };
             translate.Click += (s, e) => { if (_project != null) ShowTab(DocumentTab); else OpenFileDialog(); };
-            var schedule = new BentoTile(IconKind.Grid, "Product schedule", "Items, materials, finishes and title blocks from drawings, to Excel, PDF or Rhino.", "Drawings", new ScheduleFigure());
+            var schedule = new BentoTile(IconKind.Grid, "Product schedule", "Items, materials and finishes from your drawings.", "Drawings", new ScheduleFigure()) { Compact = true };
             schedule.Click += (s, e) => { ShowTab(SchedulesTab); if (_project == null) OpenFileDialog(); };
-            var picture = new BentoTile(IconKind.Picture, "Picture or screenshot", "Take a screenshot or open a picture: its text is read and translated.", "Pictures", new ReadFigure());
-            picture.Click += (s, e) => { ShowTab(ToolsTab); ShowTool(0); };
-            var speak = new BentoTile(IconKind.Mic, "Speak", "Dictate and see the text and its translation as you speak.", "Voice", new VoiceFigure());
-            speak.Click += (s, e) => { ShowTab(ToolsTab); ShowTool(1); };
-            _library = new BentoTile(IconKind.Layers, "Library", "Documents you open are kept here with their translations.", "History", new LibraryFigure());
+            var picture = new BentoTile(IconKind.Picture, "Picture or screenshot", "Its text is read on this computer and translated.", "Pictures", new ReadFigure()) { Compact = true };
+            picture.Click += (s, e) => ShowTab(PictureTab);
+            var voice = new BentoTile(IconKind.Mic, "Voice typing", "Speak into the text; the translation follows.", "Voice", new VoiceFigure()) { Compact = true };
+            voice.Click += (s, e) => ToggleVoiceTyping();
+            _library = new BentoTile(IconKind.Layers, "Library", "Documents you open, with their translations.", "History", new LibraryFigure()) { Compact = true };
             _library.Click += (s, e) => OpenLatest();
-            _tiles = new List<BentoTile> { translate, schedule, picture, speak, _library };
+            _tiles = new List<BentoTile> { translate, schedule, picture, voice, _library };
+            _featuredTile = translate;
 
-            var top = new TableLayout { Spacing = new Size(16, 0) };
-            top.Rows.Add(new TableRow(new TableCell(hero, true), new TableCell(new Panel { Content = translate, Width = 300 }, false)));
-            var second = new TableLayout { Spacing = new Size(16, 0) };
-            second.Rows.Add(new TableRow(new TableCell(schedule, true), new TableCell(picture, true), new TableCell(speak, true), new TableCell(_library, true)));
+            var grid = new TableLayout { Spacing = new Size(12, 12) };
+            grid.Rows.Add(new TableRow(new TableCell(schedule, true), new TableCell(picture, true)));
+            grid.Rows.Add(new TableRow(new TableCell(voice, true), new TableCell(_library, true)));
+            _tileGrid = grid;
 
-            _history = new StackLayout { Orientation = Orientation.Vertical, Spacing = 8, HorizontalContentAlignment = HorizontalAlignment.Stretch };
-            _historyEmpty = Ui.Label(_scope, "Documents you open appear here, with their translations and edits.", 12.5f, false, p => p.Muted, true);
-            var list = new TableLayout { Spacing = new Size(0, 10) };
-            list.Rows.Add(new TableRow(Ui.Row(8, Ui.Section(_scope, "Recent documents"), Ui.Spring())));
-            list.Rows.Add(new TableRow(_historyEmpty));
-            list.Rows.Add(new TableRow(_history));
+            // documents opened before, as chips
+            _recent = new StackLayout { Orientation = Orientation.Horizontal, Spacing = 8, VerticalContentAlignment = VerticalAlignment.Center };
+            _recentEmpty = Ui.Label(_scope, "Documents you open appear here, with their translations and edits.", 12f, false, p => p.Muted);
+            _recentManage = new FlatButton("Manage", IconKind.None, ButtonKind.Ghost, 28) { ToolTip = "Remove documents from the history", Visible = false };
+            _recentManage.Click += (s, e) => ShowRecentMenu(_recentManage);
+            var recent = Ui.Row(12, Ui.Section(_scope, "Recent"), _recentEmpty, _recent, Ui.Spring(), _recentManage);
 
-            var layout = new TableLayout { Spacing = new Size(0, 16), Padding = new Padding(10, 6, 24, 16) };
-            layout.Rows.Add(new TableRow(top));
-            layout.Rows.Add(new TableRow(second));
-            layout.Rows.Add(new TableRow(list));
-            layout.Rows.Add(new TableRow { ScaleHeight = true });
-            var scroll = new Scrollable { Content = layout, Border = BorderType.None, ExpandContentWidth = true, ExpandContentHeight = false };
-            return _scope.Bind(scroll, (x, p) => x.BackgroundColor = p.Window);
+            _homeHost = new Panel();
+            _homeHost.SizeChanged += (s, e) => ArrangeHome();
+            ArrangeHome();
+
+            var layout = new TableLayout { Spacing = new Size(0, 12), Padding = new Padding(4, 0, 16, 8) };
+            layout.Rows.Add(new TableRow(_homeHost) { ScaleHeight = true });
+            layout.Rows.Add(new TableRow(recent));
+            return _scope.Bind(new Panel { Content = layout }, (x, p) => x.BackgroundColor = p.Window);
+        }
+
+        /// <summary>
+        /// Wide windows: the translator on the left, Translate a PDF and the four tiles in a column on the right.
+        /// Narrower windows: the tiles move under the translator, in one row (the translator keeps its width).
+        /// </summary>
+        private void ArrangeHome()
+        {
+            if (_homeHost == null) return;
+            int w = _homeHost.Width;
+            bool wide = w <= 0 || w >= HomeWideFrom;
+            if (_homeWide == wide) return;
+            _homeWide = wide;
+            foreach (var c in new[] { _heroCard, _featuredTile, _tileGrid }) if (c.Parent != null) c.Detach();
+            var layout = new TableLayout { Spacing = new Size(12, 12) };
+            if (wide)
+            {
+                var side = new TableLayout { Spacing = new Size(0, 12) };
+                side.Rows.Add(new TableRow(_featuredTile));
+                side.Rows.Add(new TableRow(_tileGrid) { ScaleHeight = true });
+                var sideBox = new Panel { Content = side, Width = 400 };
+                layout.Rows.Add(new TableRow(new TableCell(_heroCard, true), new TableCell(sideBox, false)) { ScaleHeight = true });
+            }
+            else
+            {
+                var row = new TableLayout { Spacing = new Size(12, 0) };
+                row.Rows.Add(new TableRow(new TableCell(_featuredTile, true), new TableCell(_tileGrid, true)));
+                layout.Rows.Add(new TableRow(_heroCard) { ScaleHeight = true });
+                layout.Rows.Add(new TableRow(row));
+            }
+            _homeHost.Content = layout;
         }
 
         private List<BentoTile> _tiles = new List<BentoTile>();
@@ -112,56 +122,58 @@ namespace TextX.UI.Studio
 
         private void RefreshHistory()
         {
-            if (_history == null) return;
+            if (_recent == null) return;
             List<LibraryEntry> entries;
             try { entries = DocumentServices.Library.List(); }
             catch (Exception ex) { Diagnostics.Log("history: " + ex.Message); entries = new List<LibraryEntry>(); }
-            _history.Items.Clear();
-            _historyEmpty.Visible = entries.Count == 0;
+            _recent.Items.Clear();
+            _recentEmpty.Visible = entries.Count == 0;
+            _recentManage.Visible = entries.Count > 0;
             if (_library != null)
-                _library.Text = entries.Count == 0 ? "Documents you open are kept here with their translations."
-                    : entries.Count + (entries.Count == 1 ? " document" : " documents") + " with their translations. Click to open the latest.";
-            foreach (var entry in entries.Take(30)) _history.Items.Add(new StackLayoutItem(HistoryRow(entry), HorizontalAlignment.Stretch));
+                _library.Text = entries.Count == 0 ? "Documents you open, with their translations."
+                    : entries.Count + (entries.Count == 1 ? " document" : " documents") + ", with translations. Opens the latest.";
+            foreach (var entry in entries.Take(5)) _recent.Items.Add(RecentChip(entry));
         }
 
-        private Control HistoryRow(LibraryEntry entry)
+        private Control RecentChip(LibraryEntry entry)
         {
-            Control thumb;
-            try
-            {
-                thumb = File.Exists(entry.ThumbnailPath)
-                    ? (Control)new ImageView { Image = new Bitmap(File.ReadAllBytes(entry.ThumbnailPath)), Size = new Size(44, 56) }
-                    : new Panel { Size = new Size(44, 56) };
-            }
-            catch (Exception) { thumb = new Panel { Size = new Size(44, 56) }; }
-
-            var name = Ui.Label(_scope, entry.Name, 14f, true);
-            string langs = (string.IsNullOrEmpty(entry.SourceLang) ? "?" : Languages.EnglishName(entry.SourceLang)) + " → " + Languages.EnglishName(entry.TargetLang);
             int pct = entry.TotalBlocks == 0 ? 0 : (int)Math.Round(100.0 * entry.TranslatedBlocks / entry.TotalBlocks);
             string state = entry.TotalBlocks == 0 ? "not read yet" : entry.IsTranslated ? "translated" : pct > 0 ? pct + "% translated" : "not translated";
-            var details = Ui.Label(_scope, entry.PageCount + (entry.PageCount == 1 ? " page" : " pages") + "   ·   " + langs + "   ·   " +
-                entry.Modified.ToLocalTime().ToString("g", CultureInfo.CurrentCulture), 12f, false, p => p.Muted);
-            var text = new TableLayout { Spacing = new Size(0, 2) };
-            text.Rows.Add(new TableRow(name));
-            text.Rows.Add(new TableRow(details));
-
-            var badge = new Pill(state, p => entry.IsTranslated ? p.SuccessSoft : p.IconBox, p => entry.IsTranslated ? p.SuccessText : p.Subtle) { Backdrop = p => p.Surface };
-            var open = new FlatButton(string.Empty, IconKind.ArrowUpRight, ButtonKind.Strong, 34) { Backdrop = p => p.Surface, ToolTip = "Open" };
-            open.Click += (s, e) => OpenFromHistory(entry);
-            var remove = new FlatButton(string.Empty, IconKind.Close, ButtonKind.Ghost, 34) { Backdrop = p => p.Surface, ToolTip = "Remove from the history (deletes the stored copy, translations and schedules)" };
-            remove.Click += (s, e) =>
+            string langs = (string.IsNullOrEmpty(entry.SourceLang) ? "?" : Languages.EnglishName(entry.SourceLang)) + " → " + Languages.EnglishName(entry.TargetLang);
+            var name = entry.Name.Length > 28 ? entry.Name.Substring(0, 26) + "…" : entry.Name;
+            var chip = new FlatButton(name + "  ·  " + state, IconKind.File, ButtonKind.Secondary, 28)
             {
-                var answer = MessageBox.Show(this, "Remove \"" + entry.Name + "\" from the history?\n\nIts stored copy, translations and schedules are deleted. The original file is not touched.",
-                    "Text X Studio", MessageBoxButtons.YesNo, MessageBoxType.Question);
-                if (answer != DialogResult.Yes) return;
-                if (_project != null && _project.Id == entry.Id) CloseProject();
-                try { DocumentServices.Library.Delete(entry.Id); }
-                catch (Exception ex) { SetStatus("Could not remove it: " + ex.Message, StatusText.Level.Error); }
-                RefreshHistory();
+                ToolTip = entry.Name + "\n" + entry.PageCount + (entry.PageCount == 1 ? " page" : " pages") + "   ·   " + langs + "   ·   " + entry.Modified.ToLocalTime().ToString("g", CultureInfo.CurrentCulture),
             };
-            var row = new TableLayout { Spacing = new Size(14, 0) };
-            row.Rows.Add(new TableRow(new TableCell(thumb, false), new TableCell(text, true), new TableCell(Ui.Row(8, badge, remove, open), false)));
-            return new Card(row, new Padding(12, 10, 12, 10), p => p.Surface, p => p.Border, 20f);
+            chip.Click += (s, e) => OpenFromHistory(entry);
+            return chip;
+        }
+
+        private void ShowRecentMenu(Control anchor)
+        {
+            List<LibraryEntry> entries;
+            try { entries = DocumentServices.Library.List(); }
+            catch (Exception) { entries = new List<LibraryEntry>(); }
+            var menu = new ContextMenu();
+            foreach (var entry in entries.Take(30))
+            {
+                var captured = entry;
+                var mi = new ButtonMenuItem { Text = "Remove \"" + entry.Name.Replace("&", "&&") + "\"..." };
+                mi.Click += (s, e) => RemoveFromHistory(captured);
+                menu.Items.Add(mi);
+            }
+            if (entries.Count > 0) menu.Show(anchor);
+        }
+
+        private void RemoveFromHistory(LibraryEntry entry)
+        {
+            var answer = MessageBox.Show(this, "Remove \"" + entry.Name + "\" from the history?\n\nIts stored copy, translations and schedules are deleted. The original file is not touched.",
+                "Text X Studio", MessageBoxButtons.YesNo, MessageBoxType.Question);
+            if (answer != DialogResult.Yes) return;
+            if (_project != null && _project.Id == entry.Id) CloseProject();
+            try { DocumentServices.Library.Delete(entry.Id); }
+            catch (Exception ex) { SetStatus("Could not remove it: " + ex.Message, StatusText.Level.Error); }
+            RefreshHistory();
         }
 
         private void OpenFromHistory(LibraryEntry entry)

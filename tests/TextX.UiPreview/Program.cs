@@ -58,9 +58,15 @@ namespace TextX.UiPreview
             // the build machine has Windows animations off; the preview records the motion anyway
             TextX.UI.Motion.Animator.FollowWindowsSetting = false;
             _window = StudioWindow.ShowWindow(null);
-            _window.ClientSize = new Eto.Drawing.Size(1360, 860);
+            _window.ClientSize = new Eto.Drawing.Size(1280, 760);
             await Task.Delay(1500);
             Capture("studio-1-home.png");
+
+            // the translator on Home: a text, its translation and the one-line previews
+            var source = (TextArea)Field("_qSource");
+            source.Text = "Portes des meubles hauts en placage de chêne, finition laquée mate.";
+            await Task.Delay(5000);
+            Capture("studio-1a-home-translator.png");
 
             // the tiles' figures: one pointer on each, then frame sequences of two of them
             var tiles = (System.Collections.Generic.List<TextX.UI.Controls.BentoTile>)Field("_tiles");
@@ -116,24 +122,32 @@ namespace TextX.UiPreview
             Capture("studio-5-schedules.png");
 
             Call("ShowTab", 3);
-            Call("ShowTool", 2);
             var input = (TextArea)Field("_toolInput");
             input.Text = "Les portes des meubles hauts sont en placage de chêne avec une finition laquée mate.";
             Call("TranslateToolText");
             await Task.Delay(5000);
-            Capture("studio-6-tools.png");
+            Capture("studio-6-picture.png");
 
-            Call("ShowTool", 3);
-            var writing = (TextArea)Field("_writingText");
-            writing.Text = "The cabinat doors is made from oak veneer and has a matt finish.";
-            Call("CheckWriting");
-            await WaitIdle(60);
-            await Task.Delay(1500);
+            // writing check on Home: suggestions as chips under the texts
+            Call("ShowTab", 0);
+            source.Text = "The cabinat doors is made from oak veneer and has a matt finish.";
+            Call("CheckTranslatorWriting");
+            await Task.Delay(7000);
             Capture("studio-7-writing.png");
 
-            Call("ShowTab", 0);
+            Call("ToggleProperties", true);
+            await Task.Delay(1200);
+            Capture("studio-7b-text-properties.png");
+            Call("ToggleProperties", false);
+
+            source.Text = string.Empty;
             await Task.Delay(1500);
             Capture("studio-8-history.png");
+
+            // narrower window: the tiles move under the translator
+            _window.ClientSize = new Eto.Drawing.Size(940, 820);
+            await Task.Delay(2000);
+            Capture("studio-9-home-narrow.png");
         }
 
         private static void Point(TextX.UI.Controls.BentoTile tile, int stop)

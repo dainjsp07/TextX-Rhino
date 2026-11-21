@@ -107,7 +107,7 @@ namespace TextX.UI
             get
             {
                 var doc = RhinoDoc.FromRuntimeSerialNumber(_docSerial);
-                return TextXWindow.IsUsable(doc) ? doc : null;
+                return RhinoTranslatorBridge.IsUsable(doc) ? doc : null;
             }
         }
 
@@ -179,7 +179,8 @@ namespace TextX.UI
             if (doc == null) return;
             var objs = TargetIds().Select(id => doc.Objects.FindId(id)).Where(o => o != null).ToList();
             if (objs.Count == 0) return;
-            TextXWindow.ShowWindow(doc).LoadObjects(doc, objs);
+            TextX.UI.Studio.StudioWindow.ShowTranslator(doc);
+            if (RhinoTranslatorBridge.Active != null) RhinoTranslatorBridge.Active.LoadObjects(doc, objs);
         }
 
         private void SetMode()
