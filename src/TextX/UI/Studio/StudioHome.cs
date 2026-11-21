@@ -20,8 +20,13 @@ namespace TextX.UI.Studio
         private StackLayout _recent;
         private Label _recentEmpty;
         private FlatButton _recentManage;
-        private Panel _homeHost;
+        private Panel _homeHost, _homeContent;
         private Scrollable _homeScroll;
+
+        /// <summary>Space kept at the right of Home for its scroll bar.</summary>
+        private const int ScrollGutter = 18;
+
+        private int HomeContentWidth { get { return _homeScroll == null || _homeScroll.Width <= 0 ? 0 : Math.Max(480, _homeScroll.Width - ScrollGutter); } }
         private Control _heroCard, _featuredTile, _tileGrid;
         private bool? _homeWide;
 
@@ -62,14 +67,21 @@ namespace TextX.UI.Studio
             _homeHost = new Panel();
             ArrangeHome();
 
-            var layout = new TableLayout { Spacing = new Size(0, 12), Padding = new Padding(4, 0, 16, 8) };
+            var layout = new TableLayout { Spacing = new Size(0, 12), Padding = new Padding(4, 0, 16 - ScrollGutter + 2, 8) };
             layout.Rows.Add(new TableRow(_homeHost) { ScaleHeight = true });
             layout.Rows.Add(new TableRow(recent));
             // the page fills the window and scrolls only when the window is shorter than its content
-            var scroll = new Scrollable { Content = _scope.Bind(new Panel { Content = layout }, (x, p) => x.BackgroundColor = p.Window), Border = BorderType.None, ExpandContentWidth = true, ExpandContentHeight = true };
+            _homeContent = _scope.Bind(new Panel { Content = layout }, (x, p) => x.BackgroundColor = p.Window);
+            var scroll = new Scrollable { Content = _homeContent, Border = BorderType.None, ExpandContentWidth = true, ExpandContentHeight = true };
             _homeScroll = scroll;
-            // the arrangement follows the visible width (not the content's, which may be wider)
-            scroll.SizeChanged += (s, e) => ArrangeHome();
+            // The page scrolls up and down only: its width is the window's, less a gutter kept for the scroll bar
+            // (so nothing shifts when it appears), and the arrangement follows that width.
+            scroll.SizeChanged += (s, e) =>
+            {
+                int width = HomeContentWidth;
+                if (width > 0 && _homeContent.Width != width) _homeContent.Width = width;
+                ArrangeHome();
+            };
             return _scope.Bind(scroll, (x, p) => x.BackgroundColor = p.Window);
         }
 
@@ -80,7 +92,7 @@ namespace TextX.UI.Studio
         private void ArrangeHome()
         {
             if (_homeHost == null) return;
-            int w = _homeScroll == null ? 0 : _homeScroll.Width - 20;
+            int w = HomeContentWidth <= 0 ? 0 : HomeContentWidth - 4;
             bool wide = w <= 0 || w >= HomeWideFrom;
             // the translator's own width decides how compact it is (its content would keep it wide otherwise)
             if (w > 0) FitTranslator(wide ? w - 412 : w);
