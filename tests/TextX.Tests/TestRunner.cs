@@ -93,6 +93,7 @@ namespace TextX.Tests
                 foreach (var t in new Action[]
                 {
                     NativeDocumentTests.Smoke,
+                    NativeDocumentTests.Ocr,
                 })
                 {
                     var sw = System.Diagnostics.Stopwatch.StartNew();

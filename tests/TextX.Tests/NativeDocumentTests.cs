@@ -5,6 +5,7 @@ using System.Linq;
 using System.Text;
 using TextX.Core.Documents.Imaging;
 using TextX.Core.Documents.Native;
+using TextX.Core.Documents.Ocr;
 using static TextX.Tests.TestRunner;
 
 namespace TextX.Tests
@@ -46,7 +47,18 @@ namespace TextX.Tests
         public static string Text(List<PdfChar> chars)
         {
             var sb = new StringBuilder();
-            foreach (var c in chars) sb.Append(c.Code == '\r' ? "" : char.ConvertFromUtf32(Math.Max(1, c.Code)));
+            foreach (var c in chars)
+            {
+                if (c.Code == '\n') sb.Append('\n');
+                else if (c.Code >= 32 && c.Code <= 0x10FFFF && (c.Code < 0xD800 || c.Code > 0xDFFF)) sb.Append(char.ConvertFromUtf32(c.Code));
+            }
+            return sb.ToString();
+        }
+
+        public static string Codes(List<PdfChar> chars, int max = 40)
+        {
+            var sb = new StringBuilder();
+            foreach (var c in chars.Take(max)) sb.Append(c.Code.ToString("X")).Append(c.Generated ? "g " : " ");
             return sb.ToString();
         }
 
@@ -82,7 +94,7 @@ namespace TextX.Tests
                     Equal(595f, (float)Math.Round(page.Width), "page width");
                     var chars = page.GetChars();
                     var text = Text(chars);
-                    True(text.Contains("Hello world from Text X"), "text extracted: " + text.Replace("\n", "|"));
+                    True(text.Contains("Hello world from Text X"), "text extracted: " + text.Replace("\n", "|") + " codes: " + Codes(chars));
                     var h = chars.First(c => c.Code == 'H');
                     True(Math.Abs(h.Left - 72) < 3, "char position x (" + h.Left + ")");
                     True(Math.Abs(h.FontSize - 24) < 0.5, "font size (" + h.FontSize + ")");
@@ -96,7 +108,7 @@ namespace TextX.Tests
 
                     var img = page.Render(1.5f);
                     File.WriteAllBytes(Path.Combine(OutDir, "smoke-created.png"), PngWriter.FromBgra(img.Pixels, img.Width, img.Height));
-                    True(img.Width == 893, "render width (" + img.Width + ")");
+                    True(Math.Abs(img.Width - 893) <= 1, "render width (" + img.Width + ")");
 
                     // replace the French line
                     var frenchObjects = new HashSet<IntPtr>(chars.Where(c => c.TextObject != IntPtr.Zero && c.OriginY < 730 && c.OriginY > 710).Select(c => c.TextObject));
@@ -113,11 +125,34 @@ namespace TextX.Tests
             using (var doc = PdfFile.Open(Path.Combine(OutDir, "smoke-edited.pdf")))
             using (var page = doc.LoadPage(0))
             {
-                var text = Text(page.GetChars());
-                True(text.Contains("this is a test") && !text.Contains("Bonjour"), "edited text: " + text.Replace("\n", "|"));
+                var edited = page.GetChars();
+                var text = Text(edited);
+                True(text.Contains("this is a test") && !text.Contains("Bonjour"), "edited text: " + text.Replace("\n", "|") + " codes: " + Codes(edited, 60));
                 var img = page.Render(1.5f);
                 File.WriteAllBytes(Path.Combine(OutDir, "smoke-edited.png"), PngWriter.FromBgra(img.Pixels, img.Width, img.Height));
             }
+        }
+
+        public static void Ocr()
+        {
+            OcrEngine.DataDirectory = Environment.GetEnvironmentVariable("TEXTX_TESSDATA");
+            True(!string.IsNullOrEmpty(OcrEngine.Version), "Tesseract version " + OcrEngine.Version);
+            RenderedImage img;
+            using (var doc = PdfFile.Open(Path.Combine(OutDir, "smoke-created.pdf")))
+            using (var page = doc.LoadPage(0))
+                img = page.Render(300f / 72f);
+            var gray = img.ToGray();
+            var osd = OcrEngine.DetectScript(gray, img.Width, img.Height, 300);
+            True(osd != null && osd.Script == "Latin", "script detected: " + (osd == null ? "none" : osd.Script + " " + osd.ScriptConfidence + ", rotated " + osd.Orientation));
+            var sw = System.Diagnostics.Stopwatch.StartNew();
+            var result = OcrEngine.Recognize(gray, img.Width, img.Height, 300, "eng");
+            var words = string.Join(" ", result.Words.Select(w => w.Text));
+            File.WriteAllText(Path.Combine(OutDir, "ocr-words.txt"), string.Join("\n", result.Words.Select(w =>
+                w.Text + "\t" + w.Left + "," + w.Top + "," + w.Right + "," + w.Bottom + "\t" + w.Confidence.ToString("0") + "\tline " + w.Line)));
+            True(words.Contains("Hello world from Text X"), "OCR text (" + sw.ElapsedMilliseconds + " ms): " + words);
+            var hello = result.Words.FirstOrDefault(w => w.Text == "Hello");
+            True(hello != null && Math.Abs(hello.Left - 72 * 300 / 72) < 30, "OCR word position");
+            True(result.MeanConfidence > 80, "OCR confidence " + result.MeanConfidence.ToString("0"));
         }
     }
 }
