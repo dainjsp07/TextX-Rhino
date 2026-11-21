@@ -2,6 +2,8 @@ using System;
 using System.Collections.Generic;
 using Eto.Drawing;
 using Eto.Forms;
+using TextX.Core.Motion;
+using TextX.UI.Motion;
 using TextX.UI.Theming;
 using Theme = TextX.UI.Theming.Theme;
 
@@ -18,6 +20,9 @@ namespace TextX.UI.Controls
         private IconKind _bottomIcon = IconKind.None;
         private int _selected;
         private int _hover = -2; // -1 = bottom button, -2 = nothing
+        // the orange circle slides between items on the discrete clock (a little quicker than 700 ms)
+        private readonly Tween _slide = new Tween(0, 520);
+        private readonly Tween _hoverDot = new Tween(0, 180) { Ease = Clock.EaseFade };
         private const float RailW = 52f, ItemD = 40f, Gap = 6f, Logo = 44f, Top = 14f;
 
         public event EventHandler<EventArgs> SelectedIndexChanged;
@@ -49,6 +54,8 @@ namespace TextX.UI.Controls
             {
                 if (value == _selected || value < 0 || value >= _items.Count) return;
                 _selected = value;
+                _slide.Set(value, Animator.Now);
+                Animate();
                 Invalidate();
                 var h = SelectedIndexChanged;
                 if (h != null) h(this, EventArgs.Empty);
@@ -97,6 +104,8 @@ namespace TextX.UI.Controls
             int h = HitTest(location);
             if (h == _hover) return;
             _hover = h;
+            _hoverDot.From = 0; _hoverDot.To = 0; _hoverDot.Set(1, Animator.Now);
+            Animate();
             ToolTip = h >= 0 ? _items[h].Key : h == -1 ? _bottomText : null;
             Invalidate();
         }
@@ -124,9 +133,16 @@ namespace TextX.UI.Controls
             else if (e.Key == Keys.Up) { SelectedIndex = Math.Max(0, _selected - 1); e.Handled = true; }
         }
 
+        protected override bool Step(double dt, double now)
+        {
+            bool a = base.Step(dt, now);
+            return !_slide.Done(now) | !_hoverDot.Done(now) | a;
+        }
+
         protected override void OnDraw(Graphics g)
         {
             var p = P;
+            double now = Animator.Now;
             // the mark: an orange disc with the translate symbol
             var logo = new RectangleF((Width - Logo) / 2f, Top, Logo, Logo);
             g.FillEllipse(p.Accent, logo);
@@ -134,15 +150,25 @@ namespace TextX.UI.Controls
 
             var track = TrackRect();
             FillRound(g, track, RailW / 2f, p.Rail);
+            // the chosen item's circle, sliding between items
+            float pos = (float)_slide.Value(now);
+            if (_items.Count > 0)
+            {
+                var first = ItemRect(0);
+                g.FillEllipse(p.Accent, new RectangleF(first.X, first.Y + pos * (ItemD + Gap), ItemD, ItemD));
+            }
+            float hov = (float)_hoverDot.Value(now) * Hover;
             for (int i = 0; i < _items.Count; i++)
             {
                 var r = ItemRect(i);
-                bool sel = i == _selected;
-                if (sel) g.FillEllipse(p.Accent, r);
-                else if (i == _hover) g.FillEllipse(ThemeColors.WithAlpha(p.RailIcon, 0.18f), r);
-                var color = sel ? p.OnAccent : (i == _hover ? ThemeColors.Mix(p.RailIcon, p.Accent, 0.5f) : p.RailIcon);
-                Icons.Draw(g, _items[i].Value, new RectangleF(r.X + 11, r.Y + 11, ItemD - 22, ItemD - 22), color, sel ? 2.3f : 2f);
-                if (sel && ShowFocus) using (var pen = new Pen(p.AccentInk, 1.5f)) g.DrawEllipse(pen, new RectangleF(r.X - 3, r.Y - 3, r.Width + 6, r.Height + 6));
+                float on = (float)Math.Max(0, 1 - Math.Abs(pos - i)); // how much of the circle is on this item
+                if (i == _hover && i != _selected) g.FillEllipse(ThemeColors.WithAlpha(p.RailIcon, 0.18f * hov), r);
+                var rest = i == _hover ? ThemeColors.Mix(p.RailIcon, p.Accent, 0.6f * hov) : p.RailIcon;
+                var color = ThemeColors.Mix(rest, p.OnAccent, on);
+                // the icon under the pointer rises a little
+                float dy = i == _hover && i != _selected ? -1.5f * hov : 0;
+                Icons.Draw(g, _items[i].Value, new RectangleF(r.X + 11, r.Y + 11 + dy, ItemD - 22, ItemD - 22), color, on > 0.5f ? 2.3f : 2f);
+                if (i == _selected && ShowFocus) using (var pen = new Pen(p.AccentInk, 1.5f)) g.DrawEllipse(pen, new RectangleF(r.X - 3, r.Y - 3, r.Width + 6, r.Height + 6));
             }
 
             if (_bottomIcon != IconKind.None)
@@ -150,34 +176,115 @@ namespace TextX.UI.Controls
                 var b = BottomRect();
                 var ring = new RectangleF(b.X - 6, b.Y - 6, b.Width + 12, b.Height + 12);
                 g.FillEllipse(p.Rail, ring);
-                if (_hover == -1) g.FillEllipse(ThemeColors.WithAlpha(p.RailIcon, 0.18f), b);
-                Icons.Draw(g, _bottomIcon, new RectangleF(b.X + 11, b.Y + 11, ItemD - 22, ItemD - 22), _hover == -1 ? p.Accent : p.RailIcon, 2f);
+                float bh = _hover == -1 ? hov : 0;
+                if (bh > 0) g.FillEllipse(ThemeColors.WithAlpha(p.RailIcon, 0.18f * bh), b);
+                Icons.Draw(g, _bottomIcon, new RectangleF(b.X + 11, b.Y + 11, ItemD - 22, ItemD - 22), ThemeColors.Mix(p.RailIcon, p.Accent, bh), 2f);
             }
         }
     }
 
     /// <summary>
-    /// A bento tile: an icon in a disc, a title, a short text and a round arrow button; the whole tile
-    /// is one button.
+    /// A bento tile: a line figure that answers the pointer and says what it shows, a title, a short text
+    /// and a round arrow button; the whole tile is one button. Without a figure, an icon in a disc.
     /// </summary>
     public sealed class BentoTile : ThemedDrawable
     {
         private readonly IconKind _icon;
-        private readonly string _title, _text, _tag;
+        private readonly string _title, _tag;
+        private string _text;
+        private readonly Figure _figure;
+        private readonly Scene _scene = new Scene();
+        private TourPlayer _tour;
+        private bool _inFigure;
 
         public bool Featured { get; set; }
 
         public event EventHandler<EventArgs> Click;
 
-        public BentoTile(IconKind icon, string title, string text, string tag = null) : base(true)
+        public BentoTile(IconKind icon, string title, string text, string tag = null, Figure figure = null) : base(true)
         {
             _icon = icon;
             _title = title ?? string.Empty;
             _text = text ?? string.Empty;
             _tag = tag;
+            _figure = figure;
             Cursor = Cursors.Pointer;
-            Height = 168;
-            ToolTip = _title;
+            Height = figure == null ? 168 : 250;
+            ToolTip = figure == null ? _title : _title + ": " + figure.Label;
+        }
+
+        public string Text
+        {
+            get { return _text; }
+            set { _text = value ?? string.Empty; Invalidate(); }
+        }
+
+        public Figure Figure { get { return _figure; } }
+
+        /// <summary>Walks the figure through its stops once (after delayMs), so it shows what it does; a pointer takes over.</summary>
+        public void PlayOnce(double delayMs)
+        {
+            if (_figure == null || Clock.Reduced) return;
+            if (_tour != null && !_tour.Finished) return;
+            _tour = new TourPlayer(_figure, delayMs, 1);
+            Animate();
+        }
+
+        /// <summary>Puts an unseen pointer on the figure at a view-box point, or takes it away (null): for previews.</summary>
+        public void SimulatePointer(PointF? viewBox)
+        {
+            if (_figure == null) return;
+            if (_tour != null) _tour.Hold();
+            if (viewBox.HasValue) _figure.Move(viewBox.Value.X, viewBox.Value.Y, Animator.Now);
+            else _figure.Leave(Animator.Now);
+            Animate();
+        }
+
+        private RectangleF FigureRect
+        {
+            get { return new RectangleF(10, 34, Width - 20, Height - 34 - 92); }
+        }
+
+        protected override void OnMouseMoveAt(PointF location)
+        {
+            if (_figure == null) return;
+            var r = FigureRect;
+            bool inside = r.Contains(location);
+            if (inside)
+            {
+                if (_tour != null) _tour.Hold();
+                var v = FigurePainter.ToViewBox(_figure, r, location);
+                _figure.Move(v.X, v.Y, Animator.Now);
+                _inFigure = true;
+                Animate();
+            }
+            else if (_inFigure)
+            {
+                _inFigure = false;
+                _figure.Leave(Animator.Now);
+                Animate();
+            }
+        }
+
+        protected override void OnHoverChanged()
+        {
+            if (_figure != null && !IsHover && _inFigure)
+            {
+                _inFigure = false;
+                _figure.Leave(Animator.Now);
+                Animate();
+            }
+        }
+
+        protected override bool Step(double dt, double now)
+        {
+            bool more = base.Step(dt, now);
+            if (_figure != null)
+            {
+                if (_tour != null && !_tour.Finished && _tour.Tick(dt, now)) more = true;
+                if (_figure.Tick(dt, now)) more = true;
+            }
+            return more;
         }
 
         protected override void OnActivated(PointF location)
@@ -189,39 +296,114 @@ namespace TextX.UI.Controls
         protected override void OnDraw(Graphics g)
         {
             var p = P;
+            float h = Hover;
             var r = new RectangleF(0.5f, 0.5f, Width - 1, Height - 1);
-            var fill = Featured ? p.Accent : (IsHover ? ThemeColors.Mix(p.Surface, p.Text, p.IsDark ? 0.04f : 0.02f) : p.Surface);
-            FillRound(g, r, 22, fill);
-            if (!Featured) StrokeRound(g, r, 22, IsHover ? ThemeColors.Mix(p.Border, p.Accent, 0.6f) : p.Border, IsHover ? 1.3f : 1f);
+            var plate = Featured ? p.Accent : p.Surface;
+            FillRound(g, r, 22, plate);
+            if (!Featured) StrokeRound(g, r, 22, ThemeColors.Mix(p.Border, p.Accent, 0.75f * h), 1f + 0.4f * h);
 
             var ink = Featured ? p.OnAccent : p.Text;
-            var muted = Featured ? ThemeColors.WithAlpha(p.OnAccent, 0.75f) : p.Muted;
+            var muted = Featured ? ThemeColors.WithAlpha(p.OnAccent, 0.72f) : p.Muted;
 
-            // icon disc
-            var disc = new RectangleF(18, 18, 42, 42);
-            g.FillEllipse(Featured ? p.OnAccent : p.AccentSoft, disc);
-            Icons.Draw(g, _icon, new RectangleF(disc.X + 11, disc.Y + 11, 20, 20), Featured ? p.Accent : p.AccentInk, 2.1f);
-
-            // round arrow button
-            var arrow = new RectangleF(Width - 18 - 36, 18, 36, 36);
+            // round arrow button: fills with ink and the arrow leans out while the pointer is on the tile
+            var arrow = new RectangleF(Width - 16 - 34, 14, 34, 34);
             if (Featured) g.FillEllipse(p.OnAccent, arrow);
             else
             {
-                if (IsHover) g.FillEllipse(p.Strong, arrow);
-                else using (var pen = new Pen(p.Border, 1.2f)) g.DrawEllipse(pen, arrow);
+                if (h > 0) g.FillEllipse(ThemeColors.WithAlpha(p.Strong, h), arrow);
+                using (var pen = new Pen(ThemeColors.WithAlpha(p.Border, 1 - h), 1.2f)) g.DrawEllipse(pen, arrow);
             }
-            var arrowInk = Featured ? p.Accent : (IsHover ? p.OnStrong : p.Text);
-            Icons.Draw(g, IconKind.ArrowUpRight, new RectangleF(arrow.X + 10, arrow.Y + 10, 16, 16), arrowInk, 2.2f);
+            var arrowInk = Featured ? p.Accent : ThemeColors.Mix(p.Text, p.OnStrong, h);
+            Icons.Draw(g, IconKind.ArrowUpRight, new RectangleF(arrow.X + 9 + 1.8f * h, arrow.Y + 9 - 1.8f * h, 16, 16), arrowInk, 2.2f);
 
-            if (!string.IsNullOrEmpty(_tag))
-                DrawLine(g, Theme.UiFont(10f, true), muted, new RectangleF(70, 18, Width - 70 - 64, 42), Theme.Spaced(_tag));
-
-            float y = 76;
+            float y;
+            if (_figure != null)
+            {
+                if (!string.IsNullOrEmpty(_tag))
+                    DrawLine(g, Theme.UiFont(10f, true), muted, new RectangleF(20, 14, Width - 80, 34), Theme.Spaced(_tag));
+                var fr = FigureRect;
+                var inks = Featured ? FigureInks.OnAccent(p) : FigureInks.On(p, plate);
+                FigurePainter.Paint(g, _figure, _scene, fr, inks, Animator.Now);
+                // what the figure is showing, in a few words, under it
+                var cap = _figure.Caption ?? string.Empty;
+                var capColor = Featured ? ThemeColors.WithAlpha(p.OnAccent, 0.8f) : (cap.StartsWith("rest", StringComparison.Ordinal) ? p.Muted : p.AccentInk);
+                DrawLine(g, Theme.UiFont(10.5f, true), capColor, new RectangleF(20, fr.Bottom - 2, Width - 40, 18), cap.StartsWith("rest", StringComparison.Ordinal) ? "Point at the picture" : cap, FormattedTextAlignment.Left);
+                y = fr.Bottom + 20;
+            }
+            else
+            {
+                var disc = new RectangleF(18, 18, 42, 42);
+                g.FillEllipse(Featured ? p.OnAccent : p.AccentSoft, disc);
+                Icons.Draw(g, _icon, new RectangleF(disc.X + 11, disc.Y + 11, 20, 20), Featured ? p.Accent : p.AccentInk, 2.1f);
+                if (!string.IsNullOrEmpty(_tag))
+                    DrawLine(g, Theme.UiFont(10f, true), muted, new RectangleF(70, 18, Width - 70 - 64, 42), Theme.Spaced(_tag));
+                y = 76;
+            }
             DrawLine(g, Theme.UiFont(16f, true), ink, new RectangleF(20, y, Width - 40, 26), _title);
             using (var brush = new SolidBrush(muted))
-                g.DrawText(Theme.UiFont(12.5f), brush, new RectangleF(20, y + 30, Width - 40, Height - y - 30 - 14), _text,
+                g.DrawText(Theme.UiFont(12.5f), brush, new RectangleF(20, y + 28, Width - 40, Height - y - 28 - 12), _text,
                     FormattedTextWrapMode.Word, FormattedTextAlignment.Left, FormattedTextTrimming.WordEllipsis);
             DrawFocus(g, r, 22);
+        }
+    }
+
+    /// <summary>
+    /// A line figure on its own (empty pages): it walks its stops a few times so it shows what it does,
+    /// answers the pointer, and says what it shows under it.
+    /// </summary>
+    public sealed class FigureView : ThemedDrawable
+    {
+        private readonly Figure _figure;
+        private readonly Scene _scene = new Scene();
+        private TourPlayer _tour;
+
+        public FigureView(Figure figure) : base(false)
+        {
+            _figure = figure;
+            ToolTip = figure.Label;
+            Backdrop = p => p.Stage;
+        }
+
+        public Figure Figure { get { return _figure; } }
+
+        public void Play(int laps, double delayMs = 600)
+        {
+            if (Clock.Reduced) return;
+            _tour = new TourPlayer(_figure, delayMs, laps);
+            Animate();
+        }
+
+        private RectangleF FigureRect { get { return new RectangleF(0, 0, Width, Height - 22); } }
+
+        protected override void OnMouseMoveAt(PointF location)
+        {
+            if (_tour != null) _tour.Hold();
+            var v = FigurePainter.ToViewBox(_figure, FigureRect, location);
+            _figure.Move(v.X, v.Y, Animator.Now);
+            Animate();
+        }
+
+        protected override void OnHoverChanged()
+        {
+            if (!IsHover) { _figure.Leave(Animator.Now); Animate(); }
+        }
+
+        protected override bool Step(double dt, double now)
+        {
+            bool more = base.Step(dt, now);
+            if (_tour != null && !_tour.Finished && _tour.Tick(dt, now)) more = true;
+            if (_figure.Tick(dt, now)) more = true;
+            return more;
+        }
+
+        protected override void OnDraw(Graphics g)
+        {
+            var p = P;
+            var plate = Backdrop(p);
+            FigurePainter.Paint(g, _figure, _scene, FigureRect, FigureInks.On(p, plate), Animator.Now);
+            var cap = _figure.Caption ?? string.Empty;
+            bool rest = cap.StartsWith("rest", StringComparison.Ordinal);
+            DrawLine(g, Theme.UiFont(11f, true), rest ? p.Muted : p.AccentInk, new RectangleF(0, Height - 22, Width, 20), rest ? cap.Substring(Math.Min(cap.Length, 8)).Trim() : cap, FormattedTextAlignment.Center);
         }
     }
 

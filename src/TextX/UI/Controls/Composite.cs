@@ -5,6 +5,8 @@ using Eto.Drawing;
 using Eto.Forms;
 using TextX.Core;
 using TextX.Core.Text;
+using TextX.Core.Motion;
+using TextX.UI.Motion;
 using TextX.UI.Theming;
 using Theme = TextX.UI.Theming.Theme;
 
@@ -18,6 +20,7 @@ namespace TextX.UI.Controls
         private int _selected;
         private int _hover = -1;
         private const float ChipH = 32f;
+        private readonly Tween _slide = new Tween(0, 520);
 
         public event EventHandler<EventArgs> SelectedIndexChanged;
 
@@ -54,6 +57,8 @@ namespace TextX.UI.Controls
             {
                 if (value == _selected || value < 0 || value >= _tabs.Count) return;
                 _selected = value;
+                _slide.Set(value, Animator.Now);
+                Animate();
                 Invalidate();
                 var h = SelectedIndexChanged;
                 if (h != null) h(this, EventArgs.Empty);
@@ -90,21 +95,41 @@ namespace TextX.UI.Controls
             else if (e.Key == Keys.Left) { SelectedIndex = Math.Max(0, _selected - 1); e.Handled = true; }
         }
 
+        protected override bool Step(double dt, double now)
+        {
+            bool a = base.Step(dt, now);
+            return !_slide.Done(now) | a;
+        }
+
         protected override void OnDraw(Graphics g)
         {
             var p = P;
+            if (_rects.Count == 0) return;
+            // the ink chip slides between tabs, changing width on the way
+            float pos = (float)Math.Max(0, Math.Min(_rects.Count - 1, _slide.Value(Animator.Now)));
+            int a = (int)Math.Floor(pos), b = Math.Min(_rects.Count - 1, a + 1);
+            float t = pos - a;
+            var ra = _rects[a];
+            var rb = _rects[b];
+            var chip = new RectangleF(ra.X + (rb.X - ra.X) * t, (Height - ChipH) / 2f, ra.Width + (rb.Width - ra.Width) * t, ChipH);
             for (int i = 0; i < _tabs.Count; i++)
             {
                 var r = _rects[i];
                 r.Y = (Height - ChipH) / 2f;
-                bool sel = i == _selected;
-                if (sel) FillRound(g, r, ChipH / 2f, p.Strong);
-                else if (i == _hover) FillRound(g, r, ChipH / 2f, p.ItemHover);
-                else StrokeRound(g, r, ChipH / 2f, p.Border);
-                var fg = sel ? p.OnStrong : (i == _hover ? p.Text : p.Muted);
-                Icons.Draw(g, _tabs[i].Value, new RectangleF(r.X + 14, r.Y + (ChipH - 14) / 2f, 14, 14), sel ? p.Accent : fg, 2f);
-                DrawLine(g, Theme.UiFont(13, sel), fg, new RectangleF(r.X + 35, r.Y, r.Width - 40, ChipH), _tabs[i].Key);
-                if (sel && ShowFocus) StrokeRound(g, new RectangleF(r.X - 2, r.Y - 2, r.Width + 4, r.Height + 4), ChipH / 2f + 2, p.AccentInk, 1.2f);
+                if (i != _selected) StrokeRound(g, r, ChipH / 2f, ThemeColors.WithAlpha(p.Border, 1 - (i == _hover ? Hover : 0)));
+                if (i == _hover && i != _selected) FillRound(g, r, ChipH / 2f, ThemeColors.WithAlpha(p.ItemHover, Hover));
+            }
+            FillRound(g, chip, ChipH / 2f, p.Strong);
+            for (int i = 0; i < _tabs.Count; i++)
+            {
+                var r = _rects[i];
+                r.Y = (Height - ChipH) / 2f;
+                float on = (float)Math.Max(0, 1 - Math.Abs(pos - i));
+                var rest = i == _hover ? ThemeColors.Mix(p.Muted, p.Text, Hover) : p.Muted;
+                var fg = ThemeColors.Mix(rest, p.OnStrong, on);
+                Icons.Draw(g, _tabs[i].Value, new RectangleF(r.X + 14, r.Y + (ChipH - 14) / 2f, 14, 14), ThemeColors.Mix(rest, p.Accent, on), 2f);
+                DrawLine(g, Theme.UiFont(13, on > 0.5f), fg, new RectangleF(r.X + 35, r.Y, r.Width - 40, ChipH), _tabs[i].Key);
+                if (i == _selected && ShowFocus) StrokeRound(g, new RectangleF(r.X - 2, r.Y - 2, r.Width + 4, r.Height + 4), ChipH / 2f + 2, p.AccentInk, 1.2f);
             }
         }
     }

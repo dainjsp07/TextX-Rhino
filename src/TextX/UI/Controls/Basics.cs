@@ -2,7 +2,9 @@ using System;
 using System.Collections.Generic;
 using Eto.Drawing;
 using Eto.Forms;
+using TextX.Core.Motion;
 using TextX.Integration;
+using TextX.UI.Motion;
 using TextX.UI.Theming;
 using Theme = TextX.UI.Theming.Theme;
 
@@ -249,6 +251,7 @@ namespace TextX.UI.Controls
         private readonly string[] _items;
         private int _selected;
         private int _hover = -1;
+        private readonly Tween _slide = new Tween(0, 520);
 
         public event EventHandler<EventArgs> SelectedIndexChanged;
 
@@ -267,6 +270,8 @@ namespace TextX.UI.Controls
             {
                 if (value == _selected) return;
                 _selected = value;
+                _slide.Set(value, Animator.Now);
+                Animate();
                 Invalidate();
                 var h = SelectedIndexChanged;
                 if (h != null) h(this, EventArgs.Empty);
@@ -304,6 +309,12 @@ namespace TextX.UI.Controls
             else if (e.Key == Keys.Left) { SelectedIndex = Math.Max(0, _selected - 1); e.Handled = true; }
         }
 
+        protected override bool Step(double dt, double now)
+        {
+            bool a = base.Step(dt, now);
+            return !_slide.Done(now) | a;
+        }
+
         protected override void OnDraw(Graphics g)
         {
             var p = P;
@@ -311,13 +322,17 @@ namespace TextX.UI.Controls
             FillRound(g, outer, Height / 2f, p.Field);
             StrokeRound(g, outer, Height / 2f, p.Border);
             float segW = (Width - 6f) / _items.Length;
+            // the ink chip slides to the chosen segment
+            float pos = (float)_slide.Value(Animator.Now);
+            if (_selected >= 0 && _items.Length > 0)
+                FillRound(g, new RectangleF(3 + pos * segW, 3, segW - 3, Height - 6), (Height - 6) / 2f, p.Strong);
             for (int i = 0; i < _items.Length; i++)
             {
                 var r = new RectangleF(3 + i * segW, 3, segW - (i < _items.Length - 1 ? 3 : 0), Height - 6);
-                bool sel = i == _selected;
-                if (sel) FillRound(g, r, r.Height / 2f, p.Strong);
-                else if (i == _hover) FillRound(g, r, r.Height / 2f, p.ItemHover);
-                DrawLine(g, Theme.UiFont(12.5f, sel), sel ? p.OnStrong : (i == _hover ? p.Text : p.Muted), r, _items[i], FormattedTextAlignment.Center);
+                float on = (float)Math.Max(0, 1 - Math.Abs(pos - i));
+                if (i == _hover && i != _selected) FillRound(g, r, r.Height / 2f, ThemeColors.WithAlpha(p.ItemHover, Hover));
+                var rest = i == _hover ? ThemeColors.Mix(p.Muted, p.Text, Hover) : p.Muted;
+                DrawLine(g, Theme.UiFont(12.5f, on > 0.5f), ThemeColors.Mix(rest, p.OnStrong, on), r, _items[i], FormattedTextAlignment.Center);
             }
             DrawFocus(g, outer, Height / 2f);
         }

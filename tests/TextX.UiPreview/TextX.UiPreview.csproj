@@ -33,6 +33,7 @@
     <Compile Include="..\..\src\TextX\Core\**\*.cs" Link="Core\%(RecursiveDir)%(Filename)%(Extension)" />
     <Compile Include="..\..\src\TextX\UI\Controls\**\*.cs" Link="UI\Controls\%(RecursiveDir)%(Filename)%(Extension)" />
     <Compile Include="..\..\src\TextX\UI\Theming\**\*.cs" Link="UI\Theming\%(RecursiveDir)%(Filename)%(Extension)" />
+    <Compile Include="..\..\src\TextX\UI\Motion\**\*.cs" Link="UI\Motion\%(RecursiveDir)%(Filename)%(Extension)" />
     <Compile Include="..\..\src\TextX\UI\Studio\**\*.cs" Link="UI\Studio\%(RecursiveDir)%(Filename)%(Extension)" />
     <Compile Include="..\..\src\TextX\Integration\DocumentServices.cs" Link="Integration\DocumentServices.cs" />
     <Compile Include="..\..\src\TextX\Integration\Diagnostics.cs" Link="Integration\Diagnostics.cs" />

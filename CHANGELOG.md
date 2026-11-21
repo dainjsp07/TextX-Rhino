@@ -52,6 +52,14 @@ into a dated section when you release.
   rail for navigation, large rounded cards, pill buttons and chips, round icon buttons, and the document page
   as the centre of the Document view with a floating page bar. The Text X window uses the same colours,
   buttons and tabs.
+- **Pictures that explain.** Each Home tile has a small line drawing that answers the pointer and says what
+  it shows: a page and its translation with every piece in the same place, cabinets on a drawing and their
+  rows in a schedule, a picture whose lines become text as the reading bar passes, a voice becoming text,
+  and the library. They walk through what they do once when Studio opens. Empty Document and Schedules
+  pages use them too. (Line figures after Hairline by Lucas Marques, MIT.)
+- **Smooth hover.** Buttons, chips and tiles fade in and out, arrows lean the way they point, and the orange
+  circle in the rail and the ink chip in tabs slide to the chosen item. With "Show animations in Windows"
+  off, everything changes at once.
 
 ## [1.2.0] - 2026-10-25
 

@@ -10,6 +10,7 @@ using Eto.Forms;
 using TextX.Core;
 using TextX.Core.Documents;
 using TextX.Core.Documents.Schedules;
+using TextX.Core.Motion.Figures;
 using TextX.Integration;
 using TextX.UI.Controls;
 using TextX.UI.Theming;
@@ -41,6 +42,26 @@ namespace TextX.UI.Studio
 
         public string CurrentDocumentName { get { return _project == null ? string.Empty : _project.Name; } }
 
+        private Control _scheduleEmptyPanel;
+        private FigureView _scheduleFigure;
+
+        /// <summary>No schedules yet: the schedule figure shows how items on a drawing become rows.</summary>
+        private Control BuildSchedulesEmpty()
+        {
+            _scheduleFigure = new FigureView(new ScheduleFigure()) { Size = new Size(340, 250), Backdrop = p => p.Surface };
+            var row = new TableLayout { Spacing = new Size(24, 0) };
+            var words = new StackLayout { Orientation = Orientation.Vertical, Spacing = 8 };
+            words.Items.Add(Ui.Label(_scope, "Drawings become schedules", 18f, true));
+            words.Items.Add(_scheduleEmpty);
+            _scheduleEmpty.Width = 380;
+            var center = new TableLayout();
+            center.Rows.Add(new TableRow { ScaleHeight = true });
+            center.Rows.Add(new TableRow(new TableCell(null, true), new TableCell(_scheduleFigure, false), new TableCell(words, false), new TableCell(null, true)));
+            center.Rows.Add(new TableRow { ScaleHeight = true });
+            center.Spacing = new Size(24, 0);
+            return center;
+        }
+
         private int ScheduleIndex
         {
             get
@@ -70,7 +91,7 @@ namespace TextX.UI.Studio
         private Control BuildSchedules()
         {
             _scheduleInfo = Ui.Label(_scope, string.Empty, 12f, false, p => p.Muted);
-            _scheduleEmpty = Ui.Label(_scope, "Open a drawing or a specification (PDF), then click Read schedules.\nProduct codes, names, materials, finishes, colours, sizes, quantities and title-block details are listed here.", 13f, false, p => p.Muted, true);
+            _scheduleEmpty = Ui.Label(_scope, "Open a drawing or a specification (PDF), then click Read schedules. Each tagged item becomes a row: code, name, material, finish, colour, size and quantity, with the title-block details. Point at the picture to see.", 13f, false, p => p.Muted, true);
 
             var read = new FlatButton("Read schedules", IconKind.Refresh, ButtonKind.Primary, 38) { ToolTip = "Read the document again into schedules (edited rows are kept)" };
             read.Click += (s, e) => ReadSchedules();
@@ -113,7 +134,8 @@ namespace TextX.UI.Studio
             var bottom = Ui.Row(8, add, delete, show, Ui.Spring(), csv, pdf, excel, place);
             var sheet = new TableLayout { Spacing = new Size(0, 10) };
             sheet.Rows.Add(new TableRow(_scheduleInfo));
-            sheet.Rows.Add(new TableRow(_scheduleEmpty));
+            _scheduleEmptyPanel = BuildSchedulesEmpty();
+            sheet.Rows.Add(new TableRow(_scheduleEmptyPanel) { ScaleHeight = true });
             sheet.Rows.Add(new TableRow(_scheduleGrid) { ScaleHeight = true });
             sheet.Rows.Add(new TableRow(bottom));
             var card = new Card(sheet, new Padding(18, 14, 14, 14), p => p.Surface, p => p.Border, 24f);
@@ -135,6 +157,7 @@ namespace TextX.UI.Studio
             SetScheduleItems(names, set == null || set.Schedules.Count == 0 ? -1 : Math.Max(0, Math.Min(keep, set.Schedules.Count - 1)));
             _scheduleSuppress = false;
             _scheduleEmpty.Visible = set == null;
+            if (_scheduleEmptyPanel != null) _scheduleEmptyPanel.Visible = set == null;
             _scheduleGrid.Visible = set != null;
             if (_project != null && set == null) _scheduleInfo.Text = _project.Name + ": click Read schedules.";
             ShowSchedule();

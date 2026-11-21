@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.Globalization;
 using System.IO;
 using System.Linq;
@@ -6,6 +7,7 @@ using Eto.Drawing;
 using Eto.Forms;
 using TextX.Core;
 using TextX.Core.Documents;
+using TextX.Core.Motion.Figures;
 using TextX.Integration;
 using TextX.UI.Controls;
 using TextX.UI.Theming;
@@ -44,7 +46,7 @@ namespace TextX.UI.Studio
             heroText.Width = 400;
             var heroRow = new TableLayout { Spacing = new Size(16, 0) };
             heroRow.Rows.Add(new TableRow(new TableCell(heroBody, false), new TableCell(null, true)) { ScaleHeight = true });
-            var hero = new Card(heroRow, new Padding(30, 26, 22, 24), p => p.Hero, p => p.IsDark ? p.Border : p.Hero, 26f) { Height = 352 };
+            var hero = new Card(heroRow, new Padding(30, 26, 22, 24), p => p.Hero, p => p.IsDark ? p.Border : p.Hero, 26f) { Height = 330 };
             // the picture sits in the free space at the right (drawn behind the text)
             hero.Paint += (s, e) =>
             {
@@ -53,68 +55,72 @@ namespace TextX.UI.Studio
             };
             hero.SizeChanged += (s, e) => hero.Invalidate();
 
-            // what can be done
-            var translate = new BentoTile(IconKind.Translate, "Translate a PDF", "Any language, layout kept. Compare side by side, edit, save as PDF, Word or text.", "Documents") { Featured = true };
+            // what can be done: each tile has a line figure that answers the pointer and says what it shows
+            var translate = new BentoTile(IconKind.Translate, "Translate a PDF", "Any language, layout kept. Compare side by side, edit, save as PDF, Word or text.", "Documents", new PagesFigure()) { Featured = true, Height = 330 };
             translate.Click += (s, e) => { if (_project != null) ShowTab(DocumentTab); else OpenFileDialog(); };
-            var schedule = new BentoTile(IconKind.Grid, "Product schedule", "Codes, products, materials, finishes and title blocks from drawings, to Excel, PDF or Rhino.", "Drawings");
+            var schedule = new BentoTile(IconKind.Grid, "Product schedule", "Items, materials, finishes and title blocks from drawings, to Excel, PDF or Rhino.", "Drawings", new ScheduleFigure());
             schedule.Click += (s, e) => { ShowTab(SchedulesTab); if (_project == null) OpenFileDialog(); };
-            var picture = new BentoTile(IconKind.Picture, "Picture or screenshot", "Take a screenshot or open a picture: its text is read and translated.", "Pictures");
+            var picture = new BentoTile(IconKind.Picture, "Picture or screenshot", "Take a screenshot or open a picture: its text is read and translated.", "Pictures", new ReadFigure());
             picture.Click += (s, e) => { ShowTab(ToolsTab); ShowTool(0); };
-            var speak = new BentoTile(IconKind.Mic, "Speak or check writing", "Dictate and see the translation as you speak; fix spelling and grammar.", "Words");
+            var speak = new BentoTile(IconKind.Mic, "Speak", "Dictate and see the text and its translation as you speak.", "Voice", new VoiceFigure());
             speak.Click += (s, e) => { ShowTab(ToolsTab); ShowTool(1); };
+            _library = new BentoTile(IconKind.Layers, "Library", "Documents you open are kept here with their translations.", "History", new LibraryFigure());
+            _library.Click += (s, e) => OpenLatest();
+            _tiles = new List<BentoTile> { translate, schedule, picture, speak, _library };
 
-            var side = new TableLayout { Spacing = new Size(0, 16) };
-            side.Rows.Add(new TableRow(translate));
-            side.Rows.Add(new TableRow(schedule));
             var top = new TableLayout { Spacing = new Size(16, 0) };
-            top.Rows.Add(new TableRow(new TableCell(hero, true), new TableCell(new Panel { Content = side, Width = 300 }, false)));
+            top.Rows.Add(new TableRow(new TableCell(hero, true), new TableCell(new Panel { Content = translate, Width = 300 }, false)));
             var second = new TableLayout { Spacing = new Size(16, 0) };
-            second.Rows.Add(new TableRow(new TableCell(picture, true), new TableCell(speak, true), new TableCell(BuildHistoryCard(), true)));
+            second.Rows.Add(new TableRow(new TableCell(schedule, true), new TableCell(picture, true), new TableCell(speak, true), new TableCell(_library, true)));
+
+            _history = new StackLayout { Orientation = Orientation.Vertical, Spacing = 8, HorizontalContentAlignment = HorizontalAlignment.Stretch };
+            _historyEmpty = Ui.Label(_scope, "Documents you open appear here, with their translations and edits.", 12.5f, false, p => p.Muted, true);
+            var list = new TableLayout { Spacing = new Size(0, 10) };
+            list.Rows.Add(new TableRow(Ui.Row(8, Ui.Section(_scope, "Recent documents"), Ui.Spring())));
+            list.Rows.Add(new TableRow(_historyEmpty));
+            list.Rows.Add(new TableRow(_history));
 
             var layout = new TableLayout { Spacing = new Size(0, 16), Padding = new Padding(10, 6, 24, 16) };
             layout.Rows.Add(new TableRow(top));
             layout.Rows.Add(new TableRow(second));
-            layout.Rows.Add(new TableRow(_historyList));
+            layout.Rows.Add(new TableRow(list));
             layout.Rows.Add(new TableRow { ScaleHeight = true });
             var scroll = new Scrollable { Content = layout, Border = BorderType.None, ExpandContentWidth = true, ExpandContentHeight = false };
             return _scope.Bind(scroll, (x, p) => x.BackgroundColor = p.Window);
         }
 
-        private Control _historyList;
-        private Label _historyCount;
+        private List<BentoTile> _tiles = new List<BentoTile>();
+        private BentoTile _library;
+        private bool _toured;
 
-        /// <summary>The "recent" tile (a count and the last document) and, below the tiles, the list itself.</summary>
-        private Control BuildHistoryCard()
+        /// <summary>The first time Home is shown, each figure walks through what it does once, one after another.</summary>
+        private void TourTiles()
         {
-            _history = new StackLayout { Orientation = Orientation.Vertical, Spacing = 8, HorizontalContentAlignment = HorizontalAlignment.Stretch };
-            _historyEmpty = Ui.Label(_scope, "Documents you open appear here, with their translations and edits.", 12.5f, false, p => p.Muted, true);
-            var listHeader = Ui.Row(8, Ui.Section(_scope, "Recent documents"), Ui.Spring());
-            var list = new TableLayout { Spacing = new Size(0, 10) };
-            list.Rows.Add(new TableRow(listHeader));
-            list.Rows.Add(new TableRow(_historyEmpty));
-            list.Rows.Add(new TableRow(_history));
-            _historyList = list;
+            if (_toured) return;
+            _toured = true;
+            for (int i = 0; i < _tiles.Count; i++) _tiles[i].PlayOnce(500 + i * 900);
+        }
 
-            _historyCount = new Label { Text = "0", Font = Theme.DisplayFont(44f) };
-            _scope.Bind(_historyCount, (x, p) => x.TextColor = p.Text);
-            var caption = Ui.Label(_scope, "documents in your history", 12.5f, false, p => p.Muted);
-            var body = new TableLayout { Spacing = new Size(0, 2) };
-            body.Rows.Add(new TableRow(Ui.Section(_scope, "Library")));
-            body.Rows.Add(new TableRow { ScaleHeight = true });
-            body.Rows.Add(new TableRow(_historyCount));
-            body.Rows.Add(new TableRow(caption));
-            return new Card(body, new Padding(20, 18), p => p.Surface, p => p.Border, 22f) { Height = 168 };
+        private void OpenLatest()
+        {
+            List<LibraryEntry> entries;
+            try { entries = DocumentServices.Library.List(); }
+            catch (Exception) { entries = new List<LibraryEntry>(); }
+            if (entries.Count == 0) { OpenFileDialog(); return; }
+            OpenFromHistory(entries[0]);
         }
 
         private void RefreshHistory()
         {
             if (_history == null) return;
-            System.Collections.Generic.List<LibraryEntry> entries;
+            List<LibraryEntry> entries;
             try { entries = DocumentServices.Library.List(); }
-            catch (Exception ex) { Diagnostics.Log("history: " + ex.Message); entries = new System.Collections.Generic.List<LibraryEntry>(); }
+            catch (Exception ex) { Diagnostics.Log("history: " + ex.Message); entries = new List<LibraryEntry>(); }
             _history.Items.Clear();
             _historyEmpty.Visible = entries.Count == 0;
-            if (_historyCount != null) _historyCount.Text = entries.Count.ToString(CultureInfo.CurrentCulture);
+            if (_library != null)
+                _library.Text = entries.Count == 0 ? "Documents you open are kept here with their translations."
+                    : entries.Count + (entries.Count == 1 ? " document" : " documents") + " with their translations. Click to open the latest.";
             foreach (var entry in entries.Take(30)) _history.Items.Add(new StackLayoutItem(HistoryRow(entry), HorizontalAlignment.Stretch));
         }
 

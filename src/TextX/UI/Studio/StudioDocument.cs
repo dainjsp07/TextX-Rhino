@@ -10,6 +10,7 @@ using TextX.Core;
 using TextX.Core.Documents;
 using TextX.Core.Documents.Export;
 using TextX.Core.Documents.Imaging;
+using TextX.Core.Motion.Figures;
 using TextX.Core.Translation;
 using TextX.Integration;
 using TextX.UI.Controls;
@@ -71,6 +72,7 @@ namespace TextX.UI.Studio
             pagerRow.Rows.Add(new TableRow(new TableCell(null, true), new TableCell(pager, false), new TableCell(null, true)));
 
             _viewer = new TableLayout { Spacing = new Size(10, 0) };
+            _docEmpty = BuildDocumentEmpty();
             _viewerHost = new Panel { Content = _viewer };
             _scope.Bind(_viewerHost, (x, p) => x.BackgroundColor = p.Stage);
             _originalView.BlockClicked += (s, b) => SelectBlock(b, true);
@@ -95,6 +97,31 @@ namespace TextX.UI.Studio
                 else if (e.Key == Keys.PageUp) { GoToPage(_pageIndex - 1); e.Handled = true; }
             };
             return _scope.Bind(new Panel { Content = layout }, (x, p) => x.BackgroundColor = p.Window);
+        }
+
+        private Control _docEmpty;
+        private FigureView _docEmptyFigure;
+
+        /// <summary>No document yet: the pages figure shows what will happen, with one way in.</summary>
+        private Control BuildDocumentEmpty()
+        {
+            _docEmptyFigure = new FigureView(new PagesFigure()) { Size = new Size(380, 300) };
+            var title = Ui.Label(_scope, "Open a PDF to translate it", 18f, true);
+            var text = Ui.Label(_scope, "Every heading, paragraph and picture stays where it is; the translation takes its place. Point at the picture to see.", 12.5f, false, p => p.Muted, true);
+            text.Width = 420;
+            text.TextAlignment = TextAlignment.Center;
+            var open = new FlatButton("Open a PDF", IconKind.Plus, ButtonKind.Primary, 40) { Backdrop = p => p.Stage };
+            open.Click += (s, e) => OpenFileDialog();
+            var stack = new StackLayout { Orientation = Orientation.Vertical, Spacing = 10, HorizontalContentAlignment = HorizontalAlignment.Center };
+            stack.Items.Add(_docEmptyFigure);
+            stack.Items.Add(title);
+            stack.Items.Add(text);
+            stack.Items.Add(open);
+            var center = new TableLayout();
+            center.Rows.Add(new TableRow { ScaleHeight = true });
+            center.Rows.Add(new TableRow(new TableCell(null, true), new TableCell(stack, false), new TableCell(null, true)));
+            center.Rows.Add(new TableRow { ScaleHeight = true });
+            return _scope.Bind(new Panel { Content = center }, (x, p) => x.BackgroundColor = p.Stage);
         }
 
         private Control BuildBlockPanel()
@@ -326,9 +353,11 @@ namespace TextX.UI.Studio
                 _blocks.DataStore = new List<DocBlock>();
                 _originalView.SetPlaceholder("Open a PDF to see it here");
                 _translatedView.SetPlaceholder(string.Empty);
+                if (_viewerHost != null && _viewerHost.Content != _docEmpty) _viewerHost.Content = _docEmpty;
                 return;
             }
             _docTitle.Text = project.Name;
+            if (_viewerHost != null && _viewerHost.Content == _docEmpty) LayoutViewer();
             int scanned = project.Pages.Count(p => p.Scanned);
             string src = string.IsNullOrEmpty(project.SourceLang) ? "language detected when translating" : Languages.EnglishName(project.SourceLang);
             int pct = project.TotalBlocks == 0 ? 0 : (int)Math.Round(100.0 * project.TranslatedBlocks / project.TotalBlocks);

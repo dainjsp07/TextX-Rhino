@@ -95,6 +95,7 @@ namespace TextX.Tests
                 CoreTests.Schedules,
                 CoreTests.Drawings,
                 CoreTests.DocxImages,
+                CoreTests.Motion,
                 CoreTests.Tools,
                 CoreTests.Guessing,
             })

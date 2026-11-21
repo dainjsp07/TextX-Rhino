@@ -60,6 +60,30 @@ namespace TextX.UiPreview
             await Task.Delay(1500);
             Capture("studio-1-home.png");
 
+            // the tiles' figures: one pointer on each, then frame sequences of two of them
+            var tiles = (System.Collections.Generic.List<TextX.UI.Controls.BentoTile>)Field("_tiles");
+            await Task.Delay(6000); // let the welcome tour finish
+            for (int i = 0; i < tiles.Count; i++) Point(tiles[i], i == 0 ? 1 : 0);
+            await Task.Delay(1400);
+            Capture("studio-1b-home-hover.png");
+            foreach (var t in tiles) t.SimulatePointer(null);
+            await Task.Delay(1500);
+            await Frames(tiles[0], "translate", 0, 2, 4);
+            await Frames(tiles[1], "schedule", 0, 1, 2);
+            await Frames(tiles[2], "read", 0, 1, 2);
+            await Frames(tiles[3], "voice", 0, 1, 2);
+            await Frames(tiles[4], "library", 0, 1, 2);
+
+            // empty pages explain themselves
+            Call("ShowTab", 1);
+            await Task.Delay(2600);
+            Capture("studio-1c-document-empty.png");
+            Call("ShowTab", 2);
+            await Task.Delay(2600);
+            Capture("studio-1d-schedules-empty.png");
+            Call("ShowTab", 0);
+            await Task.Delay(500);
+
             if (sample == null || !File.Exists(sample)) { Problem("no sample PDF"); return; }
             _window.OpenPath(sample);
             await WaitIdle(90);
@@ -108,6 +132,57 @@ namespace TextX.UiPreview
             Call("ShowTab", 0);
             await Task.Delay(1500);
             Capture("studio-8-history.png");
+        }
+
+        private static void Point(TextX.UI.Controls.BentoTile tile, int stop)
+        {
+            var stops = tile.Figure.Stops.Where(x => x != null).ToList();
+            var v = stops[Math.Min(stop, stops.Count - 1)].Value;
+            tile.SimulatePointer(new Eto.Drawing.PointF(v.X, v.Y));
+        }
+
+        /// <summary>Moves an unseen pointer to each stop in turn and saves 8 frames of the tile at each (80 ms apart).</summary>
+        private static async Task Frames(TextX.UI.Controls.BentoTile tile, string name, params int[] stops)
+        {
+            int n = 0;
+            foreach (var stop in stops)
+            {
+                Point(tile, stop);
+                for (int k = 0; k < 8; k++)
+                {
+                    await Task.Delay(80);
+                    CaptureControl(tile, "anim/" + name + "-" + (n++).ToString("00") + ".png");
+                }
+            }
+            tile.SimulatePointer(null);
+            for (int k = 0; k < 8; k++)
+            {
+                await Task.Delay(110);
+                CaptureControl(tile, "anim/" + name + "-" + (n++).ToString("00") + ".png");
+            }
+        }
+
+        /// <summary>One control as a PNG at twice the size (drawn through a visual brush, so its place in the window does not matter).</summary>
+        private static void CaptureControl(Control control, string name)
+        {
+            try
+            {
+                var fe = control.ControlObject as System.Windows.FrameworkElement;
+                if (fe == null) { Problem("no WPF element for " + name); return; }
+                int w = (int)Math.Ceiling(fe.ActualWidth), h = (int)Math.Ceiling(fe.ActualHeight);
+                if (w < 2 || h < 2) { Problem("empty control for " + name); return; }
+                var dv = new System.Windows.Media.DrawingVisual();
+                using (var dc = dv.RenderOpen())
+                    dc.DrawRectangle(new System.Windows.Media.VisualBrush(fe), null, new System.Windows.Rect(0, 0, w, h));
+                var bmp = new System.Windows.Media.Imaging.RenderTargetBitmap(w * 2, h * 2, 192, 192, System.Windows.Media.PixelFormats.Pbgra32);
+                bmp.Render(dv);
+                var encoder = new System.Windows.Media.Imaging.PngBitmapEncoder();
+                encoder.Frames.Add(System.Windows.Media.Imaging.BitmapFrame.Create(bmp));
+                var path = Path.Combine(_out, name);
+                Directory.CreateDirectory(Path.GetDirectoryName(path));
+                using (var fs = File.Create(path)) encoder.Save(fs);
+            }
+            catch (Exception ex) { Problem("capture " + name + ": " + ex.Message); }
         }
 
         private static object Field(string name)

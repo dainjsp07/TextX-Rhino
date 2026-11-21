@@ -114,37 +114,40 @@ namespace TextX.UI.Controls
             var r = new RectangleF(0.5f, 0.5f, Width - 1f, Height - 1f);
             Color fill, stroke, fg;
             bool dashed = false;
+            float h = Hover;
             switch (Kind)
             {
                 case ButtonKind.Primary:
-                    fill = IsPressed ? ThemeColors.Mix(p.Accent, p.Window, 0.22f) : IsHover ? ThemeColors.Mix(p.Accent, p.Text, p.IsDark ? 0.14f : 0.10f) : p.Accent;
+                    fill = ThemeColors.Mix(p.Accent, ThemeColors.Mix(p.Accent, p.Text, p.IsDark ? 0.14f : 0.10f), h);
+                    if (IsPressed) fill = ThemeColors.Mix(p.Accent, p.Window, 0.22f);
                     stroke = Colors.Transparent;
                     fg = p.OnAccent;
                     break;
                 case ButtonKind.Strong:
-                    fill = IsPressed ? ThemeColors.Mix(p.Strong, p.Window, 0.25f) : IsHover ? ThemeColors.Mix(p.Strong, p.Accent, 0.18f) : p.Strong;
+                    fill = ThemeColors.Mix(p.Strong, ThemeColors.Mix(p.Strong, p.Accent, 0.18f), h);
+                    if (IsPressed) fill = ThemeColors.Mix(p.Strong, p.Window, 0.25f);
                     stroke = Colors.Transparent;
                     fg = p.OnStrong;
                     break;
                 case ButtonKind.Soft:
-                    fill = IsHover ? ThemeColors.Mix(p.AccentSoft, p.Accent, 0.18f) : p.AccentSoft;
+                    fill = ThemeColors.Mix(p.AccentSoft, ThemeColors.Mix(p.AccentSoft, p.Accent, 0.18f), h);
                     stroke = Colors.Transparent;
                     fg = p.AccentInk;
                     break;
                 case ButtonKind.Ghost:
-                    fill = IsPressed ? p.IconBox : IsHover ? p.ItemHover : Colors.Transparent;
+                    fill = IsPressed ? p.IconBox : ThemeColors.WithAlpha(p.ItemHover, h);
                     stroke = Colors.Transparent;
-                    fg = IsHover ? p.Text : p.Muted;
+                    fg = ThemeColors.Mix(p.Muted, p.Text, h);
                     break;
                 case ButtonKind.Dashed:
-                    fill = IsHover ? p.ItemHover : Colors.Transparent;
-                    stroke = IsHover ? p.Accent : ThemeColors.Mix(p.Border, p.Muted, 0.45f);
+                    fill = ThemeColors.WithAlpha(p.ItemHover, h);
+                    stroke = ThemeColors.Mix(ThemeColors.Mix(p.Border, p.Muted, 0.45f), p.Accent, h);
                     fg = p.Text;
                     dashed = true;
                     break;
                 default:
-                    fill = IsPressed ? p.IconBox : IsHover ? p.ItemHover : p.Surface;
-                    stroke = IsHover ? ThemeColors.Mix(p.Border, p.Text, 0.35f) : p.Border;
+                    fill = IsPressed ? p.IconBox : ThemeColors.Mix(p.Surface, p.ItemHover, h);
+                    stroke = ThemeColors.Mix(p.Border, ThemeColors.Mix(p.Border, p.Text, 0.35f), h);
                     fg = p.Text;
                     break;
             }
@@ -165,7 +168,13 @@ namespace TextX.UI.Controls
             float x = Math.Max(PaddingX, (Width - contentW) / 2f);
             if (_icon != IconKind.None)
             {
-                Icons.Draw(g, _icon, new RectangleF(x, (Height - IconSize) / 2f, IconSize, IconSize), fg, Kind == ButtonKind.Primary || Kind == ButtonKind.Strong ? 2.3f : 2f);
+                // arrows lean the way they point while the pointer is on the button
+                float nx = 0, ny = 0;
+                if (_icon == IconKind.ArrowUpRight) { nx = 1.6f * Hover; ny = -1.6f * Hover; }
+                else if (_icon == IconKind.Next) nx = 1.6f * Hover;
+                else if (_icon == IconKind.Prev) nx = -1.6f * Hover;
+                else if (_icon == IconKind.Download) ny = 1.2f * Hover;
+                Icons.Draw(g, _icon, new RectangleF(x + nx, (Height - IconSize) / 2f + ny, IconSize, IconSize), fg, Kind == ButtonKind.Primary || Kind == ButtonKind.Strong ? 2.3f : 2f);
                 x += IconSize + 7;
             }
             if (hasText)

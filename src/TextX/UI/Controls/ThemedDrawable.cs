@@ -1,7 +1,9 @@
 using System;
 using Eto.Drawing;
 using Eto.Forms;
+using TextX.Core.Motion;
 using TextX.Integration;
+using TextX.UI.Motion;
 using TextX.UI.Theming;
 using Theme = TextX.UI.Theming.Theme;
 
@@ -31,12 +33,45 @@ namespace TextX.UI.Controls
         /// <summary>Background behind rounded corners (the colour of the parent).</summary>
         public Func<ThemeColors, Color> Backdrop { get; set; }
 
+        private readonly Tween _hover = new Tween(0, 140) { Ease = Clock.EaseFade };
+        private Board _board;
+
+        /// <summary>The hover state as it fades in and out (0 to 1): 140 ms in, 260 ms out.</summary>
+        protected float Hover { get { return (float)_hover.Value(Animator.Now); } }
+
+        /// <summary>Asks for animation frames; <see cref="Step"/> runs on each until it returns false.</summary>
+        protected void Animate()
+        {
+            if (_board == null) _board = Animator.Register(this, (dt, now) => { bool more = Step(dt, now); Invalidate(); return more; });
+            _board.Wake();
+        }
+
+        /// <summary>One animation frame. Returns whether more frames are needed.</summary>
+        protected virtual bool Step(double dt, double now) { return !_hover.Done(now); }
+
         protected ThemedDrawable(bool focusable)
         {
             CanFocus = focusable;
             Backdrop = p => p.Window;
-            MouseEnter += (s, e) => { IsHover = true; OnHoverChanged(); Invalidate(); };
-            MouseLeave += (s, e) => { IsHover = false; IsPressed = false; OnHoverChanged(); Invalidate(); };
+            MouseEnter += (s, e) =>
+            {
+                IsHover = true;
+                _hover.Dur = 140;
+                _hover.Set(1, Animator.Now);
+                OnHoverChanged();
+                Invalidate();
+                Animate();
+            };
+            MouseLeave += (s, e) =>
+            {
+                IsHover = false;
+                IsPressed = false;
+                _hover.Dur = 260;
+                _hover.Set(0, Animator.Now);
+                OnHoverChanged();
+                Invalidate();
+                Animate();
+            };
             MouseDown += (s, e) =>
             {
                 s_keyboardNavigation = false;

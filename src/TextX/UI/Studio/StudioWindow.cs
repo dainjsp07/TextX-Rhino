@@ -92,6 +92,8 @@ namespace TextX.UI.Studio
             Content = BuildLayout();
             RestoreStudioBounds();
             ShowHome();
+            // once the window is on screen, the Home figures show what they do
+            Shown += (s, e) => Application.Instance.AsyncInvoke(() => { if (_tabs.SelectedIndex == HomeTab) TourTiles(); });
             SetStatus("Drop a PDF, picture or screenshot on this window, or click Open.");
             Diagnostics.Log("studio constructed");
         }
@@ -177,9 +179,16 @@ namespace TextX.UI.Studio
                 _pageTitle.Text = index == DocumentTab && _project != null ? _project.Name : PageTitles[index];
                 _pageHint.Text = PageHints[index];
             }
-            if (index == HomeTab) RefreshHistory();
+            if (index == HomeTab) { RefreshHistory(); if (Loaded) TourTiles(); }
             if (index == DocumentTab) RefreshDocument();
             if (index == SchedulesTab) RefreshSchedules();
+            // an empty page's figure walks through what will happen, once the page is on screen
+            if (Loaded)
+                Application.Instance.AsyncInvoke(() =>
+                {
+                    if (index == DocumentTab && _project == null && _docEmptyFigure != null) _docEmptyFigure.Play(1, 300);
+                    if (index == SchedulesTab && _schedules == null && _scheduleFigure != null) _scheduleFigure.Play(1, 300);
+                });
         }
 
         private void ShowHome()
