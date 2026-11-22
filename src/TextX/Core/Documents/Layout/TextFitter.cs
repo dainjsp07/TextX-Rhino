@@ -58,7 +58,12 @@ namespace TextX.Core.Documents.Layout
                     // a word is cut between letters only as a last resort, at the smallest size
                     bool cut;
                     var lines = Wrap(text, width * 1.02f, s, primary, fallbacks, out cut);
-                    if (cut && s > floor && !oneLine) continue;
+                    // (a label rather gets smaller on one line than a word cut in two)
+                    if (cut && !oneLine && (singleLine || s > floor))
+                    {
+                        if (s <= floor) break;
+                        continue;
+                    }
                     var r = new FitResult { Size = s, Pitch = s * pitchFactor, Scale = s / size };
                     r.Lines = lines.Select(l => MakeLine(l, s, rtl, primary, fallbacks)).ToList();
                     // one line may reach a little past the box; more lines must stay inside it (the text below is close)
