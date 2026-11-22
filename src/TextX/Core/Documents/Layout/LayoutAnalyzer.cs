@@ -351,7 +351,8 @@ namespace TextX.Core.Documents.Layout
                 {
                     float best = float.MaxValue;
                     // newest first: the previous line usually continues the paragraph
-                    for (int i = open.Count - 1; i >= 0 && i >= open.Count - 8; i--)
+                    // (drawings list their texts in any order: the paragraph may have been left a while ago)
+                    for (int i = open.Count - 1; i >= 0 && i >= open.Count - 32; i--)
                     {
                         float score;
                         var tail = open[i].Lines[open[i].Lines.Count - 1];
@@ -364,7 +365,7 @@ namespace TextX.Core.Documents.Layout
                     target = new DocBlock { Page = page.Index, Angle = line.Angle };
                     blocks.Add(target);
                     open.Add(target);
-                    if (open.Count > 12) open.RemoveAt(0);
+                    if (open.Count > 48) open.RemoveAt(0);
                 }
                 target.Lines.Add(line);
                 target.Box = target.Lines.Count == 1 ? line.Box : target.Box.Union(line.Box);

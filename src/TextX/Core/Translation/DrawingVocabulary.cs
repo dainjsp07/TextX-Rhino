@@ -40,13 +40,15 @@ namespace TextX.Core.Translation
             "מנגנון בלומושיין", "Blum motion mechanism", "צירים", "Hinges", "ציר", "Hinge", "דופן", "Side panel",
             "גוף היחידה", "Carcass", "אבן קיסר", "Caesarstone", "נירוסטה", "Stainless steel", "ש\"ע", "or equivalent",
             "או ש\"ע", "or equivalent", "דלפק", "Counter", "דלפק מזכירה", "Reception desk", "ס\"מ", "cm", "מ\"מ", "mm",
+            "סכומון", "Cutlery tray", "מגירת פח", "Bin drawer", "שוט נירוסטה", "Stainless steel waste chute", "שוט", "Waste chute",
+            "קוריאן/אבן קיסר", "Corian/Caesarstone", "חזית הארונות", "Cabinet fronts", "פנים הארונות", "Cabinet interiors",
         });
 
         /// <summary>Terms of several words, also made consistent inside sentences.</summary>
         private static readonly string[] InSentences =
         {
             "רשימת גמרים", "finish schedule", "טריקה שקטה", "soft-close", "שליפה מלאה", "full extension", "אבן קיסר", "Caesarstone",
-            "מנגנון בלומושיין", "Blum motion mechanism", "פתח אשפה", "waste bin opening",
+            "מנגנון בלומושיין", "Blum motion mechanism", "פתח אשפה", "waste bin opening", "סכומון", "cutlery tray", "מגירת פח", "bin drawer",
         };
 
         private static Dictionary<string, string> Build(string[] pairs)

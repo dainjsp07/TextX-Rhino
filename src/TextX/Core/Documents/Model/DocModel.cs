@@ -161,7 +161,7 @@ namespace TextX.Core.Documents
         /// (the translations come back from the translation memory), so improvements reach documents in the history.
         /// </summary>
         public int LayoutVersion;
-        public const int CurrentLayout = 2;
+        public const int CurrentLayout = 3;
         public List<DocBlock> Blocks = new List<DocBlock>();
         public List<Box> Images = new List<Box>();
         public int TableCount;

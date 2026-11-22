@@ -287,6 +287,12 @@ namespace TextX.Core.Documents.Export
                 var wider = TextFitter.Fit(text, span, h2, size, b.LinePitch, singleLine, rtl, primary, fallbacks, options.MinScale);
                 if ((!wider.Overflow && result.Overflow) || wider.Scale > result.Scale + 0.04f) result = wider;
             }
+            if (result.Overflow)
+            {
+                // still too long: smaller than usual rather than running into the drawing or off the sheet
+                var smaller = TextFitter.Fit(text, Math.Max(fitWidth, span), singleLine ? height : Math.Max(height, below), size, b.LinePitch, singleLine, rtl, primary, fallbacks, Math.Max(0.35f, 4.5f / size));
+                if (!smaller.Overflow) result = smaller;
+            }
             Note(b, result, plan.Report);
             float baseline = b.Lines[0].Baseline + (size - result.Size) * 0.78f;
             foreach (var line in result.Lines)
@@ -482,8 +488,9 @@ namespace TextX.Core.Documents.Export
             float limit = Math.Min(b.Box.B, 24f);
             Action<Box> obstacle = o =>
             {
-                if (o.T > b.Box.B + 0.5f || o.R <= b.Box.L || o.L >= b.Box.R) return;
-                limit = Math.Max(limit, o.T + size * 0.6f);
+                // below this block (its box may reach up a little into this one's: lines set close together)
+                if (o.CY >= b.Box.B + b.Box.H * 0.25f || o.T > b.Box.CY || o.R <= b.Box.L || o.L >= b.Box.R) return;
+                limit = Math.Max(limit, Math.Min(o.T, b.Box.B) + size * 0.6f);
             };
             foreach (var o in page.Blocks) if (!ReferenceEquals(o, b)) obstacle(o.Box);
             foreach (var img in page.Images) obstacle(img);
