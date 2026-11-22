@@ -402,16 +402,23 @@ namespace TextX.Core.Documents.Layout
                 var l = horizontal[i];
                 float tol = Math.Max(1f, l.FontSize * 0.3f);
                 var same = horizontal.Where(o => Math.Abs(o.Baseline - l.Baseline) <= tol).OrderBy(o => o.Box.L).ToList();
-                if (same.Count < 3) continue;
+                if (same.Count < 2) continue;
                 // running prose in columns: every line on the baseline is a long run of words
                 if (same.All(o => o.Text.Length >= 28 && o.Text.Count(ch => ch == ' ') >= 4)) continue;
-                // the row: the lines chained to this one with gaps of at most a dozen characters
-                float reach = Math.Max(4f, l.FontSize) * 12f;
+                // the row: the lines chained to this one by gaps a table's columns leave
+                float em = Math.Max(4f, l.FontSize);
                 int at = same.IndexOf(l);
                 int a = at, z = at;
-                while (a > 0 && same[a].Box.L - same[a - 1].Box.R <= reach) a--;
-                while (z < same.Count - 1 && same[z + 1].Box.L - same[z].Box.R <= reach) z++;
-                if (z - a + 1 >= 3)
+                while (a > 0 && same[a].Box.L - same[a - 1].Box.R <= em * 20f) a--;
+                while (z < same.Count - 1 && same[z + 1].Box.L - same[z].Box.R <= em * 20f) z++;
+                bool row = z - a + 1 >= 3;
+                // two narrow ones close together: a label and its value
+                if (!row && z > a)
+                {
+                    var x = same[a]; var y = same[z];
+                    row = x.Box.W < pageWidth * 0.3f && y.Box.W < pageWidth * 0.3f && y.Box.L - x.Box.R <= em * 4f;
+                }
+                if (row)
                     for (int k = a; k <= z; k++) result.Add(same[k]);
             }
             return result;
