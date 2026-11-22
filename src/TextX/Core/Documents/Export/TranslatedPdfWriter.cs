@@ -261,9 +261,9 @@ namespace TextX.Core.Documents.Export
                     float ratio = Math.Max(a.FontSize, b.FontSize) / Math.Max(0.1f, Math.Min(a.FontSize, b.FontSize));
                     if (ratio > 1.35f) continue;
                     if (geo.HorizontalRuleBetween(b.Box.T - 0.5f, a.Box.B + 0.5f, Math.Max(a.Box.L, b.Box.L), Math.Min(a.Box.R, b.Box.R))) continue;
-                    // nothing else in between
-                    if (page.Blocks.Any(o => !ReferenceEquals(o, a) && !ReferenceEquals(o, b) && o.Box.CY < a.Box.CY && o.Box.CY > b.Box.CY &&
-                                             o.Box.OverlapX(a.Box) > 0 && o.Box.OverlapX(b.Box) > 0)) continue;
+                    // no other text in between (dimension figures of the drawing may stand there)
+                    if (page.Blocks.Any(o => !ReferenceEquals(o, a) && !ReferenceEquals(o, b) && !o.IsRotated && LanguageGuess.HasWords(o.Source) &&
+                                             o.Box.CY < a.Box.CY && o.Box.CY > b.Box.CY && o.Box.OverlapX(a.Box) > 0 && o.Box.OverlapX(b.Box) > 0)) continue;
                     if (gap < bestGap) { bestGap = gap; best = b; }
                 }
                 if (best != null) { below[a] = best; hasAbove.Add(best); }
@@ -337,6 +337,8 @@ namespace TextX.Core.Documents.Export
                 if (total <= height + 0.5f || s <= options.MinScale * 0.8f) break;
             }
 
+            // a list of notes reads from the side its new language starts on; legend texts keep hugging their swatch
+            bool turn = rtl != group[0].SourceRtl && (group.All(b => b.Kind == BlockKind.ListItem) || group.Count >= 3);
             float y = top;
             for (int i = 0; i < group.Count; i++)
             {
@@ -344,6 +346,7 @@ namespace TextX.Core.Documents.Export
                 var fit = fits[i];
                 float size = fit.Size;
                 var a = b.Align == BlockAlign.Justify ? (b.SourceRtl ? BlockAlign.Right : BlockAlign.Left) : b.Align;
+                if (turn) a = EffectiveAlign(a, rtl, true);
                 uint color = b.Color;
                 float baseline = y - size * 0.78f;
                 foreach (var line in fit.Lines)
@@ -399,8 +402,9 @@ namespace TextX.Core.Documents.Export
             FreeSpan(page, b, geo, size, out minX, out maxX);
             var align = AnchorAlign(b, rtl, flip, geo, size);
             float height = b.Box.H + (b.Lines.Count > 1 ? (b.LinePitch - 1f) * size : 0f);
-            float below = RoomBelow(page, b, geo, size, height);
-            if (b.Lines.Count > 1) height = Math.Max(height, below);
+            float below = RoomBelow(page, b, geo, size, height, singleLine ? 1.3f : 0.6f);
+            // a paragraph may grow down into free room; a label may take a second line there rather than shrink a lot
+            height = Math.Max(height, below);
             // first the original's own width (or, for one line, the room on its anchored side); when the
             // translation would have to shrink much there, all the free room on its lines
             float anchored = align == BlockAlign.Right ? b.Box.R - minX : align == BlockAlign.Center ? 2f * Math.Min(b.Box.CX - minX, maxX - b.Box.CX) : maxX - b.Box.L;
@@ -611,7 +615,7 @@ namespace TextX.Core.Documents.Export
             return RoomBelow(page, b, PageGeometry.Empty, size, height);
         }
 
-        internal static float RoomBelow(DocPage page, DocBlock b, PageGeometry geo, float size, float height)
+        internal static float RoomBelow(DocPage page, DocBlock b, PageGeometry geo, float size, float height, float grow = 0.6f)
         {
             float limit = Math.Min(b.Box.B, 24f);
             Action<Box> obstacle = o =>
@@ -631,7 +635,7 @@ namespace TextX.Core.Documents.Export
                 limit = Math.Max(limit, ink.T + size * 0.4f);
             }
             float extra = Math.Max(0f, b.Box.B - limit);
-            return height + Math.Min(extra, height * 0.6f);
+            return height + Math.Min(extra, height * grow);
         }
 
         private static BlockAlign EffectiveAlign(BlockAlign align, bool rtl, bool flip)

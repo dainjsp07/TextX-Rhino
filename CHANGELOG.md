@@ -27,8 +27,15 @@ into a dated section when you release.
   - Notes that start with a bullet touching the text ("*Note") are separate items.
   - Hebrew words joined to a number ("חתך1") and Hebrew names next to English labels are translated.
   - Brackets around English words inside Hebrew lines come out the right way round.
+  - Notes, legend texts and a heading with its text that stand one under the other are laid out together:
+    a longer English text pushes the next one down instead of running over it.
+  - A label that does not fit on one line at three quarters of its size takes a second line where there is
+    room under it; text that still does not fit is made smaller rather than spilling off the sheet.
   - Title-block and joinery words get draughtsman's English: Scale, Revision, Page, Sheet size, Finish
-    schedule, Plinth, Soft-close and more (your own glossary always wins).
+    schedule, Plinth, Soft-close, Top view, Rear elevation and more (your own glossary always wins).
+  - When the free Google service is busy during a long document, Studio waits and asks again instead of
+    switching to the backup service; texts too long for the backup service are sent in pieces, and any
+    paragraph left untranslated is marked so **Continue** translates it (before, some stayed in Hebrew).
   - Documents in the history are read again with these rules when you open them; their translations come
     back from the translation memory.
 - **Home spacing.** Nothing runs past the right edge any more; the translator and the tiles get exact widths.

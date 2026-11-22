@@ -302,7 +302,7 @@ namespace TextX.UI.Studio
         internal static string ShownName(string name)
         {
             if (string.IsNullOrEmpty(name) || !TextX.Core.Text.RtlText.ContainsRtl(name)) return name ?? string.Empty;
-            return "\u202B" + name + "\u202C";
+            return "\u200F" + name + "\u200F";
         }
 
         private void ToggleTheme()

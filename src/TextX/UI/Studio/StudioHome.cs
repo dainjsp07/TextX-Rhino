@@ -119,6 +119,9 @@ namespace TextX.UI.Studio
             int heroW = arrangement == "wide" ? sideHero : w;
             FitTranslator(heroW);
             _heroCard.Width = heroW;
+            // beside the translator, Translate a PDF takes about a third of the column; the four tiles the rest
+            if (arrangement == "wide") _featuredTile.Height = Math.Max(156, Math.Min(268, (int)(h * 0.36f)));
+            else _featuredTile.Height = -1;
             if (_homeArrangement == arrangement) return;
             _homeArrangement = arrangement;
             foreach (var c in new Control[] { _heroCard, _tileButtons }.Concat(_tiles)) if (c.Parent != null) c.Detach();
@@ -132,7 +135,7 @@ namespace TextX.UI.Studio
                 grid.Rows.Add(new TableRow(new TableCell(_tiles[3], true), new TableCell(_tiles[4], true)) { ScaleHeight = true });
                 _tileGrid = grid;
                 var side = new TableLayout { Spacing = new Size(0, 12) };
-                side.Rows.Add(new TableRow(_featuredTile) { ScaleHeight = true });
+                side.Rows.Add(new TableRow(_featuredTile));
                 side.Rows.Add(new TableRow(grid) { ScaleHeight = true });
                 var sideBox = new Panel { Content = side, Width = SideWidth };
                 layout.Rows.Add(new TableRow(new TableCell(_heroCard, true), new TableCell(sideBox, false)) { ScaleHeight = true });

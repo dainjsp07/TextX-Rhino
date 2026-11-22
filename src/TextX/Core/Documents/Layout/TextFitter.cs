@@ -43,20 +43,26 @@ namespace TextX.Core.Documents.Layout
             width = Math.Max(width, size * 2);
             float minSize = Math.Max(3.5f, size * minScale);
             FitResult best = null;
-            // labels: first try to stay on one line at any allowed size, then allow wrapping
-            for (int pass = singleLine ? 0 : 1; pass < 2; pass++)
+            // labels: one line while the text keeps three quarters of its size, then wrapping where the height
+            // allows, then one smaller line; other text wraps
+            var passes = singleLine
+                ? new[] { new KeyValuePair<bool, float>(true, Math.Max(minSize, size * 0.75f)), new KeyValuePair<bool, float>(false, minSize), new KeyValuePair<bool, float>(true, minSize) }
+                : new[] { new KeyValuePair<bool, float>(false, minSize) };
+            foreach (var pass in passes)
             {
+                bool oneLine = pass.Key;
+                float floor = pass.Value;
                 for (float s = size; ; s *= 0.94f)
                 {
-                    if (s < minSize) s = minSize;
+                    if (s < floor) s = floor;
                     var lines = Wrap(text, width * 1.02f, s, primary, fallbacks);
                     var r = new FitResult { Size = s, Pitch = s * pitchFactor, Scale = s / size };
                     r.Lines = lines.Select(l => MakeLine(l, s, rtl, primary, fallbacks)).ToList();
                     // one line may reach a little past the box; more lines must stay inside it (the text below is close)
                     bool fitsHeight = r.Height <= height + s * (r.Lines.Count <= 1 ? 0.35f : 0.1f);
-                    if (fitsHeight && (pass == 1 || lines.Count <= 1)) return r;
-                    if (best == null || pass == 1) best = r;
-                    if (s <= minSize) break;
+                    if (fitsHeight && (!oneLine || lines.Count <= 1)) return r;
+                    if (best == null || !oneLine) best = r;
+                    if (s <= floor) break;
                 }
             }
             // nothing fits: keep the smallest size; a label stays on one line

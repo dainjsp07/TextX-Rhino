@@ -49,6 +49,8 @@ namespace TextX.Core.Translation
         {
             "רשימת גמרים", "finish schedule", "טריקה שקטה", "soft-close", "שליפה מלאה", "full extension", "אבן קיסר", "Caesarstone",
             "מנגנון בלומושיין", "Blum motion mechanism", "פתח אשפה", "waste bin opening", "סכומון", "cutlery tray", "מגירת פח", "bin drawer",
+            "מבט על", "Top view", "חזית אחורית", "Rear elevation", "חזית קדמית", "Front elevation", "חזית צד", "Side elevation",
+            "חתך צד", "Side section", "בלום", "Blum",
         };
 
         private static Dictionary<string, string> Build(string[] pairs)
