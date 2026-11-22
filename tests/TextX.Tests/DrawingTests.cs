@@ -6,6 +6,8 @@ using TextX.Core.Documents.Layout;
 using TextX.Core.Documents.Native;
 using TextX.Core.Documents.Ocr;
 using TextX.Core.Documents.Schedules;
+using TextX.Core.Text;
+using TextX.Core.Translation;
 using static TextX.Tests.TestRunner;
 
 namespace TextX.Tests
@@ -15,6 +17,19 @@ namespace TextX.Tests
         /// <summary>Right-to-left drawings, title-block checks and OCR clean-up for drawings (made-up content).</summary>
         public static void Drawings()
         {
+            // --- lines of a page read back: numbers and Latin keep their order, brackets come out right
+            Func<string, bool, string> logical = (visual, rtl) => RtlText.VisualLineToLogical(visual.Select(ch => ch.ToString()).ToList(), rtl);
+            Equal("רחוב הדוגמה5, תל אביב", logical("ביבא לת ,5המגודה בוחר", true), "comma stays with the number");
+            Equal("חזית אחורית JRY-01.1", logical("JRY-01.1 תירוחא תיזח", true), "code kept in order");
+            Equal("ביצוע (\"SHOP\") ראשון", logical("ןושאר (\"SHOP\") עוציב", true), "brackets around Latin");
+            Equal("FURNIPART דגם וגוון", logical("FURNIPART ןווגו םגד", false), "Hebrew inside a Latin line");
+            Equal("ביצוע (\"SHOP\") ראשון", RtlText.BalanceBrackets("ביצוע )\"SHOP\") ראשון"), "same bracket on both sides");
+            Equal("a) b)", RtlText.BalanceBrackets("a) b)"), "list letters keep their brackets");
+            var pieces = TranslationEngine.SplitForLimit(new string('א', 300) + ". " + new string('ב', 300), 480);
+            True(pieces.Count == 2 && pieces.All(x => x.Length <= 480), "long text cut for a service limit");
+            True(LanguageGuess.IsReference("A-12 3") && !LanguageGuess.IsReference("חתך1"), "a word joined to a number is translated");
+            Equal("Scale", DrawingVocabulary.Lookup(Glossary.Normalize("קנ\"מ:"), "he", "en"), "title block word");
+
             // --- Hebrew prefixes: only on longer words, only valid combinations
             Equal("laminate", Nice(Vocabulary.Materials.Find("גמר ופורמייקה לבנה")), "prefix ו on a long word");
             True(Vocabulary.Materials.Find("בלבד").Count == 0, "בד is not found inside בלבד");

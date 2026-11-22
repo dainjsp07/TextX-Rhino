@@ -74,7 +74,8 @@ namespace TextX.Integration
                 fallback = ProviderFactory.Create(fb, s.GetProviderSettings(fb));
                 if (JoiningProvider.ShouldWrap(fallback)) fallback = new JoiningProvider(fallback);
             }
-            return new TranslationEngine(provider, fallback, Glossary, Cache);
+            // a document is a long job: a busy service is asked again after a pause before the fallback is used
+            return new TranslationEngine(provider, fallback, Glossary, Cache) { Patient = true };
         }
 
         public static void SaveCache()

@@ -20,7 +20,7 @@ namespace TextX.Core.Translation
             "גיליון", "Sheet", "עמוד", "Page", "כמות", "Quantity", "מידות", "Dimensions", "מיקום", "Location", "פרזול", "Hardware",
             "הערות", "Notes", "הערה", "Note", "תיאור", "Description", "שם פריט", "Item name", "שם התכנית", "Drawing title",
             "שם התוכנית", "Drawing title", "שם פרויקט", "Project name", "שם הפרויקט", "Project name", "כתובת הפרויקט", "Project address",
-            "כתובת הפרוייקט", "Project address", "מתכננת אחראית", "Designer in charge", "מתכנן אחראי", "Designer in charge",
+            "כתובת הפרוייקט", "Project address", "מתכננת אחראית", "Designer", "מתכנן אחראי", "Designer",
             "לפי שרטוט", "As per drawing", "לאישור", "For approval", "לתיאום", "For coordination", "למכרז", "For tender",
             "לביצוע", "For construction", "מספר שרטוט", "Drawing number", "שרטט", "Drawn by", "בדק", "Checked by", "אושר", "Approved",
             "אדריכל", "Architect", "מעצבת פנים", "Interior designer", "מעצב פנים", "Interior designer", "לקוח", "Client", "יזם", "Developer",

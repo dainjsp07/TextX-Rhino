@@ -19,6 +19,9 @@ namespace TextX.Core.Translation
 
         /// <summary>True when every segment that needed a translation got one.</summary>
         public bool Complete { get; internal set; }
+
+        /// <summary>For each text: true when part of it got no translation (the service failed); it is returned as given.</summary>
+        public IList<bool> Missing { get; internal set; }
     }
 
     /// <summary>
@@ -51,6 +54,12 @@ namespace TextX.Core.Translation
         {
             lock (CooldownLock) Cooldown[providerId] = DateTime.UtcNow + CooldownDuration;
         }
+
+        /// <summary>
+        /// For long jobs (documents): a busy service is asked again after a pause before the fallback is used,
+        /// and a service paused by an earlier failure is still tried first.
+        /// </summary>
+        public bool Patient { get; set; }
 
         public TranslationEngine(ITranslationProvider provider, ITranslationProvider fallback, Glossary glossary, TranslationCache cache)
         {
@@ -124,7 +133,7 @@ namespace TextX.Core.Translation
                     ct.ThrowIfCancellationRequested();
                     IList<string> results;
                     string usedProvider = Provider.Id;
-                    if (hasFallback && InCooldown(Provider.Id))
+                    if (hasFallback && InCooldown(Provider.Id) && !Patient)
                     {
                         outcome.Warning = Provider.DisplayName + " failed recently and is paused for a few minutes - used " + Fallback.DisplayName + ".";
                         results = await TranslateWithFallback(batch, sourceLang, targetLang, ct).ConfigureAwait(false);
@@ -135,7 +144,7 @@ namespace TextX.Core.Translation
                     {
                         try
                         {
-                            results = await Provider.TranslateAsync(batch, sourceLang, targetLang, ct).ConfigureAwait(false);
+                            results = await TranslatePrimaryAsync(batch, sourceLang, targetLang, ct).ConfigureAwait(false);
                         }
                         catch (TranslationException ex)
                         {
@@ -162,25 +171,104 @@ namespace TextX.Core.Translation
                 outcome.Complete = false;
             }
 
-            outcome.Translations = segmented.Select(doc => TextSegmenter.Join(doc, seg =>
+            var missing = new List<bool>();
+            outcome.Translations = segmented.Select(doc =>
             {
-                string lead, core, trail;
-                TextSegmenter.SplitWhitespace(seg.Text, out lead, out core, out trail);
-                string tr;
-                if (core.Length == 0) return seg.Text;
-                if (!resolved.TryGetValue(core, out tr) || tr == null) return seg.Text;
-                return lead + tr.Trim() + trail;
-            })).ToList();
+                bool miss = false;
+                var text = TextSegmenter.Join(doc, seg =>
+                {
+                    string lead, core, trail;
+                    TextSegmenter.SplitWhitespace(seg.Text, out lead, out core, out trail);
+                    string tr;
+                    if (core.Length == 0) return seg.Text;
+                    if (!resolved.TryGetValue(core, out tr) || tr == null) { miss = true; return seg.Text; }
+                    return lead + tr.Trim() + trail;
+                });
+                missing.Add(miss);
+                return text;
+            }).ToList();
+            outcome.Missing = missing;
             outcome.Elapsed = sw.Elapsed;
             return outcome;
         }
 
+        /// <summary>The main service, asked again after a pause when it is busy (too many requests, a timeout).</summary>
+        private async Task<IList<string>> TranslatePrimaryAsync(IList<string> batch, string src, string tgt, CancellationToken ct)
+        {
+            int[] pauses = Patient ? new[] { 2000, 6000, 15000 } : new[] { 1200 };
+            for (int attempt = 0; ; attempt++)
+            {
+                try
+                {
+                    return await Provider.TranslateAsync(batch, src, tgt, ct).ConfigureAwait(false);
+                }
+                catch (TranslationException ex) when (attempt < pauses.Length && IsTransient(ex))
+                {
+                    await Task.Delay(pauses[attempt], ct).ConfigureAwait(false);
+                }
+            }
+        }
+
+        private static bool IsTransient(TranslationException ex)
+        {
+            var m = ex.Message ?? string.Empty;
+            return m.Contains("HTTP 429") || m.Contains("HTTP 50") || m.Contains("timed out") || m.Contains("network error");
+        }
+
+        /// <summary>
+        /// The fallback service, within its own limits: texts longer than it takes go in pieces (sentences,
+        /// then words), and a piece it refuses stays untranslated without stopping the others.
+        /// </summary>
         private async Task<IList<string>> TranslateWithFallback(IList<string> batch, string src, string tgt, CancellationToken ct)
         {
+            int limit = Math.Max(80, Fallback.MaxBatchChars);
+            var owner = new List<int>();
+            var pieces = new List<string>();
+            for (int i = 0; i < batch.Count; i++)
+                foreach (var piece in SplitForLimit(batch[i] ?? string.Empty, limit)) { owner.Add(i); pieces.Add(piece); }
+            var translated = new string[pieces.Count];
+            int at = 0;
+            foreach (var sub in MakeBatches(pieces, Fallback.MaxBatchItems, limit))
+            {
+                IList<string> r = null;
+                try { r = await Fallback.TranslateAsync(sub, src, tgt, ct).ConfigureAwait(false); }
+                catch (TranslationException) { r = null; }
+                for (int k = 0; k < sub.Count; k++) translated[at + k] = r != null && k < r.Count ? r[k] : null;
+                at += sub.Count;
+            }
             var results = new List<string>(batch.Count);
-            foreach (var sub in MakeBatches(batch, Fallback.MaxBatchItems, Fallback.MaxBatchChars))
-                results.AddRange(await Fallback.TranslateAsync(sub, src, tgt, ct).ConfigureAwait(false));
+            for (int i = 0; i < batch.Count; i++)
+            {
+                var parts = new List<string>();
+                bool ok = true;
+                for (int k = 0; k < pieces.Count; k++)
+                {
+                    if (owner[k] != i) continue;
+                    if (translated[k] == null) { ok = false; break; }
+                    parts.Add(translated[k].Trim());
+                }
+                results.Add(ok ? string.Join(" ", parts) : null);
+            }
             return results;
+        }
+
+        /// <summary>A text cut into pieces of at most <paramref name="limit"/> characters, at sentence ends, else at spaces.</summary>
+        internal static List<string> SplitForLimit(string text, int limit)
+        {
+            var result = new List<string>();
+            text = text.Trim();
+            while (text.Length > limit)
+            {
+                int cut = -1;
+                for (int k = limit; k > limit / 3; k--)
+                    if ((text[k - 1] == '.' || text[k - 1] == '!' || text[k - 1] == '?' || text[k - 1] == ';') && (k == text.Length || char.IsWhiteSpace(text[k]))) { cut = k; break; }
+                if (cut < 0) cut = text.LastIndexOf(' ', limit - 1);
+                if (cut <= 0) cut = limit;
+                result.Add(text.Substring(0, cut).Trim());
+                text = text.Substring(cut).Trim();
+            }
+            if (text.Length > 0 || result.Count == 0) result.Add(text);
+            return result;
         }
 
         public static IEnumerable<IList<string>> MakeBatches(IList<string> items, int maxItems, int maxChars)

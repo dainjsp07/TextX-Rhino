@@ -52,7 +52,8 @@ namespace TextX.Core.Documents.Layout
                     var lines = Wrap(text, width * 1.02f, s, primary, fallbacks);
                     var r = new FitResult { Size = s, Pitch = s * pitchFactor, Scale = s / size };
                     r.Lines = lines.Select(l => MakeLine(l, s, rtl, primary, fallbacks)).ToList();
-                    bool fitsHeight = r.Height <= height + s * 0.35f;
+                    // one line may reach a little past the box; more lines must stay inside it (the text below is close)
+                    bool fitsHeight = r.Height <= height + s * (r.Lines.Count <= 1 ? 0.35f : 0.1f);
                     if (fitsHeight && (pass == 1 || lines.Count <= 1)) return r;
                     if (best == null || pass == 1) best = r;
                     if (s <= minSize) break;

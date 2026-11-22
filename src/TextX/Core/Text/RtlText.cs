@@ -166,7 +166,7 @@ namespace TextX.Core.Text
         public static string VisualLineToLogical(IList<string> clusters, bool rtlBase)
         {
             var parts = new List<string>(clusters);
-            if (rtlBase) return string.Concat(ReverseRtl(parts));
+            if (rtlBase) return BalanceBrackets(string.Concat(ReverseRtl(parts)));
             // a left-to-right line: only its right-to-left stretches are read from the right
             var sb = new StringBuilder();
             int i = 0;
@@ -178,7 +178,48 @@ namespace TextX.Core.Text
                 foreach (var piece in ReverseRtl(parts.GetRange(i, end - i + 1))) sb.Append(piece);
                 i = end + 1;
             }
-            return sb.ToString();
+            return BalanceBrackets(sb.ToString());
+        }
+
+        /// <summary>
+        /// Some PDF writers give the same bracket for both sides of right-to-left text ("ביצוע )x)"): a closing
+        /// bracket with nothing open before it, followed by another closing one, was the opening one (and the
+        /// other way round at the end of the line).
+        /// </summary>
+        internal static string BalanceBrackets(string s)
+        {
+            if (string.IsNullOrEmpty(s)) return s;
+            var chars = s.ToCharArray();
+            foreach (var pair in new[] { "()", "[]", "{}" })
+            {
+                char open = pair[0], close = pair[1];
+                int depth = 0;
+                for (int i = 0; i < chars.Length; i++)
+                {
+                    if (chars[i] == open) depth++;
+                    else if (chars[i] == close)
+                    {
+                        if (depth > 0) { depth--; continue; }
+                        // where an opening bracket stands: after a space (or at the start), before a word
+                        bool opens = (i == 0 || char.IsWhiteSpace(chars[i - 1])) && i + 1 < chars.Length && !char.IsWhiteSpace(chars[i + 1]);
+                        int later = Array.IndexOf(chars, close, i + 1);
+                        if (opens && later > i) { chars[i] = open; depth++; }
+                    }
+                }
+                depth = 0;
+                for (int i = chars.Length - 1; i >= 0; i--)
+                {
+                    if (chars[i] == close) depth++;
+                    else if (chars[i] == open)
+                    {
+                        if (depth > 0) { depth--; continue; }
+                        bool closes = (i == chars.Length - 1 || char.IsWhiteSpace(chars[i + 1])) && i > 0 && !char.IsWhiteSpace(chars[i - 1]);
+                        int earlier = Array.LastIndexOf(chars, open, Math.Max(0, i - 1));
+                        if (closes && i > 0 && earlier >= 0 && earlier < i) { chars[i] = close; depth++; }
+                    }
+                }
+            }
+            return new string(chars);
         }
 
         /// <summary>Visual clusters of right-to-left text, in reading order.</summary>

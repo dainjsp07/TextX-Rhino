@@ -162,6 +162,13 @@ namespace TextX.Core.Documents
                     var b = batch[i];
                     var tr = enforced[i];
                     if (string.IsNullOrWhiteSpace(tr)) { b.State = BlockState.Failed; b.Note = outcome.Warning ?? "No translation was returned."; continue; }
+                    if (outcome.Missing != null && i < outcome.Missing.Count && outcome.Missing[i])
+                    {
+                        // the service did not answer for it: not "kept as it is", but to be tried again
+                        b.State = BlockState.Failed;
+                        b.Note = "Not translated: the translation service was busy. Click Translate to try again.";
+                        continue;
+                    }
                     if (string.Equals(tr.Trim(), b.Source.Trim(), StringComparison.Ordinal)) { b.State = BlockState.Kept; b.Translation = null; continue; }
                     b.Translation = tr.Trim();
                     b.State = BlockState.Translated;
@@ -221,7 +228,7 @@ namespace TextX.Core.Documents
         /// </summary>
         public async Task<IList<string>> EnforceGlossaryAsync(IList<DocBlock> blocks, IList<string> translations, string src, string tgt, CancellationToken ct)
         {
-            var entries = _engine.Glossary.For(src, tgt).Where(e => !string.IsNullOrWhiteSpace(e.Source) && !string.IsNullOrWhiteSpace(e.Target)).ToList();
+            var entries = _engine.Glossary.ForTranslation(src, tgt).Where(e => !string.IsNullOrWhiteSpace(e.Source) && !string.IsNullOrWhiteSpace(e.Target)).ToList();
             var result = translations.ToList();
             if (entries.Count == 0) return result;
             var needed = new Dictionary<GlossaryEntry, List<int>>();

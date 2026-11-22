@@ -50,8 +50,13 @@ namespace TextX.Core.Translation
         /// <summary>Entries that apply to a language pair.</summary>
         public IEnumerable<GlossaryEntry> For(string sourceLang, string targetLang)
         {
-            var own = _entries.Where(e => string.Equals(e.TargetLang, targetLang, StringComparison.OrdinalIgnoreCase) && LangMatches(e.SourceLang, sourceLang)).ToList();
-            // the drawing words that read better the same way every time, unless the user has their own
+            return _entries.Where(e => string.Equals(e.TargetLang, targetLang, StringComparison.OrdinalIgnoreCase) && LangMatches(e.SourceLang, sourceLang));
+        }
+
+        /// <summary>The user's entries and the drawing words kept the same inside sentences (unless the user has their own).</summary>
+        public IEnumerable<GlossaryEntry> ForTranslation(string sourceLang, string targetLang)
+        {
+            var own = For(sourceLang, targetLang).ToList();
             foreach (var e in DrawingVocabulary.SentenceTerms(sourceLang, targetLang))
                 if (!own.Any(o => Normalize(o.Source) == Normalize(e.Source))) own.Add(e);
             return own;

@@ -375,12 +375,16 @@ namespace TextX.Core.Documents.Export
             var set = new HashSet<DocBlock>();
             foreach (var b in page.Blocks.Where(Changed))
             {
+                // only the other-language half of a bilingual label goes; the Latin text beside it stays
+                if (IsLatin(b.Source)) continue;
                 var key = Key(b.Translation);
                 if (key.Length < 2) continue;
                 float size = Math.Max(4f, b.FontSize);
                 foreach (var o in page.Blocks)
                 {
-                    if (ReferenceEquals(o, b) || Changed(o) || !Similar(key, Key(o.Source))) continue;
+                    if (ReferenceEquals(o, b) || !IsLatin(o.Source)) continue;
+                    // the English label may itself have been tidied by the translation ("adress")
+                    if (!Similar(key, Key(o.Source)) && !(Changed(o) && Similar(key, Key(o.Translation)))) continue;
                     float vOverlap = Math.Min(o.Box.T, b.Box.T) - Math.Max(o.Box.B, b.Box.B);
                     float hGap = Math.Max(o.Box.L - b.Box.R, b.Box.L - o.Box.R);
                     float vGap = Math.Max(o.Box.B - b.Box.T, b.Box.B - o.Box.T);
@@ -390,6 +394,18 @@ namespace TextX.Core.Documents.Export
                 }
             }
             return set;
+        }
+
+        private static bool IsLatin(string s)
+        {
+            bool letter = false;
+            foreach (var ch in s ?? string.Empty)
+            {
+                if (!char.IsLetter(ch)) continue;
+                if (ch >= 0x0250) return false;
+                letter = true;
+            }
+            return letter;
         }
 
         private static string Key(string s)
