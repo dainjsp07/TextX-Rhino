@@ -412,11 +412,13 @@ namespace TextX.Core.Documents.Layout
                 while (a > 0 && same[a].Box.L - same[a - 1].Box.R <= em * 20f) a--;
                 while (z < same.Count - 1 && same[z + 1].Box.L - same[z].Box.R <= em * 20f) z++;
                 bool row = z - a + 1 >= 3;
-                // two narrow ones close together: a label and its value
+                // two narrow ones, one of them a word or two: a label and its value (two columns of
+                // longer lines, like a legend, are read as paragraphs)
                 if (!row && z > a)
                 {
                     var x = same[a]; var y = same[z];
-                    row = x.Box.W < pageWidth * 0.3f && y.Box.W < pageWidth * 0.3f && y.Box.L - x.Box.R <= em * 4f;
+                    Func<DocLine, bool> shortText = o => o.Text.Trim().Length <= 16 && o.Text.Trim().Count(ch => ch == ' ') <= 1;
+                    row = x.Box.W < pageWidth * 0.3f && y.Box.W < pageWidth * 0.3f && y.Box.L - x.Box.R <= em * 10f && (shortText(x) || shortText(y));
                 }
                 if (row)
                     for (int k = a; k <= z; k++) result.Add(same[k]);
