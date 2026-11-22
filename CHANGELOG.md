@@ -58,8 +58,8 @@ into a dated section when you release.
 - Hebrew file names show right to left in the title and in Recent.
 
 ### Changed
-- The button at the foot of the left bar switches **dark and light mode** again. Settings are in the
-  translation service menu at the top (**Settings...**).
+- The foot of the left bar has a **Settings** button and, under it, the **dark / light mode** switch
+  again. Settings are also in the translation service menu at the top (**Settings...**).
 
 ## [2.0.0] - 2026-11-21
 

@@ -11,15 +11,18 @@ namespace TextX.UI.Controls
 {
     /// <summary>
     /// The navigation rail: the Text X mark at the top, then a rounded track of icon buttons (the
-    /// chosen one sits in an orange circle), and an extra button at the bottom (settings).
+    /// chosen one sits in an orange circle), and up to two extra buttons at the foot (settings above,
+    /// dark / light mode below) in a small track of their own.
     /// </summary>
     public sealed class NavRail : ThemedDrawable
     {
         private readonly List<KeyValuePair<string, IconKind>> _items = new List<KeyValuePair<string, IconKind>>();
         private string _bottomText;
         private IconKind _bottomIcon = IconKind.None;
+        private string _secondText;
+        private IconKind _secondIcon = IconKind.None;
         private int _selected;
-        private int _hover = -2; // -1 = bottom button, -2 = nothing
+        private int _hover = -2; // -1 = bottom button, -3 = the one above it, -2 = nothing
         // the orange circle slides between items on the discrete clock (a little quicker than 700 ms)
         private readonly Tween _slide = new Tween(0, 350);
         private readonly Tween _hoverDot = new Tween(0, 150) { Ease = Clock.EaseFade };
@@ -27,6 +30,7 @@ namespace TextX.UI.Controls
 
         public event EventHandler<EventArgs> SelectedIndexChanged;
         public event EventHandler<EventArgs> BottomClicked;
+        public event EventHandler<EventArgs> SecondClicked;
 
         public NavRail() : base(true)
         {
@@ -44,6 +48,14 @@ namespace TextX.UI.Controls
         {
             _bottomText = text;
             _bottomIcon = icon;
+            Invalidate();
+        }
+
+        /// <summary>The foot button above the bottom one.</summary>
+        public void SetSecond(string text, IconKind icon)
+        {
+            _secondText = text;
+            _secondIcon = icon;
             Invalidate();
         }
 
@@ -82,6 +94,12 @@ namespace TextX.UI.Controls
             return new RectangleF(X0 + (RailW - ItemD) / 2f, Height - 12 - ItemD - 5, ItemD, ItemD);
         }
 
+        private RectangleF SecondRect()
+        {
+            var b = BottomRect();
+            return new RectangleF(b.X, b.Y - ItemD - Gap, ItemD, ItemD);
+        }
+
         private int HitTest(PointF pt)
         {
             for (int i = 0; i < _items.Count; i++)
@@ -96,6 +114,12 @@ namespace TextX.UI.Controls
                 b.Inflate(3, 3);
                 if (b.Contains(pt)) return -1;
             }
+            if (_secondIcon != IconKind.None)
+            {
+                var b = SecondRect();
+                b.Inflate(3, 2);
+                if (b.Contains(pt)) return -3;
+            }
             return -2;
         }
 
@@ -106,7 +130,7 @@ namespace TextX.UI.Controls
             _hover = h;
             _hoverDot.From = 0; _hoverDot.To = 0; _hoverDot.Set(1, Animator.Now);
             Animate();
-            ToolTip = h >= 0 ? _items[h].Key : h == -1 ? _bottomText : null;
+            ToolTip = h >= 0 ? _items[h].Key : h == -1 ? _bottomText : h == -3 ? _secondText : null;
             Invalidate();
         }
 
@@ -123,6 +147,11 @@ namespace TextX.UI.Controls
             else if (i == -1)
             {
                 var h = BottomClicked;
+                if (h != null) h(this, EventArgs.Empty);
+            }
+            else if (i == -3)
+            {
+                var h = SecondClicked;
                 if (h != null) h(this, EventArgs.Empty);
             }
         }
@@ -173,13 +202,22 @@ namespace TextX.UI.Controls
 
             if (_bottomIcon != IconKind.None)
             {
+                // the foot buttons share one small track, like the items above
                 var b = BottomRect();
-                var ring = new RectangleF(b.X - 5, b.Y - 5, b.Width + 10, b.Height + 10);
-                g.FillEllipse(p.Rail, ring);
-                float bh = _hover == -1 ? hov : 0;
-                if (bh > 0) g.FillEllipse(ThemeColors.WithAlpha(p.RailIcon, 0.18f * bh), b);
-                Icons.Draw(g, _bottomIcon, new RectangleF(b.X + 8, b.Y + 8, ItemD - 16, ItemD - 16), ThemeColors.Mix(p.RailIcon, p.Accent, bh), 1.8f);
+                var top = _secondIcon != IconKind.None ? SecondRect() : b;
+                var foot = new RectangleF(b.X - 5, top.Y - 5, b.Width + 10, b.Bottom - top.Y + 10);
+                FillRound(g, foot, foot.Width / 2f, p.Rail);
+                DrawFootButton(g, b, _bottomIcon, _hover == -1 ? hov : 0);
+                if (_secondIcon != IconKind.None) DrawFootButton(g, SecondRect(), _secondIcon, _hover == -3 ? hov : 0);
             }
+        }
+
+        private void DrawFootButton(Graphics g, RectangleF r, IconKind icon, float hover)
+        {
+            var p = P;
+            if (hover > 0) g.FillEllipse(ThemeColors.WithAlpha(p.RailIcon, 0.18f * hover), r);
+            float dy = -1.5f * hover;
+            Icons.Draw(g, icon, new RectangleF(r.X + 8, r.Y + 8 + dy, ItemD - 16, ItemD - 16), ThemeColors.Mix(p.RailIcon, p.Accent, hover), 1.8f);
         }
     }
 

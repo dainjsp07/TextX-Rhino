@@ -131,9 +131,11 @@ namespace TextX.UI.Studio
             _tabs.Add("Document", IconKind.File);
             _tabs.Add("Schedules", IconKind.Grid);
             _tabs.Add("Picture or screenshot", IconKind.Picture);
-            // dark / light mode at the foot of the rail (Settings are in the translation service menu)
+            // at the foot of the rail: Settings, and dark / light mode under it
             UpdateThemeButton();
             _tabs.BottomClicked += (s, e) => ToggleTheme();
+            _tabs.SetSecond("Settings", IconKind.Gear);
+            _tabs.SecondClicked += (s, e) => OpenSettings();
             _pages = new[] { BuildHome(), BuildDocument(), BuildSchedules(), BuildTools() };
             _page.Content = _pages[0];
             _scope.Bind(_page, (x, p) => x.BackgroundColor = p.Window);
