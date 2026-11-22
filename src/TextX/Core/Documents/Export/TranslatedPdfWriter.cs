@@ -151,7 +151,12 @@ namespace TextX.Core.Documents.Export
             // the drawing around the text: ruled cells, shapes and pictures the translation must not run into
             var geometry = PageGeometry.From(page, p.GetObjects());
             var repeats = Repeats(page);
-            foreach (var b in plan.Write) LayoutBlock(page, project, b, options, plan, geometry, repeats);
+            // notes and legends stacked in one place are laid out together, so a longer text pushes the next one down
+            var grouped = new HashSet<DocBlock>();
+            foreach (var group in Stacks(page, plan.Write, geometry, repeats))
+                if (LayoutStack(page, project, group, options, plan, geometry))
+                    foreach (var b in group) grouped.Add(b);
+            foreach (var b in plan.Write) if (!grouped.Contains(b)) LayoutBlock(page, project, b, options, plan, geometry, repeats);
             return plan;
         }
 
@@ -230,6 +235,129 @@ namespace TextX.Core.Documents.Export
             if (string.IsNullOrEmpty(s)) return string.Empty;
             return s.Replace(' ', ' ').Replace(' ', ' ').Replace(' ', ' ').Replace("­", string.Empty)
                     .Replace('‑', '-').Replace("﻿", string.Empty).Replace("​", string.Empty);
+        }
+
+        /// <summary>
+        /// Translated texts set one under the other in the same column (notes, the items of a legend, a heading
+        /// and its text), with no ruled line between them: each chain of two or more, top to bottom.
+        /// </summary>
+        private static List<List<DocBlock>> Stacks(DocPage page, List<DocBlock> write, PageGeometry geo, HashSet<DocBlock> repeats)
+        {
+            var candidates = write.Where(b => Changed(b) && !b.IsRotated && !repeats.Contains(b) && b.Kind != BlockKind.TableCell && b.Kind != BlockKind.HeaderFooter)
+                                  .OrderByDescending(b => b.Box.T).ToList();
+            var below = new Dictionary<DocBlock, DocBlock>();
+            var hasAbove = new HashSet<DocBlock>();
+            foreach (var a in candidates)
+            {
+                float size = Math.Max(4f, a.FontSize);
+                DocBlock best = null;
+                float bestGap = float.MaxValue;
+                foreach (var b in candidates)
+                {
+                    if (ReferenceEquals(a, b) || hasAbove.Contains(b) || b.Box.CY >= a.Box.CY) continue;
+                    float gap = a.Box.B - b.Box.T;
+                    if (gap < -size * 0.45f || gap > size * 1.3f) continue;
+                    if (a.Box.OverlapX(b.Box) < Math.Min(a.Box.W, b.Box.W) * 0.5f) continue;
+                    float ratio = Math.Max(a.FontSize, b.FontSize) / Math.Max(0.1f, Math.Min(a.FontSize, b.FontSize));
+                    if (ratio > 1.35f) continue;
+                    if (geo.HorizontalRuleBetween(b.Box.T - 0.5f, a.Box.B + 0.5f, Math.Max(a.Box.L, b.Box.L), Math.Min(a.Box.R, b.Box.R))) continue;
+                    // nothing else in between
+                    if (page.Blocks.Any(o => !ReferenceEquals(o, a) && !ReferenceEquals(o, b) && o.Box.CY < a.Box.CY && o.Box.CY > b.Box.CY &&
+                                             o.Box.OverlapX(a.Box) > 0 && o.Box.OverlapX(b.Box) > 0)) continue;
+                    if (gap < bestGap) { bestGap = gap; best = b; }
+                }
+                if (best != null) { below[a] = best; hasAbove.Add(best); }
+            }
+            var groups = new List<List<DocBlock>>();
+            foreach (var top in candidates.Where(b => !hasAbove.Contains(b) && below.ContainsKey(b)))
+            {
+                var g = new List<DocBlock> { top };
+                DocBlock next;
+                while (below.TryGetValue(g[g.Count - 1], out next) && g.Count < 40) g.Add(next);
+                groups.Add(g);
+            }
+            return groups;
+        }
+
+        /// <summary>
+        /// Lays a stack out from its top: every text at one common share of its own size, each keeping its place
+        /// left or right, the gaps between them kept, all within the room the stack and the space under it have.
+        /// </summary>
+        private static bool LayoutStack(DocPage page, DocProject project, List<DocBlock> group, PdfWriteOptions options, PagePlan plan, PageGeometry geo)
+        {
+            float minX = float.MinValue, maxX = float.MaxValue;
+            foreach (var b in group)
+            {
+                float l, r;
+                FreeSpan(page, b, geo, Math.Max(4f, b.FontSize), out l, out r);
+                minX = Math.Max(minX, l);
+                maxX = Math.Min(maxX, r);
+            }
+            float groupL = group.Min(b => b.Box.L), groupR = group.Max(b => b.Box.R);
+            minX = Math.Min(minX, groupL);
+            maxX = Math.Max(maxX, groupR);
+            if (maxX - minX < 8f) return false;
+            var last = group[group.Count - 1];
+            float top = group[0].Box.T;
+            float height = top - last.Box.B;
+            float lastSize = Math.Max(4f, last.FontSize);
+            height = Math.Max(height, top - last.Box.B + (RoomBelow(page, last, geo, lastSize, last.Box.H) - last.Box.H));
+
+            var faces = new List<KeyValuePair<FontFace, IList<FontFace>>>();
+            var texts = new List<string>();
+            var gaps = new List<float>();
+            bool rtl = Languages.IsRtl(project.TargetLang);
+            foreach (var b in group)
+            {
+                var primary = options.Fonts.Primary(FontCatalog.KindOf(b.FontName), b.Bold, b.Italic, project.TargetLang);
+                if (primary == null) return false;
+                faces.Add(new KeyValuePair<FontFace, IList<FontFace>>(primary, options.Fonts.FallbackFaces(project.TargetLang)));
+                texts.Add(NormalizeForPdf(b.Translation));
+            }
+            for (int i = 0; i + 1 < group.Count; i++) gaps.Add(Math.Max(0f, group[i].Box.B - group[i + 1].Box.T));
+
+            float width = maxX - minX;
+            List<FitResult> fits = null;
+            float scale = 1f;
+            for (float s = 1f; ; s *= 0.94f)
+            {
+                if (s < options.MinScale * 0.8f) s = options.MinScale * 0.8f;
+                var trial = new List<FitResult>();
+                float total = 0;
+                for (int i = 0; i < group.Count; i++)
+                {
+                    var b = group[i];
+                    float size = (b.FontSize > 0 ? b.FontSize : 10f) * s;
+                    var fit = TextFitter.Fit(texts[i], width, 1e6f, size, b.LinePitch, false, rtl, faces[i].Key, faces[i].Value, 1f);
+                    trial.Add(fit);
+                    total += fit.Height + size * 0.22f + (i + 1 < group.Count ? Math.Max(size * 0.2f, gaps[i] * s) : 0f);
+                }
+                fits = trial;
+                scale = s;
+                if (total <= height + 0.5f || s <= options.MinScale * 0.8f) break;
+            }
+
+            float y = top;
+            for (int i = 0; i < group.Count; i++)
+            {
+                var b = group[i];
+                var fit = fits[i];
+                float size = fit.Size;
+                var a = b.Align == BlockAlign.Justify ? (b.SourceRtl ? BlockAlign.Right : BlockAlign.Left) : b.Align;
+                uint color = b.Color;
+                float baseline = y - size * 0.78f;
+                foreach (var line in fit.Lines)
+                {
+                    float x = a == BlockAlign.Right ? Math.Min(b.Box.R, maxX) - line.Width : a == BlockAlign.Center ? b.Box.CX - line.Width / 2f : Math.Max(b.Box.L, minX);
+                    if (line.Width <= maxX - minX) x = Math.Max(minX, Math.Min(x, maxX - line.Width));
+                    plan.Ops.Add(new DrawOp { Line = line, Size = size, X = x, Y = baseline, Angle = 0f, Color = color });
+                    baseline -= fit.Pitch;
+                }
+                y = baseline + fit.Pitch - size * 0.22f - (i + 1 < group.Count ? Math.Max(size * 0.2f, gaps[i] * scale) : 0f);
+                var noteFit = new FitResult { Size = size, Scale = scale, Overflow = scale <= options.MinScale * 0.8f + 0.001f && top - y > height + 0.5f };
+                Note(b, noteFit, plan.Report);
+            }
+            return true;
         }
 
         private static void LayoutBlock(DocPage page, DocProject project, DocBlock b, PdfWriteOptions options, PagePlan plan, PageGeometry geo, HashSet<DocBlock> repeats)
