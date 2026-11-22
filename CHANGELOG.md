@@ -12,6 +12,34 @@ into a dated section when you release.
 
 ## [Unreleased]
 
+## [2.0.1] - 2026-11-22
+
+### Fixed
+- **PDF translation of drawings and title blocks.**
+  - Texts in neighbouring cells are no longer read as one ("Date Scale"): a ruled line between two texts keeps
+    them apart.
+  - A Hebrew label keeps its place in English: right-aligned stays right-aligned, centred stays centred.
+    The English grows only into free room in its cell, away from lines, shapes, pictures and other text, and
+    takes a second line where it does not fit.
+  - Labels that already have their English beside them (bilingual title blocks: "Project name  שם פרויקט")
+    are not written twice: the Hebrew is removed.
+  - The lines of a callout are translated together, so each line is read in context.
+  - Notes that start with a bullet touching the text ("*Note") are separate items.
+  - Hebrew words joined to a number ("חתך1") and Hebrew names next to English labels are translated.
+  - Brackets around English words inside Hebrew lines come out the right way round.
+  - Title-block and joinery words get draughtsman's English: Scale, Revision, Page, Sheet size, Finish
+    schedule, Plinth, Soft-close and more (your own glossary always wins).
+  - Documents in the history are read again with these rules when you open them; their translations come
+    back from the translation memory.
+- **Home spacing.** Nothing runs past the right edge any more; the translator and the tiles get exact widths.
+  Under the translator, the five tiles sit in one row; in a short window they become buttons. Icon-only
+  buttons stay square.
+- Hebrew file names show right to left in the title and in Recent.
+
+### Changed
+- The button at the foot of the left bar switches **dark and light mode** again. Settings are in the
+  translation service menu at the top (**Settings...**).
+
 ## [2.0.0] - 2026-11-21
 
 Text X Studio is now the Text X window: one app for Rhino text, documents, drawings and pictures.
