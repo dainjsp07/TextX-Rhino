@@ -28,7 +28,7 @@ namespace TextX.Tests
             var pieces = TranslationEngine.SplitForLimit(new string('א', 300) + ". " + new string('ב', 300), 480);
             True(pieces.Count == 2 && pieces.All(x => x.Length <= 480), "long text cut for a service limit");
             True(LanguageGuess.IsReference("A-12 3") && !LanguageGuess.IsReference("חתך1"), "a word joined to a number is translated");
-            Equal("Scale", DrawingVocabulary.Lookup(Glossary.Normalize("קנ\"מ:"), "he", "en"), "title block word");
+            Equal("Scale", DrawingVocabulary.Lookup(TextX.Core.Translation.Glossary.Normalize("קנ\"מ:"), "he", "en"), "title block word");
 
             // --- Hebrew prefixes: only on longer words, only valid combinations
             Equal("laminate", Nice(Vocabulary.Materials.Find("גמר ופורמייקה לבנה")), "prefix ו on a long word");
