@@ -115,7 +115,7 @@ namespace TextX.UI.Studio
             if (w <= 0) return;
             int sideHero = w - SideWidth - 12;
             string arrangement = w >= HomeWideFrom && sideHero >= TranslatorMinWidth ? "wide"
-                : h >= HeroMinHeight + 12 + TileRowHeight ? "narrow" : "short";
+                : h >= HeroMinHeight + 12 + TileRowHeight && w >= 5 * 150 + 4 * 12 ? "narrow" : "short";
             int heroW = arrangement == "wide" ? sideHero : w;
             FitTranslator(heroW);
             _heroCard.Width = heroW;
