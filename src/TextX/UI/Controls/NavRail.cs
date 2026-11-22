@@ -211,6 +211,20 @@ namespace TextX.UI.Controls
             set { _compact = value; if (value) { Height = -1; MinimumSize = new Size(0, 136); } else Height = _figure == null ? 168 : 268; Invalidate(); }
         }
 
+        private bool _drawCompact;
+
+        /// <summary>Drawn like a compact tile (figure above, title and text at the foot) without changing its size rules.</summary>
+        public bool DrawCompact
+        {
+            get { return _drawCompact; }
+            set { if (_drawCompact == value) return; _drawCompact = value; Invalidate(); }
+        }
+
+        private bool UseCompact
+        {
+            get { return _compact || _drawCompact; }
+        }
+
         public event EventHandler<EventArgs> Click;
 
         public BentoTile(IconKind icon, string title, string text, string tag = null, Figure figure = null) : base(true)
@@ -259,7 +273,7 @@ namespace TextX.UI.Controls
         {
             get
             {
-                if (_compact)
+                if (UseCompact)
                 {
                     // the figure grows with a taller tile; the title and text keep to the foot of the tile
                     float fh = Math.Max(64, Math.Min(112, Height - 16 - CompactTextHeight));
@@ -323,7 +337,7 @@ namespace TextX.UI.Controls
             float h = Hover;
             var r = new RectangleF(0.5f, 0.5f, Width - 1, Height - 1);
             var plate = Featured ? p.Accent : p.Surface;
-            float radius = _compact ? 18 : 20;
+            float radius = UseCompact ? 18 : 20;
             FillRound(g, r, radius, plate);
             if (!Featured) StrokeRound(g, r, radius, ThemeColors.Mix(p.Border, p.Accent, 0.75f * h), 1f + 0.4f * h);
 
@@ -343,7 +357,7 @@ namespace TextX.UI.Controls
             Icons.Draw(g, IconKind.ArrowUpRight, new RectangleF(arrow.X + 7 + 1.6f * h, arrow.Y + 7 - 1.6f * h, 14, 14), arrowInk, 2.2f);
 
             float y;
-            if (_figure != null && _compact)
+            if (_figure != null && UseCompact)
             {
                 var fr = FigureRect;
                 var inks = FigureInks.On(p, plate);

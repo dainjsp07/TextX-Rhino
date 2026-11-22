@@ -21,7 +21,8 @@ namespace TextX.UI.Studio
         private Label _recentEmpty;
         private FlatButton _recentManage;
         private Panel _homeHost, _homePage;
-        private Control _heroCard, _featuredTile, _tileGrid, _tileButtons;
+        private Control _heroCard, _tileGrid, _tileButtons;
+        private BentoTile _featuredTile;
         private string _homeArrangement;
 
         /// <summary>Width of the page from which the tiles sit beside the translator.</summary>
@@ -33,7 +34,7 @@ namespace TextX.UI.Studio
         /// <summary>Space around Home's content: the same right margin as the header, room under the Recent row.</summary>
         private static readonly Padding HomePadding = new Padding(4, 0, 16, 12);
 
-        private const int RecentRowHeight = 28, TileRowHeight = 212;
+        private const int RecentRowHeight = 28, TileRowHeight = 170;
 
         private Control BuildHome()
         {
@@ -54,10 +55,7 @@ namespace TextX.UI.Studio
             _tiles = new List<BentoTile> { translate, schedule, picture, voice, _library };
             _featuredTile = translate;
 
-            var grid = new TableLayout { Spacing = new Size(12, 12) };
-            grid.Rows.Add(new TableRow(new TableCell(schedule, true), new TableCell(picture, true)) { ScaleHeight = true });
-            grid.Rows.Add(new TableRow(new TableCell(voice, true), new TableCell(_library, true)) { ScaleHeight = true });
-            _tileGrid = grid;
+            _tileGrid = null;
 
             // a window too short for the tiles under the translator: the same five, as buttons
             var bPdf = new FlatButton("Translate a PDF", IconKind.Translate, ButtonKind.Secondary, 32);
@@ -117,26 +115,33 @@ namespace TextX.UI.Studio
             if (w <= 0) return;
             int sideHero = w - SideWidth - 12;
             string arrangement = w >= HomeWideFrom && sideHero >= TranslatorMinWidth ? "wide"
-                : h >= TranslatorTallEnough + 12 + TileRowHeight ? "narrow" : "short";
+                : h >= HeroMinHeight + 12 + TileRowHeight ? "narrow" : "short";
             int heroW = arrangement == "wide" ? sideHero : w;
             FitTranslator(heroW);
             _heroCard.Width = heroW;
             if (_homeArrangement == arrangement) return;
             _homeArrangement = arrangement;
-            foreach (var c in new[] { _heroCard, _featuredTile, _tileGrid, _tileButtons }) if (c.Parent != null) c.Detach();
+            foreach (var c in new Control[] { _heroCard, _tileButtons }.Concat(_tiles)) if (c.Parent != null) c.Detach();
+            _featuredTile.DrawCompact = arrangement == "narrow";
             var layout = new TableLayout { Spacing = new Size(12, 12) };
             if (arrangement == "wide")
             {
+                // Translate a PDF over the four other tiles, two by two
+                var grid = new TableLayout { Spacing = new Size(12, 12) };
+                grid.Rows.Add(new TableRow(new TableCell(_tiles[1], true), new TableCell(_tiles[2], true)) { ScaleHeight = true });
+                grid.Rows.Add(new TableRow(new TableCell(_tiles[3], true), new TableCell(_tiles[4], true)) { ScaleHeight = true });
+                _tileGrid = grid;
                 var side = new TableLayout { Spacing = new Size(0, 12) };
                 side.Rows.Add(new TableRow(_featuredTile) { ScaleHeight = true });
-                side.Rows.Add(new TableRow(_tileGrid) { ScaleHeight = true });
+                side.Rows.Add(new TableRow(grid) { ScaleHeight = true });
                 var sideBox = new Panel { Content = side, Width = SideWidth };
                 layout.Rows.Add(new TableRow(new TableCell(_heroCard, true), new TableCell(sideBox, false)) { ScaleHeight = true });
             }
             else if (arrangement == "narrow")
             {
+                // the five tiles in one row under the translator
                 var row = new TableLayout { Spacing = new Size(12, 0) };
-                row.Rows.Add(new TableRow(new TableCell(_featuredTile, true), new TableCell(_tileGrid, true)));
+                row.Rows.Add(new TableRow(_tiles.Select(t => new TableCell(t, true)).ToArray()));
                 var rowBox = new Panel { Content = row, Height = TileRowHeight };
                 layout.Rows.Add(new TableRow(_heroCard) { ScaleHeight = true });
                 layout.Rows.Add(new TableRow(rowBox));
@@ -148,9 +153,6 @@ namespace TextX.UI.Studio
             }
             _homeHost.Content = layout;
         }
-
-        /// <summary>The translator's height that keeps a few lines of text in view (more than its least height).</summary>
-        private static int TranslatorTallEnough { get { return HeroMinHeight + 40; } }
 
         private List<BentoTile> _tiles = new List<BentoTile>();
         private BentoTile _library;
