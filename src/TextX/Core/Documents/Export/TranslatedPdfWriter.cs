@@ -351,8 +351,10 @@ namespace TextX.Core.Documents.Export
                 float baseline = y - size * 0.78f;
                 foreach (var line in fit.Lines)
                 {
-                    float x = a == BlockAlign.Right ? Math.Min(b.Box.R, maxX) - line.Width : a == BlockAlign.Center ? b.Box.CX - line.Width / 2f : Math.Max(b.Box.L, minX);
-                    if (line.Width <= maxX - minX) x = Math.Max(minX, Math.Min(x, maxX - line.Width));
+                    // a turned list starts every item at the stack's own edge
+                    float right = turn ? groupR : b.Box.R, left = turn ? groupL : b.Box.L;
+                    float x = a == BlockAlign.Right ? Math.Min(right, maxX) - line.Width : a == BlockAlign.Center ? b.Box.CX - line.Width / 2f : Math.Max(left, minX);
+                    x = Math.Max(minX, Math.Min(x, maxX - line.Width));
                     plan.Ops.Add(new DrawOp { Line = line, Size = size, X = x, Y = baseline, Angle = 0f, Color = color });
                     baseline -= fit.Pitch;
                 }
@@ -433,8 +435,8 @@ namespace TextX.Core.Documents.Export
                 if (align == BlockAlign.Right) x = Math.Min(b.Box.R, maxX) - line.Width;
                 else if (align == BlockAlign.Center) x = b.Box.CX - line.Width / 2f;
                 else x = Math.Max(b.Box.L, minX);
-                // inside the free room when it fits there: a longer text moves away from what is beside it
-                if (line.Width <= maxX - minX) x = Math.Max(minX, Math.Min(x, maxX - line.Width));
+                // inside the free room: a longer text moves away from what is beside it
+                x = Math.Max(minX, Math.Min(x, maxX - line.Width));
                 plan.Ops.Add(new DrawOp { Line = line, Size = result.Size, X = x, Y = baseline, Angle = 0f, Color = color });
                 baseline -= result.Pitch;
             }

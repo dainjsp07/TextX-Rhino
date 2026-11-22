@@ -55,7 +55,10 @@ namespace TextX.Core.Documents.Layout
                 for (float s = size; ; s *= 0.94f)
                 {
                     if (s < floor) s = floor;
-                    var lines = Wrap(text, width * 1.02f, s, primary, fallbacks);
+                    // a word is cut between letters only as a last resort, at the smallest size
+                    bool cut;
+                    var lines = Wrap(text, width * 1.02f, s, primary, fallbacks, out cut);
+                    if (cut && s > floor && !oneLine) continue;
                     var r = new FitResult { Size = s, Pitch = s * pitchFactor, Scale = s / size };
                     r.Lines = lines.Select(l => MakeLine(l, s, rtl, primary, fallbacks)).ToList();
                     // one line may reach a little past the box; more lines must stay inside it (the text below is close)
@@ -89,6 +92,14 @@ namespace TextX.Core.Documents.Layout
         /// <summary>Greedy word wrap at <paramref name="width"/>; explicit newlines are kept.</summary>
         public static List<string> Wrap(string text, float width, float size, FontFace primary, IList<FontFace> fallbacks)
         {
+            bool cut;
+            return Wrap(text, width, size, primary, fallbacks, out cut);
+        }
+
+        /// <summary>Word wrap; <paramref name="cutWord"/> tells whether a word longer than a line had to be cut.</summary>
+        public static List<string> Wrap(string text, float width, float size, FontFace primary, IList<FontFace> fallbacks, out bool cutWord)
+        {
+            cutWord = false;
             var result = new List<string>();
             foreach (var paragraph in text.Split('\n'))
             {
@@ -109,6 +120,7 @@ namespace TextX.Core.Documents.Layout
                     if (w > width && token.Length > 1 && !string.IsNullOrWhiteSpace(token))
                     {
                         // a word longer than the line: break it between characters
+                        cutWord = true;
                         foreach (var ch in SplitChars(token))
                         {
                             float cw = FontCatalog.Measure(ch, primary, fallbacks, size);
