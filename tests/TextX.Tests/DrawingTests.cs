@@ -38,6 +38,10 @@ namespace TextX.Tests
             Equal("Mitred joints", vocab("חיבורים בגרונג."), "trade word");
             Equal("Inner plinth 2 cm", vocab("צוקל פנימי2ס \"מ"), "plinth with its size");
             True(vocab("חזית הבניין הצפונית") == null, "a sentence is not a reference");
+            Equal("Top view JRY-01", vocab("מבט על JRY-01"), "view with its reference");
+            Equal("Rear elevation JRY-01", vocab("חזית אחורית JRY-01"), "elevation with its reference");
+            Equal("Plinth 65", vocab("צוקל 65"), "word with a number");
+            True(vocab("קפיטריה - קומה21") == null, "unknown words go to the translation service");
 
             // --- Hebrew prefixes: only on longer words, only valid combinations
             Equal("laminate", Nice(Vocabulary.Materials.Find("גמר ופורמייקה לבנה")), "prefix ו on a long word");

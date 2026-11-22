@@ -63,6 +63,7 @@ namespace TextX.Core.Translation
             "מ.קפה", "Coffee machine", "מכונת קפה ידנית", "Manual coffee machine", "מ.קפה ידנית", "Manual coffee machine", "מ.קפה ידני", "Manual coffee machine",
             "מכונת קרח", "Ice machine", "מ.קרח", "Ice machine", "תמי4", "Tami4", "תמי 4", "Tami4", "תמי בר", "Tami bar", "ברז סודה", "Soda tap",
             "אי קפיטריה", "Cafeteria island", "אי מטבח", "Kitchen island", "מגירת אשפה", "Bin drawer", "אשפה", "Waste", "עמדת הדפסה", "Printing station",
+            "קבלה", "Reception", "ציבורי", "Public", "מדרגות", "Stairs", "מטבחון", "Kitchenette", "מטבח", "Kitchen",
         });
 
         /// <summary>Labels with a number or a reference in them ("קנ"מ 1:25", "חזית A", "תוכנית 02.1 - 21 NM").</summary>
@@ -75,6 +76,9 @@ namespace TextX.Core.Translation
             P("^(?<pre>\\d+\\s+)?(?:פרט)\\s*(?<rest>[A-Za-z0-9][^\\u0590-\\u05FF]*)$", "${pre}Detail ${rest}"),
             P("^צוקל\\s+פנימי\\s*(?<n>\\d+)\\s*ס\\s*[\"״]?\\s*מ$", "Inner plinth ${n} cm"),
         };
+
+        /// <summary>A drawing word followed by its reference: "מבט על JRY-01", "חזית אחורית B", "צוקל 65".</summary>
+        private static readonly Regex WordAndReference = new Regex("^(?<he>[\\u05D0-\\u05EA][\\u05D0-\\u05EA\"'\\u05F3\\u05F4 ]*?)\\s*(?<rest>[A-Za-z0-9][^\\u0590-\\u05FF]*)$", RegexOptions.CultureInvariant);
 
         private static KeyValuePair<Regex, string> P(string pattern, string replacement)
         {
@@ -100,6 +104,7 @@ namespace TextX.Core.Translation
             "חתך צד", "Side section", "בלום", "Blum", "חיבורים בגרונג", "mitred joints", "גרונג", "mitre", "מקרא", "legend",
             "צוקל", "plinth", "קלפה", "flap door", "מדפים משתנים בגובה", "height-adjustable shelves", "דלת מנוגרת", "joinery-clad door",
             "דלת הדף", "blast door", "מחזיר שמן", "door closer", "פרופיל ניתוק", "shadow-gap profile", "יילקחו בשטח", "taken on site",
+            "צבע בתנור", "baked paint",
         };
 
         private static Dictionary<string, string> Build(string[] pairs)
@@ -131,6 +136,10 @@ namespace TextX.Core.Translation
                 var m = p.Key.Match(spaced);
                 if (m.Success) return m.Result(p.Value).Trim();
             }
+            var wr = WordAndReference.Match(spaced);
+            string head;
+            if (wr.Success && HeEn.TryGetValue(Compact(Glossary.Normalize(wr.Groups["he"].Value)), out head))
+                return head + " " + wr.Groups["rest"].Value.Trim();
             return null;
         }
 
