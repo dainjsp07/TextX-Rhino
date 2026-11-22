@@ -276,11 +276,11 @@ namespace TextX.Core.Documents.Export
             // first the original's own width (or, for one line, the room on its anchored side); when the
             // translation would have to shrink much there, all the free room on its lines
             float anchored = align == BlockAlign.Right ? b.Box.R - minX : align == BlockAlign.Center ? 2f * Math.Min(b.Box.CX - minX, maxX - b.Box.CX) : maxX - b.Box.L;
-            float first = b.Lines.Count == 1 ? Math.Max(b.Box.W, anchored) : b.Box.W;
-            if (b.Lines.Count == 1 && (b.Kind == BlockKind.Label || b.IsRotated)) first = Math.Min(first, Math.Max(b.Box.W * 2.5f, b.Box.W + 8f * size));
-            var result = TextFitter.Fit(text, first, height, size, b.LinePitch, singleLine, rtl, primary, fallbacks, options.MinScale);
+            float fitWidth = b.Lines.Count == 1 ? Math.Max(b.Box.W, anchored) : b.Box.W;
+            if (b.Lines.Count == 1 && (b.Kind == BlockKind.Label || b.IsRotated)) fitWidth = Math.Min(fitWidth, Math.Max(b.Box.W * 2.5f, b.Box.W + 8f * size));
+            var result = TextFitter.Fit(text, fitWidth, height, size, b.LinePitch, singleLine, rtl, primary, fallbacks, options.MinScale);
             float span = Math.Max(b.Box.W, maxX - minX);
-            if ((result.Overflow || result.Scale < 0.85f) && span > first + size)
+            if ((result.Overflow || result.Scale < 0.85f) && span > fitWidth + size)
             {
                 // a label that does not fit may also take a second line where there is room under it
                 float h2 = singleLine ? Math.Max(height, Math.Min(below, height + result.Pitch * 1.05f)) : height;
