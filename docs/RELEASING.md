@@ -33,7 +33,7 @@ This project publishes on GitHub (`dainjsp07/TextX-Rhino`, public). To set it up
 
 1. Create a GitHub repository (for example `textx`) and push this folder to it.
 2. In `Directory.Build.props` set `<TextXGitHubRepo>your-name/textx</TextXGitHubRepo>`.
-   Builds now check `https://github.com/your-name/textx/releases/latest/download/latest.json` once a day.
+   Builds now check `https://github.com/your-name/textx/releases/latest/download/latest.json` each time Rhino starts.
 3. Commit and push. The workflow in `.github/workflows/build.yml` builds and tests every push.
 
 Copies built **before** this setting was made have no update location and cannot be told about new versions,

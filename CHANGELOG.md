@@ -12,6 +12,14 @@ into a dated section when you release.
 
 ## [Unreleased]
 
+## [2.0.2] - 2026-11-22
+
+### Fixed
+- **Updates arrive the same day.** Text X checked for a new version only once every 24 hours, so a version
+  published today reached someone who had started Rhino last night only tomorrow night. It now checks each
+  time Rhino starts (at most once an hour). Older copies: type **TRUpdate**, answer Yes, restart Rhino.
+- **Check now** (TRSettings > Appearance and updates) installs the new version it finds right away.
+
 ## [2.0.1] - 2026-11-22
 
 ### Fixed

@@ -17,7 +17,7 @@ Nothing else is needed: no source code, no .NET installation, no administrator r
 
 Updates are automatic:
 
-* Once a day, when Rhino starts, Text X checks https://github.com/dainjsp07/TextX-Rhino for a newer version.
+* Each time Rhino starts, Text X checks https://github.com/dainjsp07/TextX-Rhino for a newer version.
 * If there is one, it downloads it in the background, checks it (SHA-256) and installs it. The command line
   says *"Text X 1.3.0 has been downloaded and installed. It will be used the next time you start Rhino."* and the
   window shows *"Restart Rhino to start using it"*.

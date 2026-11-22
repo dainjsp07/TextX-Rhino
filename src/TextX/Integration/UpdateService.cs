@@ -10,7 +10,7 @@ using TextX.Core.Updates;
 namespace TextX.Integration
 {
     /// <summary>
-    /// Keeps Text X up to date. Once a day it reads the release feed (latest.json on GitHub, any web address,
+    /// Keeps Text X up to date. Each time Rhino starts (at most once an hour) it reads the release feed (latest.json on GitHub, any web address,
     /// or a file in a shared folder). When a newer version exists and this copy was installed as a Rhino
     /// package (.yak), it downloads the package, checks its SHA-256 and installs it next to the running
     /// version; Rhino uses it from the next start. Copies installed some other way are told where to
@@ -21,7 +21,9 @@ namespace TextX.Integration
         private static readonly Lazy<UpdateService> _instance = new Lazy<UpdateService>(() => new UpdateService());
         public static UpdateService Instance { get { return _instance.Value; } }
 
-        private static readonly TimeSpan CheckInterval = TimeSpan.FromHours(24);
+        // every start of Rhino (a day was too long: a version published in the morning reached nobody who
+        // had started Rhino the evening before until the next evening)
+        private static readonly TimeSpan CheckInterval = TimeSpan.FromHours(1);
         private static readonly Lazy<HttpClient> Client = new Lazy<HttpClient>(CreateClient);
         private readonly Lazy<PackageLocation> _package = new Lazy<PackageLocation>(() => PackageInstaller.Locate(BuildInfo.AssemblyPath, BuildInfo.PackageName));
         private int _checking;
@@ -132,7 +134,7 @@ namespace TextX.Integration
 
         // ------------------------------------------------------------------ checking
         /// <summary>
-        /// At most once a day: checks for a newer version and, when automatic installs are on and possible,
+        /// At most once an hour: checks for a newer version and, when automatic installs are on and possible,
         /// downloads and installs it. Otherwise prints a note in the command line.
         /// </summary>
         public void CheckInBackgroundIfDue()

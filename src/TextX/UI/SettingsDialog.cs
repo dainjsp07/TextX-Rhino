@@ -67,7 +67,7 @@ namespace TextX.UI
 
         // appearance and updates
         private readonly DropDown _theme = new DropDown();
-        private readonly CheckBox _checkUpdates = new CheckBox { Text = "Check for new versions automatically (once a day)" };
+        private readonly CheckBox _checkUpdates = new CheckBox { Text = "Check for new versions automatically (each time Rhino starts)" };
         private readonly CheckBox _preReleases = new CheckBox { Text = "Include test versions (pre-releases)" };
         private readonly CheckBox _autoInstall = new CheckBox { Text = "Install new versions automatically (they are used the next time Rhino starts)" };
         private readonly TextBox _feed = new TextBox();
@@ -403,8 +403,25 @@ namespace TextX.UI
                         return;
                     }
                     var pending = svc.PendingVersion;
+                    if (svc.UpdateAvailable && svc.CanInstallLatest && !svc.IsInstalling)
+                    {
+                        // found one: install it straight away
+                        var latest = t.Result;
+                        _updateResult.Text = "Downloading and installing " + BuildInfo.ProductName + " " + latest.Version + "...";
+                        svc.InstallAsync(latest, CancellationToken.None).ContinueWith(i => Application.Instance.AsyncInvoke(() =>
+                        {
+                            if (i.IsFaulted)
+                            {
+                                var ix = i.Exception == null ? null : i.Exception.GetBaseException();
+                                _updateResult.Text = BuildInfo.ProductName + " " + latest.Version + " is available, but it could not be installed (" + (ix == null ? "unknown error" : ix.Message) + "). Run TRUpdate to try again.";
+                                return;
+                            }
+                            _updateResult.Text = BuildInfo.ProductName + " " + latest.Version + " has been installed. Restart Rhino to start using it.";
+                        }));
+                        return;
+                    }
                     _updateResult.Text = svc.UpdateAvailable
-                        ? BuildInfo.ProductName + " " + t.Result.Version + " is available. Run TRUpdate or use Install update in Text X Studio."
+                        ? BuildInfo.ProductName + " " + t.Result.Version + " is available: download it from " + t.Result.BestUrl
                         : pending != null
                             ? BuildInfo.ProductName + " " + pending + " is installed and will be used the next time you start Rhino."
                             : "You have the latest version (" + BuildInfo.VersionText + ").";

@@ -24,7 +24,7 @@ read the text of pictures and screenshots. No account, no login, nothing to set 
 2. Restart Rhino.
 3. Type **`TR`**.
 
-Updates are automatic: Text X checks for a new version once a day, installs it in the background and uses
+Updates are automatic: Text X checks for a new version each time Rhino starts, installs it in the background and uses
 it from the next Rhino start. Settings, glossary and translation memory are kept. To uninstall: *Tools > Package Manager > Installed > Text X > Uninstall*.
 Full guide, including troubleshooting: [docs/INSTALL.md](docs/INSTALL.md).
 
