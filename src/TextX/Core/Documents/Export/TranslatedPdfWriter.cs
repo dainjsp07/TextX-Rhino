@@ -260,7 +260,9 @@ namespace TextX.Core.Documents.Export
                     if (a.Box.OverlapX(b.Box) < Math.Min(a.Box.W, b.Box.W) * 0.5f) continue;
                     float ratio = Math.Max(a.FontSize, b.FontSize) / Math.Max(0.1f, Math.Min(a.FontSize, b.FontSize));
                     if (ratio > 1.35f) continue;
-                    if (geo.HorizontalRuleBetween(b.Box.T - 0.5f, a.Box.B + 0.5f, Math.Max(a.Box.L, b.Box.L), Math.Min(a.Box.R, b.Box.R))) continue;
+                    if (a.Lines.Count > 0 && b.Lines.Count > 0
+                            ? geo.RuleBetweenLines(a.Lines[a.Lines.Count - 1], b.Lines[0], Math.Max(a.Box.L, b.Box.L), Math.Min(a.Box.R, b.Box.R))
+                            : geo.HorizontalRuleBetween(b.Box.T - 0.5f, a.Box.B + 0.5f, Math.Max(a.Box.L, b.Box.L), Math.Min(a.Box.R, b.Box.R))) continue;
                     // no other text in between (dimension figures of the drawing may stand there)
                     if (page.Blocks.Any(o => !ReferenceEquals(o, a) && !ReferenceEquals(o, b) && !o.IsRotated && LanguageGuess.HasWords(o.Source) &&
                                              o.Box.CY < a.Box.CY && o.Box.CY > b.Box.CY && o.Box.OverlapX(a.Box) > 0 && o.Box.OverlapX(b.Box) > 0)) continue;
@@ -428,7 +430,12 @@ namespace TextX.Core.Documents.Export
                 if (!smaller.Overflow) result = smaller;
             }
             Note(b, result, plan.Report);
-            float baseline = b.Lines[0].Baseline + (size - result.Size) * 0.78f;
+            float firstBaseline = b.Lines[0].Baseline;
+            float baseline = firstBaseline + (size - result.Size) * 0.78f;
+            // under the ruled line above the text (in tight cells the original's capitals touch it)
+            float rl, rr, rb, rt;
+            geo.CellAround(new Box(b.Box.L, firstBaseline, b.Box.R, firstBaseline + size * 0.5f), out rl, out rr, out rb, out rt);
+            if (!float.IsNaN(rt)) baseline = Math.Min(baseline, Math.Max(firstBaseline, rt - result.Size * 0.75f));
             foreach (var line in result.Lines)
             {
                 float x;

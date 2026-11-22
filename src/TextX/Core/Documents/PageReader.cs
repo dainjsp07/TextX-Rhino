@@ -220,5 +220,31 @@ namespace TextX.Core.Documents
             c.Angle = Pdfium.NormalizeAngle(c.Angle - page.FrameToUserAngle);
             return c;
         }
+
+        /// <summary>
+        /// A page read again by a newer version keeps what was done on it: every paragraph whose text is
+        /// unchanged keeps its translation, the user's edits and remarks.
+        /// </summary>
+        public static void CarryOver(DocPage old, DocPage fresh)
+        {
+            if (old == null || fresh == null || old.Blocks == null || old.Blocks.Count == 0 || ReferenceEquals(old, fresh)) return;
+            var done = new Dictionary<string, Queue<DocBlock>>(StringComparer.Ordinal);
+            foreach (var b in old.Blocks.OrderBy(b => b.Order))
+            {
+                if (b.State == BlockState.Pending || string.IsNullOrEmpty(b.Source)) continue;
+                Queue<DocBlock> q;
+                if (!done.TryGetValue(b.Source, out q)) done[b.Source] = q = new Queue<DocBlock>();
+                q.Enqueue(b);
+            }
+            foreach (var b in fresh.Blocks.OrderBy(b => b.Order))
+            {
+                Queue<DocBlock> q;
+                if (b.Source == null || !done.TryGetValue(b.Source, out q) || q.Count == 0) continue;
+                var o = q.Dequeue();
+                b.Translation = o.Translation;
+                b.State = o.State;
+                b.Note = o.Note;
+            }
+        }
     }
 }

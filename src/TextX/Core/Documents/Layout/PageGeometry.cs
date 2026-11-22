@@ -138,6 +138,30 @@ namespace TextX.Core.Documents.Layout
         }
 
         /// <summary>
+        /// True when a ruled line separates two lines of text, one above the other, over the span xL..xR.
+        /// In tight table cells the rule runs through the descenders of the upper line, so the band reaches
+        /// up to just under its baseline; an underline (a rule no wider than the upper line's text) does not count.
+        /// </summary>
+        public bool RuleBetweenLines(DocLine upper, DocLine lower, float xL, float xR)
+        {
+            if (upper == null || lower == null || HRules.Count == 0) return false;
+            if (HorizontalRuleBetween(lower.Box.T - 0.3f, upper.Box.B + 0.3f, xL, xR)) return true;
+            if (upper.IsRotated || lower.IsRotated) return false;
+            float high = upper.Baseline - Math.Max(0.3f, upper.FontSize * 0.05f);
+            float low = Math.Min(lower.Box.T, lower.Baseline + lower.FontSize * 0.6f);
+            if (high <= low) return false;
+            float span = Math.Max(1f, xR - xL), pad = Math.Max(1f, upper.FontSize * 0.4f);
+            foreach (var r in HRules)
+            {
+                if (r.CY <= low || r.CY >= high) continue;
+                if (r.L >= upper.Box.L - pad && r.R <= upper.Box.R + pad) continue; // an underline
+                float overlap = Math.Min(r.R, xR) - Math.Max(r.L, xL);
+                if (overlap >= Math.Min(span * 0.5f, r.W * 0.9f)) return true;
+            }
+            return false;
+        }
+
+        /// <summary>
         /// The ruled cell around a box: the nearest rules to its left, right, below and above that pass its
         /// middle (an edge with no rule is left open, as NaN).
         /// </summary>

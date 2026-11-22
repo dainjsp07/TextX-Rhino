@@ -17,7 +17,8 @@ into a dated section when you release.
 ### Fixed
 - **PDF translation of drawings and title blocks.**
   - Texts in neighbouring cells are no longer read as one ("Date Scale"): a ruled line between two texts keeps
-    them apart.
+    them apart, also in tight cells where the line runs through the letters' tails (a title block's
+    Description and Hardware rows stay two paragraphs).
   - A Hebrew label keeps its place in English: right-aligned stays right-aligned, centred stays centred.
     The English grows only into free room in its cell, away from lines, shapes, pictures and other text, and
     takes a second line where it does not fit.
@@ -30,14 +31,15 @@ into a dated section when you release.
   - Notes, legend texts and a heading with its text that stand one under the other are laid out together:
     a longer English text pushes the next one down instead of running over it.
   - A label that does not fit on one line at three quarters of its size takes a second line where there is
-    room under it; text that still does not fit is made smaller rather than spilling off the sheet.
+    room under it; text that still does not fit is made smaller rather than spilling off the sheet. A word
+    is never cut in two ("Descript ion"), and a smaller text stays under the ruled line above it.
   - Title-block and joinery words get draughtsman's English: Scale, Revision, Page, Sheet size, Finish
     schedule, Plinth, Soft-close, Top view, Rear elevation and more (your own glossary always wins).
   - When the free Google service is busy during a long document, Studio waits and asks again instead of
     switching to the backup service; texts too long for the backup service are sent in pieces, and any
     paragraph left untranslated is marked so **Continue** translates it (before, some stayed in Hebrew).
-  - Documents in the history are read again with these rules when you open them; their translations come
-    back from the translation memory.
+  - Documents in the history are read again with these rules when you open them; every paragraph whose
+    text is unchanged keeps its translation and your edits (scanned pages are not read by OCR again).
 - **Home spacing.** Nothing runs past the right edge any more; the translator and the tiles get exact widths.
   Under the translator, the five tiles sit in one row; in a short window they become buttons. Icon-only
   buttons stay square.

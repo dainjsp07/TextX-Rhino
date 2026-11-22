@@ -85,7 +85,9 @@ namespace TextX.Integration
                     if (project.Pages[i].Extracted) continue;
                     if (status != null) status.Report("Reading page " + (i + 1) + " of " + doc.PageCount + "...");
                     var options = new ReadOptions { SourceLang = project.SourceLangSetting, AllowOcr = true, Status = status, LanguageHint = LanguageHint(project) };
+                    var old = project.Pages[i];
                     project.Pages[i] = await PageReader.ReadAsync(doc, i, options, ct).ConfigureAwait(false);
+                    PageReader.CarryOver(old, project.Pages[i]);
                     if (pagesDone != null) pagesDone.Report(i + 1);
                 }
             }

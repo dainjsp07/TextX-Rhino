@@ -80,6 +80,7 @@ namespace TextX.Tests
                 CoreTests.PackageInstall,
                 CoreTests.Layout,
                 CoreTests.PageFrame,
+                CoreTests.RuledCells,
                 CoreTests.OcrLines,
                 CoreTests.ProjectJson,
                 CoreTests.Fonts,

@@ -86,10 +86,10 @@ namespace TextX.Tests
             };
         }
 
-        public DocPage Analyze(float width = 595, float height = 842)
+        public DocPage Analyze(float width = 595, float height = 842, PageGeometry geometry = null)
         {
             var page = new DocPage { Index = 0, Width = width, Height = height };
-            page.Blocks = LayoutAnalyzer.BuildBlocks(page, LayoutAnalyzer.BuildLines(Chars));
+            page.Blocks = LayoutAnalyzer.BuildBlocks(page, LayoutAnalyzer.BuildLines(Chars, geometry), 0, geometry);
             page.Extracted = true;
             page.LayoutVersion = DocPage.CurrentLayout;
             return page;
@@ -164,6 +164,36 @@ namespace TextX.Tests
 
             // join rules
             Equal("中文文本", LayoutAnalyzer.JoinLines(new[] { "中文", "文本" }), "CJK lines join without a space");
+        }
+
+        public static void RuledCells()
+        {
+            Func<PageGeometry, DocPage> read = geo => new FakePage()
+                .Line("Upper cell text here", 72, 100, 10)
+                .Line("lower cell text", 72, 88, 10)
+                .Analyze(595, 842, geo);
+            Equal(1, read(null).Blocks.Count, "two close lines are one paragraph");
+            // a table rule through the descenders of the upper line (tight cells) keeps the cells apart
+            var rule = new PageGeometry();
+            rule.HRules.Add(new Box(40, 98.3f, 500, 98.3f));
+            Equal(2, read(rule).Blocks.Count, "rule in the upper line's descenders separates the cells");
+            // an underline of the upper line does not
+            var underline = new PageGeometry();
+            underline.HRules.Add(new Box(72, 98.3f, 172, 98.3f));
+            Equal(1, read(underline).Blocks.Count, "an underline is not a rule between rows");
+
+            // a page read again keeps its translations and the user's edits
+            var old = new FakePage().Line("Doors", 72, 700, 10).Line("Drawers", 300, 600, 10).Analyze();
+            old.Blocks.First(b => b.Source == "Doors").Translation = "Portes";
+            old.Blocks.First(b => b.Source == "Doors").State = BlockState.Translated;
+            old.Blocks.First(b => b.Source == "Drawers").Translation = "Tiroirs (edited)";
+            old.Blocks.First(b => b.Source == "Drawers").State = BlockState.Edited;
+            var fresh = new FakePage().Line("Doors", 72, 700, 10).Line("Shelves", 72, 650, 10).Line("Drawers", 300, 600, 10).Analyze();
+            PageReader.CarryOver(old, fresh);
+            Equal("Portes", fresh.Blocks.First(b => b.Source == "Doors").Translation, "translation kept");
+            Equal(BlockState.Edited, fresh.Blocks.First(b => b.Source == "Drawers").State, "edit kept");
+            Equal("Tiroirs (edited)", fresh.Blocks.First(b => b.Source == "Drawers").Translation, "edited text kept");
+            Equal(BlockState.Pending, fresh.Blocks.First(b => b.Source == "Shelves").State, "new text to translate");
         }
 
         public static void PageFrame()

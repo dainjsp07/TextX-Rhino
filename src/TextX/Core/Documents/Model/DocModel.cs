@@ -158,10 +158,11 @@ namespace TextX.Core.Documents
 
         /// <summary>
         /// How the page was read. Pages read by an older version are read again when the document is opened
-        /// (the translations come back from the translation memory), so improvements reach documents in the history.
+        /// (paragraphs whose text is unchanged keep their translations and edits), so improvements reach documents
+        /// in the history. Scanned pages are not read by OCR again for this.
         /// </summary>
         public int LayoutVersion;
-        public const int CurrentLayout = 3;
+        public const int CurrentLayout = 4;
         public List<DocBlock> Blocks = new List<DocBlock>();
         public List<Box> Images = new List<Box>();
         public int TableCount;
@@ -358,7 +359,7 @@ namespace TextX.Core.Documents
                     Index = (int)Num(pd, "i"), Width = (float)Num(pd, "w"), Height = (float)Num(pd, "h"), Rotation = (int)Num(pd, "rot"),
                     OriginX = (float)Num(pd, "ox"), OriginY = (float)Num(pd, "oy"), Scanned = Bool(pd, "scan"), HasOcrLayer = Bool(pd, "ocrl"), OutlinedText = Bool(pd, "outl"),
                     OcrConfidence = (float)Num(pd, "ocrc"), OcrLanguages = Json.GetString(pd, "ocrlang"),
-                    LayoutVersion = (int)Num(pd, "layout"), Extracted = Bool(pd, "x") && (int)Num(pd, "layout") >= DocPage.CurrentLayout,
+                    LayoutVersion = (int)Num(pd, "layout"), Extracted = Bool(pd, "x") && ((int)Num(pd, "layout") >= DocPage.CurrentLayout || Bool(pd, "scan")),
                     TableCount = (int)Num(pd, "tables"),
                 };
                 foreach (var io in Json.GetList(pd, "img") ?? new List<object>()) page.Images.Add(Box.FromJson(io));

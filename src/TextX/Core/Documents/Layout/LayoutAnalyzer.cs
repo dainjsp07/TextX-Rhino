@@ -386,7 +386,8 @@ namespace TextX.Core.Documents.Layout
             var last = block.Lines[block.Lines.Count - 1];
             float xL = Math.Max(block.Box.L, line.Box.L), xR = Math.Min(block.Box.R, line.Box.R);
             if (xR <= xL) { xL = Math.Min(block.Box.L, line.Box.L); xR = Math.Max(block.Box.R, line.Box.R); }
-            return geo.HorizontalRuleBetween(line.Box.T - 0.3f, last.Box.B + 0.3f, xL, xR);
+            bool below = line.Baseline <= last.Baseline;
+            return geo.RuleBetweenLines(below ? last : line, below ? line : last, xL, xR);
         }
 
         /// <summary>
