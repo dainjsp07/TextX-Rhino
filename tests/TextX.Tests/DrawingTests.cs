@@ -29,6 +29,15 @@ namespace TextX.Tests
             True(pieces.Count == 2 && pieces.All(x => x.Length <= 480), "long text cut for a service limit");
             True(LanguageGuess.IsReference("A-12 3") && !LanguageGuess.IsReference("חתך1"), "a word joined to a number is translated");
             Equal("Scale", DrawingVocabulary.Lookup(TextX.Core.Translation.Glossary.Normalize("קנ\"מ:"), "he", "en"), "title block word");
+            Func<string, string> vocab = t => DrawingVocabulary.Lookup(TextX.Core.Translation.Glossary.Normalize(t), "he", "en", t);
+            Equal("Scale 1:25", vocab("קנ\"מ1:25"), "scale with its ratio");
+            Equal("1 Scale 1:25", vocab("1 קנ\" מ1:25"), "scale with a loose gershayim");
+            Equal("Elevation A 02.2 - 21 NM", vocab("חזית A 02.2 - 21 NM"), "elevation reference keeps its case");
+            Equal("Plan 02.1 - 21 NM", vocab("תוכנית 02.1 - 21 NM"), "plan reference");
+            Equal("Coffee machine", vocab("מ .קפה"), "abbreviation typed with a loose dot");
+            Equal("Mitred joints", vocab("חיבורים בגרונג."), "trade word");
+            Equal("Inner plinth 2 cm", vocab("צוקל פנימי2ס \"מ"), "plinth with its size");
+            True(vocab("חזית הבניין הצפונית") == null, "a sentence is not a reference");
 
             // --- Hebrew prefixes: only on longer words, only valid combinations
             Equal("laminate", Nice(Vocabulary.Materials.Find("גמר ופורמייקה לבנה")), "prefix ו on a long word");

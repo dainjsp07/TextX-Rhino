@@ -86,7 +86,7 @@ namespace TextX.Core.Translation
                 LangMatches(e.SourceLang, sourceLang) &&
                 Normalize(e.Source) == norm);
             // then the words of drawings and title blocks
-            string target = entry != null ? entry.Target : DrawingVocabulary.Lookup(norm, sourceLang, targetLang);
+            string target = entry != null ? entry.Target : DrawingVocabulary.Lookup(norm, sourceLang, targetLang, segment);
             if (target == null) return null;
 
             int lead = 0;

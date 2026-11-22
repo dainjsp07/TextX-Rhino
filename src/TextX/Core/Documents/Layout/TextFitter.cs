@@ -64,6 +64,13 @@ namespace TextX.Core.Documents.Layout
                         if (s <= floor) break;
                         continue;
                     }
+                    if (cut && !oneLine)
+                    {
+                        // at the smallest size: a word a little wider than the box stands whole on its line
+                        bool still;
+                        var whole = Wrap(text, width * 1.02f, s, primary, fallbacks, out still, 1.6f);
+                        if (!still) lines = whole;
+                    }
                     var r = new FitResult { Size = s, Pitch = s * pitchFactor, Scale = s / size };
                     r.Lines = lines.Select(l => MakeLine(l, s, rtl, primary, fallbacks)).ToList();
                     // one line may reach a little past the box; more lines must stay inside it (the text below is close)
@@ -102,7 +109,7 @@ namespace TextX.Core.Documents.Layout
         }
 
         /// <summary>Word wrap; <paramref name="cutWord"/> tells whether a word longer than a line had to be cut.</summary>
-        public static List<string> Wrap(string text, float width, float size, FontFace primary, IList<FontFace> fallbacks, out bool cutWord)
+        public static List<string> Wrap(string text, float width, float size, FontFace primary, IList<FontFace> fallbacks, out bool cutWord, float overhang = 1f)
         {
             cutWord = false;
             var result = new List<string>();
@@ -122,6 +129,14 @@ namespace TextX.Core.Documents.Layout
                         if (token == " ") continue;
                     }
                     if (line.Length == 0 && token == " ") continue;
+                    if (w > width && w <= width * overhang && !string.IsNullOrWhiteSpace(token))
+                    {
+                        // a word a little longer than the line: whole, on a line of its own
+                        if (line.Length > 0) { result.Add(line.ToString().TrimEnd()); line.Clear(); }
+                        line.Append(token);
+                        lineWidth = w;
+                        continue;
+                    }
                     if (w > width && token.Length > 1 && !string.IsNullOrWhiteSpace(token))
                     {
                         // a word longer than the line: break it between characters

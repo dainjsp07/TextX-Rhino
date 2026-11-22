@@ -192,6 +192,14 @@ namespace TextX.Core.Translation
             return outcome;
         }
 
+        /// <summary>
+        /// The main service alone (no memory, glossary or backup service), asked again after a pause when it is busy.
+        /// </summary>
+        public Task<IList<string>> TranslateDirectAsync(IList<string> texts, string src, string tgt, CancellationToken ct)
+        {
+            return TranslatePrimaryAsync(texts, src, tgt, ct);
+        }
+
         /// <summary>The main service, asked again after a pause when it is busy (too many requests, a timeout).</summary>
         private async Task<IList<string>> TranslatePrimaryAsync(IList<string> batch, string src, string tgt, CancellationToken ct)
         {

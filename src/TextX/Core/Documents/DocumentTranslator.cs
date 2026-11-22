@@ -251,13 +251,31 @@ namespace TextX.Core.Documents
             var settled = new HashSet<int>();
             try
             {
-                var sources = redo.Select(i => needed.Where(kv => kv.Value.Contains(i)).Aggregate(blocks[i].Source, (text, kv) => PutTerm(text, kv.Key.Source, kv.Key.Target))).ToList();
-                var answers = await _engine.Provider.TranslateAsync(sources, src, tgt, ct).ConfigureAwait(false);
-                for (int k = 0; k < redo.Count && k < answers.Count; k++)
+                var sources = redo.Select(i => needed.Where(kv => kv.Value.Contains(i)).Aggregate(Clean(blocks[i].Source), (text, kv) => PutTerm(text, kv.Key.Source, kv.Key.Target))).ToList();
+                var answers = new string[sources.Count];
+                var askAgain = new List<int>();
+                for (int k = 0; k < sources.Count; k++)
+                {
+                    string cached;
+                    if (_engine.Cache.TryGet(TermKey(src, tgt, sources[k]), out cached)) answers[k] = cached;
+                    else askAgain.Add(k);
+                }
+                if (askAgain.Count > 0)
+                {
+                    var fresh = await _engine.TranslateDirectAsync(askAgain.Select(k => sources[k]).ToList(), src, tgt, ct).ConfigureAwait(false);
+                    for (int a = 0; a < askAgain.Count && a < fresh.Count; a++)
+                    {
+                        answers[askAgain[a]] = fresh[a];
+                        if (!string.IsNullOrWhiteSpace(fresh[a])) _engine.Cache.Set(TermKey(src, tgt, sources[askAgain[a]]), fresh[a]);
+                    }
+                }
+                for (int k = 0; k < redo.Count && k < answers.Length; k++)
                 {
                     int i = redo[k];
                     var answer = answers[k];
                     if (string.IsNullOrWhiteSpace(answer)) continue;
+                    // not when much of the sentence went missing on the way
+                    if (result[i] != null && answer.Trim().Length < result[i].Trim().Length * 0.7) continue;
                     if (needed.Where(kv => kv.Value.Contains(i)).All(kv => answer.IndexOf(kv.Key.Target, StringComparison.OrdinalIgnoreCase) >= 0))
                     {
                         result[i] = answer;
@@ -289,7 +307,7 @@ namespace TextX.Core.Documents
             {
                 try
                 {
-                    var answers = await _engine.Provider.TranslateAsync(ask.Select(k => terms[k].Source).ToList(), src, tgt, ct).ConfigureAwait(false);
+                    var answers = await _engine.TranslateDirectAsync(ask.Select(k => terms[k].Source).ToList(), src, tgt, ct).ConfigureAwait(false);
                     for (int a = 0; a < ask.Count && a < answers.Count; a++)
                     {
                         machine[ask[a]] = answers[a];

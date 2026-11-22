@@ -32,9 +32,14 @@ into a dated section when you release.
     a longer English text pushes the next one down instead of running over it.
   - A label that does not fit on one line at three quarters of its size takes a second line where there is
     room under it; text that still does not fit is made smaller rather than spilling off the sheet. A word
-    is never cut in two ("Descript ion"), and a smaller text stays under the ruled line above it.
+    is not cut in two ("Descript ion", "dishwas her"): a word a little wider than its box stands whole on
+    its line, and a smaller text stays under the ruled line above it.
   - Title-block and joinery words get draughtsman's English: Scale, Revision, Page, Sheet size, Finish
     schedule, Plinth, Soft-close, Top view, Rear elevation and more (your own glossary always wins).
+    Also kitchen and site words (built-in microwave, integrated dishwasher, flap door, ice machine, Tami4,
+    mitred joints, shadow-gap profile, plasterboard bulkhead), "ע"פ מקרא" as "as per legend" (not "according
+    to the Bible"), and labels with a reference: "קנ"מ 1:25" is "Scale 1:25", "חזית A" is "Elevation A",
+    "תוכנית 02.1" is "Plan 02.1", "אי קפיטריה" is "Cafeteria island".
     Glossary terms are also found with a Hebrew prefix joined to them (וסכומון), and a sentence that did
     not use the glossary's word is asked again with the word in place ("a cutlery tray", not "a watermelon").
   - Callouts and legend texts on a drawing that line up across the sheet are no longer treated as one
