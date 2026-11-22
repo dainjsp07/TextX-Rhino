@@ -38,7 +38,7 @@ into a dated section when you release.
     schedule, Plinth, Soft-close, Top view, Rear elevation and more (your own glossary always wins).
     Also kitchen and site words (built-in microwave, integrated dishwasher, flap door, ice machine, Tami4,
     mitred joints, shadow-gap profile, plasterboard bulkhead), "ע"פ מקרא" as "as per legend" (not "according
-    to the Bible"), and labels with a reference: "קנ"מ 1:25" is "Scale 1:25", "חזית A" is "Elevation A",
+    to the Bible"), "ידיות של חב' FURNIPART" as "handles made by FURNIPART", and labels with a reference: "קנ"מ 1:25" is "Scale 1:25", "חזית A" is "Elevation A",
     "תוכנית 02.1" is "Plan 02.1", "אי קפיטריה" is "Cafeteria island".
     Glossary terms are also found with a Hebrew prefix joined to them (וסכומון), and a sentence that did
     not use the glossary's word is asked again with the word in place ("a cutlery tray", not "a watermelon").

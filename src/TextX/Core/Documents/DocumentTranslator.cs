@@ -278,6 +278,11 @@ namespace TextX.Core.Documents
                     if (result[i] != null && answer.Trim().Length < result[i].Trim().Length * 0.7) continue;
                     if (needed.Where(kv => kv.Value.Contains(i)).All(kv => answer.IndexOf(kv.Key.Target, StringComparison.OrdinalIgnoreCase) >= 0))
                     {
+                        // a term written in small letters at the start stays a capital, as the sentence had it
+                        answer = answer.Trim();
+                        var before = (result[i] ?? string.Empty).TrimStart();
+                        if (answer.Length > 0 && char.IsLower(answer[0]) && (before.Length == 0 || char.IsUpper(before[0])))
+                            answer = char.ToUpper(answer[0]) + answer.Substring(1);
                         result[i] = answer;
                         settled.Add(i);
                     }
