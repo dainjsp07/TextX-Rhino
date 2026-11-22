@@ -48,6 +48,8 @@ into a dated section when you release.
   - When the free Google service is busy during a long document, Studio waits and asks again instead of
     switching to the backup service; texts too long for the backup service are sent in pieces, and any
     paragraph left untranslated is marked so **Continue** translates it (before, some stayed in Hebrew).
+  - **Translate again** translates the document again (your own edits stay); before, it did nothing once
+    every paragraph was translated, so improvements did not reach a translated document.
   - Documents in the history are read again with these rules when you open them; every paragraph whose
     text is unchanged keeps its translation and your edits (scanned pages are not read by OCR again).
 - **Home spacing.** Nothing runs past the right edge any more; the translator and the tiles get exact widths.

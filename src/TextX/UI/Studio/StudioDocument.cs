@@ -45,7 +45,8 @@ namespace TextX.UI.Studio
             _checkPill = new Pill(string.Empty, p => p.WarningSoft, p => p.Warning) { Visible = false, Backdrop = p => p.Window };
 
             _translate = new FlatButton("Translate", IconKind.Translate, ButtonKind.Primary, 32) { ToolTip = "Translate the whole document into the language chosen at the top" };
-            _translate.Click += (s, e) => TranslateDocument(false);
+            // "Translate again" (every paragraph translated into this language) asks again for all but your edits
+            _translate.Click += (s, e) => TranslateDocument(_project != null && _project.IsTranslated && _project.TargetLang == TargetLang);
             var export = new FlatButton("Save as", IconKind.Download, ButtonKind.Strong, 32) { ToolTip = "Save the translation as PDF (same layout), Word or text" };
             export.Click += (s, e) => ShowExportMenu(export);
             var summary = new FlatButton("Summary", IconKind.Info, ButtonKind.Secondary, 32) { ToolTip = "Key points, contents and figures of the document" };
