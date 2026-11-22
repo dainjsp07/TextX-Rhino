@@ -395,7 +395,7 @@ namespace TextX.UI.Studio
                 if (_viewerHost != null && _viewerHost.Content != _docEmpty) _viewerHost.Content = _docEmpty;
                 return;
             }
-            _docTitle.Text = project.Name;
+            _docTitle.Text = ShownName(project.Name);
             if (_viewerHost != null && _viewerHost.Content == _docEmpty) LayoutViewer();
             int scanned = project.Pages.Count(p => p.Scanned);
             string src = string.IsNullOrEmpty(project.SourceLang) ? "Auto-detect" : Languages.EnglishName(project.SourceLang);
@@ -408,7 +408,7 @@ namespace TextX.UI.Studio
             _checkPill.Visible = _issues.Count > 0;
             _pageIndex = Math.Max(0, Math.Min(_pageIndex, Math.Max(0, project.PageCount - 1)));
             _pageLabel.Text = (_pageIndex + 1) + " / " + project.PageCount;
-            if (_pageTitle != null && _tabs.SelectedIndex == DocumentTab) _pageTitle.Text = project.Name;
+            if (_pageTitle != null && _tabs.SelectedIndex == DocumentTab) _pageTitle.Text = ShownName(project.Name);
             RefreshBlockList();
             RenderPages();
         }

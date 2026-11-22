@@ -106,18 +106,27 @@ namespace TextX.UI.Controls
 
         private void UpdateSize()
         {
+            Size = new Size(WidthFor(_text), _height);
+        }
+
+        /// <summary>The width of the chip with <paramref name="text"/> (an empty text gives the square icon chip).</summary>
+        public int WidthFor(string text)
+        {
             float w;
-            if (string.IsNullOrEmpty(_text)) w = _height;
+            if (string.IsNullOrEmpty(text)) w = _height;
             else
             {
-                float tw = Measure(ChipFont, _text).Width;
+                float tw = Measure(ChipFont, text).Width;
                 if (_maxTextWidth > 0) tw = Math.Min(tw, _maxTextWidth);
                 w = PadX * 2 + tw;
                 if (_icon != IconKind.None) w += IconPx + 6;
                 if (_pulse) w += 12;
             }
-            Size = new Size((int)Math.Ceiling(w) + 2, _height);
+            return (int)Math.Ceiling(w) + 2;
         }
+
+        /// <summary>The chip's own width from its text (what the layout gives it, whether it is shown or not).</summary>
+        public int NaturalWidth { get { return WidthFor(_text); } }
 
         public void PerformClick()
         {

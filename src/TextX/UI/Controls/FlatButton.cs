@@ -86,15 +86,23 @@ namespace TextX.UI.Controls
                 Size = new Size(-1, _height);
                 return;
             }
-            float w;
-            bool hasText = !string.IsNullOrEmpty(_text);
-            if (!hasText) w = _height; // square icon button
-            else
+            Size = new Size(NaturalWidth, _height);
+        }
+
+        /// <summary>The button's width from its text and icon (square when it has no text).</summary>
+        public int NaturalWidth
+        {
+            get
             {
-                w = PaddingX * 2 + Measure(ButtonFont, _text).Width;
-                if (_icon != IconKind.None) w += IconSize + 6;
+                float w;
+                if (string.IsNullOrEmpty(_text)) w = _height; // square icon button
+                else
+                {
+                    w = PaddingX * 2 + Measure(ButtonFont, _text).Width;
+                    if (_icon != IconKind.None) w += IconSize + 6;
+                }
+                return (int)Math.Ceiling(w) + 2;
             }
-            Size = new Size((int)Math.Ceiling(w) + 2, _height);
         }
 
         public void PerformClick()

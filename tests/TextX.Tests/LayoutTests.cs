@@ -91,6 +91,7 @@ namespace TextX.Tests
             var page = new DocPage { Index = 0, Width = width, Height = height };
             page.Blocks = LayoutAnalyzer.BuildBlocks(page, LayoutAnalyzer.BuildLines(Chars));
             page.Extracted = true;
+            page.LayoutVersion = DocPage.CurrentLayout;
             return page;
         }
     }

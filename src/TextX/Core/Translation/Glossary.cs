@@ -50,7 +50,11 @@ namespace TextX.Core.Translation
         /// <summary>Entries that apply to a language pair.</summary>
         public IEnumerable<GlossaryEntry> For(string sourceLang, string targetLang)
         {
-            return _entries.Where(e => string.Equals(e.TargetLang, targetLang, StringComparison.OrdinalIgnoreCase) && LangMatches(e.SourceLang, sourceLang));
+            var own = _entries.Where(e => string.Equals(e.TargetLang, targetLang, StringComparison.OrdinalIgnoreCase) && LangMatches(e.SourceLang, sourceLang)).ToList();
+            // the drawing words that read better the same way every time, unless the user has their own
+            foreach (var e in DrawingVocabulary.SentenceTerms(sourceLang, targetLang))
+                if (!own.Any(o => Normalize(o.Source) == Normalize(e.Source))) own.Add(e);
+            return own;
         }
 
         public bool Remove(GlossaryEntry entry)
@@ -70,13 +74,15 @@ namespace TextX.Core.Translation
         /// </summary>
         public string Lookup(string segment, string sourceLang, string targetLang)
         {
-            if (string.IsNullOrWhiteSpace(segment) || _entries.Count == 0) return null;
+            if (string.IsNullOrWhiteSpace(segment)) return null;
             var norm = Normalize(segment);
             var entry = _entries.FirstOrDefault(e =>
                 string.Equals(e.TargetLang, targetLang, StringComparison.OrdinalIgnoreCase) &&
                 LangMatches(e.SourceLang, sourceLang) &&
                 Normalize(e.Source) == norm);
-            if (entry == null) return null;
+            // then the words of drawings and title blocks
+            string target = entry != null ? entry.Target : DrawingVocabulary.Lookup(norm, sourceLang, targetLang);
+            if (target == null) return null;
 
             int lead = 0;
             while (lead < segment.Length && char.IsWhiteSpace(segment[lead])) lead++;
@@ -87,7 +93,6 @@ namespace TextX.Core.Translation
             while (punct < core.Length && (core[core.Length - 1 - punct] == ':' || core[core.Length - 1 - punct] == '.')) punct++;
             // keep the punctuation the user typed unless the glossary target already ends with it
             string tail = core.Substring(core.Length - punct);
-            string target = entry.Target;
             if (tail.Length > 0 && target.EndsWith(tail, StringComparison.Ordinal)) tail = string.Empty;
             return segment.Substring(0, lead) + target + tail + segment.Substring(segment.Length - trailWs);
         }

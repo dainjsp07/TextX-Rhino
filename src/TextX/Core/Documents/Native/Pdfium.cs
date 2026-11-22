@@ -39,6 +39,8 @@ namespace TextX.Core.Documents.Native
         public IntPtr Parent; // the form object holding it, or zero for page level
         public int Type;
         public float Left, Bottom, Right, Top;
+        /// <summary>Number of segments of a path (a drawn rectangle has 4 or 5); -1 when not known.</summary>
+        public int Segments;
         public bool IsText { get { return Type == N.ObjText; } }
         public bool IsImage { get { return Type == N.ObjImage; } }
         public bool IsPath { get { return Type == N.ObjPath; } }
@@ -301,6 +303,7 @@ namespace TextX.Core.Documents.Native
         private IntPtr _text;
         private static bool _textObjectApiMissing;
         private static bool _formRemoveApiMissing;
+        private static bool _segmentApiMissing;
 
         internal PdfPage(PdfFile file, IntPtr page, int index)
         {
@@ -448,11 +451,16 @@ namespace TextX.Core.Documents.Native
         private static void AddObject(List<PdfObjectInfo> list, IntPtr obj, IntPtr parent, int depth)
         {
             if (obj == IntPtr.Zero) return;
-            var info = new PdfObjectInfo { Handle = obj, Parent = parent, Type = N.FPDFPageObj_GetType(obj) };
+            var info = new PdfObjectInfo { Handle = obj, Parent = parent, Type = N.FPDFPageObj_GetType(obj), Segments = -1 };
             float l, b, r, t;
             if (N.FPDFPageObj_GetBounds(obj, out l, out b, out r, out t) != 0)
             {
                 info.Left = l; info.Bottom = b; info.Right = r; info.Top = t;
+            }
+            if (info.Type == N.ObjPath && !_segmentApiMissing)
+            {
+                try { info.Segments = N.FPDFPath_CountSegments(obj); }
+                catch (EntryPointNotFoundException) { _segmentApiMissing = true; }
             }
             list.Add(info);
             if (info.Type == N.ObjForm && depth < 8)

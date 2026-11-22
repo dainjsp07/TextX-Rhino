@@ -40,9 +40,11 @@ namespace TextX.UI.Studio
         private readonly HeroChip[] _qModes = new HeroChip[3];
         private LinePreview _qScreen, _qPrint;
         private Panel _qBody, _qIssuesHost, _qModesHost;
-        private HeroChip _qModeMenu, _qFixSource, _qFixTarget;
-        private Label _qTitle2;
+        private HeroChip _qModeMenu, _qFixSource, _qFixTarget, _qRetranslate;
+        private Label _qTitle1, _qTitle2;
         private bool? _qCompact;
+        private Panel _qTopHost, _qSourceFoot, _qTargetFoot, _qActionsHost;
+        private string _qLayerName = "Current layer";
         private Control _qFields, _qPropsPanel;
         private StackLayout _qIssueRow;
         private SegmentedControl _qPrintAlign;
@@ -176,7 +178,9 @@ namespace TextX.UI.Studio
             _qObjects.Click += (s, e) => ShowObjectsMenu(_qObjects);
             _qLoad = new HeroChip("Load selected", IconKind.Pointer, HeroChipStyle.Outline, 28) { ToolTip = "Load the text and leaders selected in Rhino (TREdit)" };
             _qLoad.Click += (s, e) => _bridge.LoadSelected();
-            var top = Ui.Row(8, title1, title2, Ui.Spring(), _qObjects, _qLoad);
+            _qTitle1 = title1;
+            _qTitle2 = title2;
+            _qTopHost = new Panel();
 
             // the two texts
             _qSource = HeroTextArea(14f);
@@ -201,9 +205,13 @@ namespace TextX.UI.Studio
             var fixTarget = new HeroChip("Fix reversed", IconKind.None, HeroChipStyle.Quiet, 24) { Backdrop = p => HeroInk.Field(p), ToolTip = fixSource.ToolTip };
             fixTarget.Click += (s, e) => { _qTarget.Text = RtlText.VisualToLogical(_qTarget.Text); };
             _qFixTarget = fixTarget;
+            _qRetranslate = retranslate;
+            // the rows whose items change with the card's width are rebuilt then (see FitTranslator)
+            _qSourceFoot = new Panel();
+            _qTargetFoot = new Panel();
 
-            var sourceField = HeroField(Ui.Row(6, _qSourceLabel, Ui.Spring()), _qSource, Ui.Row(6, _qVoice, _qCheck, Ui.Spring(), fixSource), false);
-            var targetField = HeroField(Ui.Row(6, _qTargetLabel, _qRtl, _qEdited, Ui.Spring(), _qLive), _qTarget, Ui.Row(6, Ui.Spring(), retranslate, fixTarget), true);
+            var sourceField = HeroField(Ui.Row(6, _qSourceLabel, Ui.Spring()), _qSource, _qSourceFoot, false);
+            var targetField = HeroField(Ui.Row(6, _qTargetLabel, _qRtl, _qEdited, Ui.Spring(), _qLive), _qTarget, _qTargetFoot, true);
             var swap = new HeroChip(string.Empty, IconKind.Swap, HeroChipStyle.Outline, 32) { ToolTip = "Swap languages" };
             swap.Click += (s, e) => SwapLanguages();
             var swapColumn = new TableLayout();
@@ -231,11 +239,11 @@ namespace TextX.UI.Studio
                 _qModes[i] = new HeroChip(string.Empty, IconKind.None, HeroChipStyle.Outline, 28);
                 _qModes[i].Click += (s, e) => SetQMode(index);
             }
-            _qViewport = new HeroChip("Preview in Rhino", IconKind.Eye, HeroChipStyle.Outline, 28) { ToolTip = "Draws what Update would do on the loaded objects in the Rhino viewports (orange)", Visible = _bridge.InRhino };
+            _qViewport = new HeroChip("Preview in Rhino", IconKind.Eye, HeroChipStyle.Outline, 28) { ToolTip = "Draws what Update would do on the loaded objects in the Rhino viewports (orange)" };
             _qViewport.Click += (s, e) => { _qViewport.On = !_qViewport.On; SchedulePreview(); };
-            _qModeMenu = new HeroChip(string.Empty, IconKind.Chevron, HeroChipStyle.Outline, 28) { Visible = false, MaxTextWidth = 260, ToolTip = "What shows on screen and in print" };
+            _qModeMenu = new HeroChip(string.Empty, IconKind.Chevron, HeroChipStyle.Outline, 28) { MaxTextWidth = 260, ToolTip = "What shows on screen and in print" };
             _qModeMenu.Click += (s, e) => ShowModeMenu(_qModeMenu);
-            _qModesHost = new Panel { Content = Ui.Row(6, _qModes[0], _qModes[1], _qModes[2], _qModeMenu, Ui.Spring(), _qViewport) };
+            _qModesHost = new Panel();
 
             _qScreen = new LinePreview("On screen", false);
             _qPrint = new LinePreview("In print · PDF", true);
@@ -253,20 +261,20 @@ namespace TextX.UI.Studio
             _qLayer.Click += (s, e) => ShowLayerMenu(_qLayer);
             _qProps = new HeroChip("Text properties", IconKind.Format, HeroChipStyle.Outline, 32) { ToolTip = "Rhino's text properties: annotation style, font, height, alignment, mask, color and leader" };
             _qProps.Click += (s, e) => ToggleProperties(_qBody.Content == _qFields);
-            var actions = Ui.Row(8, _qPlace, _qLeader, _qUpdate, Ui.Spring(), _qLayer, _qProps);
+            _qActionsHost = new Panel();
 
             _qPropsPanel = BuildTextProperties();
             _qBody = new Panel { Content = _qFields, MinimumSize = new Size(0, 150) };
 
             var layout = new TableLayout { Spacing = new Size(0, 8) };
-            layout.Rows.Add(new TableRow(top));
+            layout.Rows.Add(new TableRow(_qTopHost));
             layout.Rows.Add(new TableRow(_qBody) { ScaleHeight = true });
             layout.Rows.Add(new TableRow(_qIssuesHost));
             layout.Rows.Add(new TableRow(_qModesHost));
             layout.Rows.Add(new TableRow(previews));
-            layout.Rows.Add(new TableRow(actions));
-            var card = new Card(layout, new Padding(16, 12, 16, 12), p => p.Hero, p => p.IsDark ? p.Border : p.Hero, 20f) { MinimumSize = new Size(0, 372) };
-            _qTitle2 = title2;
+            layout.Rows.Add(new TableRow(_qActionsHost));
+            var card = new Card(layout, new Padding(CardPadX, 12, CardPadX, 12), p => p.Hero, p => p.IsDark ? p.Border : p.Hero, 20f) { MinimumSize = new Size(0, HeroMinHeight) };
+            ArrangeTranslatorRows(false);
 
             // behaviour
             _qDebounce.Interval = Math.Max(0.15, Settings.RealTimeDelayMs / 1000.0);
@@ -434,6 +442,16 @@ namespace TextX.UI.Studio
             int k = _qItems.Count(i => i.Include && !i.IsNew);
             _qUpdate.Text = k == 0 ? "Update objects" : (k == 1 ? "Update 1 object" : "Update " + k + " objects");
             _qUpdate.Enabled = k > 0;
+            RelayoutTranslatorRows();
+        }
+
+        /// <summary>After a chip's text changed: the rows are laid out again with the new widths.</summary>
+        private void RelayoutTranslatorRows()
+        {
+            if (_qActionsHost == null || _qActionsHost.Content == null || _qCompact == null) return;
+            ArrangeTranslatorRows(_qCompact.Value);
+            var host = _homeHost;
+            if (host != null) Application.Instance.AsyncInvoke(ArrangeHome);
         }
 
         private void UpdateQLanguageLabels()
@@ -467,25 +485,80 @@ namespace TextX.UI.Studio
                 _qModes[i].On = (int)_qCurrent.Mode == i;
             }
             if (_qModeMenu != null) _qModeMenu.Text = texts[Math.Max(0, Math.Min(2, (int)_qCurrent.Mode))];
+            RelayoutTranslatorRows();
         }
 
+        private const int CardPadX = 16;
+        /// <summary>The translator's least height: the texts keep room for a few lines.</summary>
+        internal const int HeroMinHeight = 372;
+
         /// <summary>
-        /// A narrow card (the tiles beside it, or a small window) keeps every action on one line: the display
-        /// options become one menu, and Layer, Text properties and the viewport preview show their icons only.
+        /// A card narrower than its rows need keeps every action on one line: the display options become one
+        /// menu, and Layer, Text properties and the viewport preview show their icons only. The widths come
+        /// from the chips' own texts, so this follows the language names and the layer name.
         /// </summary>
         private void FitTranslator(int width)
         {
-            bool compact = width > 0 && width < 760;
+            bool compact = width > 0 && width < TranslatorFullWidth;
             if (_qCompact == compact) return;
+            ArrangeTranslatorRows(compact);
+        }
+
+        /// <summary>The width the card needs to show every option with its name.</summary>
+        internal int TranslatorFullWidth
+        {
+            get
+            {
+                if (_qModes[0] == null) return 0;
+                int modes = _qModes.Sum(m => m.NaturalWidth) + 2 * 6;
+                if (_bridge.InRhino) modes += 6 + 24 + _qViewport.WidthFor("Preview in Rhino");
+                int actions = _qPlace.NaturalWidth + _qLeader.NaturalWidth + _qUpdate.NaturalWidth + _qLayer.WidthFor(LayerChipText) + _qProps.WidthFor("Text properties") + 4 * 8 + 24;
+                int fields = 2 * (CardFieldPad + _qVoice.NaturalWidth + 6 + _qCheck.NaturalWidth + 6 + 12 + _qFixSource.NaturalWidth) + 2 * 8 + 32;
+                return CardPadX * 2 + Math.Max(modes, Math.Max(actions, fields)) + 4;
+            }
+        }
+
+        /// <summary>The least width of the card (compact): below it, the tiles go under the translator.</summary>
+        internal int TranslatorMinWidth
+        {
+            get
+            {
+                if (_qModes[0] == null) return 0;
+                int actions = _qPlace.NaturalWidth + _qLeader.NaturalWidth + _qUpdate.NaturalWidth + 2 * 32 + 4 * 8 + 24;
+                int fields = 2 * (CardFieldPad + _qVoice.NaturalWidth + 6 + _qCheck.NaturalWidth + 12) + 2 * 8 + 32;
+                int top = (int)Math.Ceiling(ThemedDrawable.Measure(Theme.DisplayFont(16f), _qTitle1.Text).Width) + 8 + 24 + _qObjects.NaturalWidth + 8 + _qLoad.NaturalWidth;
+                return CardPadX * 2 + Math.Max(actions, Math.Max(fields, top)) + 4;
+            }
+        }
+
+        private const int CardFieldPad = 24;
+
+        private string LayerChipText { get { return "Layer · " + _qLayerName; } }
+
+        /// <summary>
+        /// Builds the rows that change with the width afresh, holding only what shows: hidden items would still
+        /// take their spacing, and a chip whose text changed in place could keep its old width.
+        /// </summary>
+        private void ArrangeTranslatorRows(bool compact)
+        {
             _qCompact = compact;
-            for (int i = 0; i < 3; i++) _qModes[i].Visible = !compact;
-            _qModeMenu.Visible = compact;
-            _qTitle2.Visible = !compact;
+            foreach (var c in new Control[] { _qTitle1, _qTitle2, _qObjects, _qLoad, _qVoice, _qCheck, _qFixSource, _qRetranslate, _qFixTarget,
+                                              _qModes[0], _qModes[1], _qModes[2], _qModeMenu, _qViewport, _qPlace, _qLeader, _qUpdate, _qLayer, _qProps })
+                if (c.Parent != null) c.Detach();
             _qViewport.Text = compact ? string.Empty : "Preview in Rhino";
             _qProps.Text = compact ? string.Empty : "Text properties";
-            _qFixSource.Visible = !compact;
-            _qFixTarget.Visible = !compact;
-            UpdateQLayer();
+            _qLayer.Text = compact ? string.Empty : LayerChipText;
+
+            _qTopHost.Content = compact ? Ui.Row(8, _qTitle1, Ui.Spring(), _qObjects, _qLoad) : Ui.Row(8, _qTitle1, _qTitle2, Ui.Spring(), _qObjects, _qLoad);
+            _qSourceFoot.Content = compact ? Ui.Row(6, _qVoice, _qCheck, Ui.Spring()) : Ui.Row(6, _qVoice, _qCheck, Ui.Spring(), _qFixSource);
+            _qTargetFoot.Content = compact ? Ui.Row(6, Ui.Spring(), _qRetranslate) : Ui.Row(6, Ui.Spring(), _qRetranslate, _qFixTarget);
+            var modes = new List<StackLayoutItem>();
+            if (compact) modes.Add(_qModeMenu);
+            else for (int i = 0; i < 3; i++) modes.Add(_qModes[i]);
+            modes.Add(Ui.Spring());
+            if (_bridge.InRhino) modes.Add(_qViewport);
+            _qModesHost.Content = Ui.Row(6, modes.ToArray());
+            _qActionsHost.Content = Ui.Row(8, _qPlace, _qLeader, _qUpdate, Ui.Spring(), _qLayer, _qProps);
         }
 
         private void ShowModeMenu(Control anchor)
@@ -857,7 +930,10 @@ namespace TextX.UI.Studio
                 foreach (var l in _bridge.Layers())
                     if (l.Key == index) { name = l.Value; break; }
             }
-            _qLayer.Text = _qCompact == true ? string.Empty : "Layer · " + name;
+            bool changed = _qLayerName != name;
+            _qLayerName = name;
+            _qLayer.Text = _qCompact == true ? string.Empty : LayerChipText;
+            if (changed) RelayoutTranslatorRows();
             _qLayer.ToolTip = "Layer for placed text and leaders: " + name;
         }
 

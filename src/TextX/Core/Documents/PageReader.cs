@@ -39,11 +39,14 @@ namespace TextX.Core.Documents
             List<PdfChar> chars;
             bool scanned, ocrLayer, outlined;
             RenderedImage background = null;
+            PageGeometry geometry;
             using (var p = file.LoadPage(index))
             {
                 page = new DocPage { Index = index, Width = p.Width, Height = p.Height, Rotation = p.Rotation, OriginX = p.OriginX, OriginY = p.OriginY };
                 chars = p.GetChars();
                 var objects = p.GetObjects();
+                // ruled lines keep neighbouring cells apart when the lines of text are put together
+                geometry = PageGeometry.From(page, objects);
                 float pageArea = Math.Max(1f, page.Width * page.Height);
                 float maxImage = 0;
                 foreach (var o in objects.Where(o => o.IsImage))
@@ -85,17 +88,17 @@ namespace TextX.Core.Documents
             if (!scanned)
             {
                 var frameChars = chars.Select(c => ToFrame(c, page)).ToList();
-                var lines = LayoutAnalyzer.BuildLines(frameChars);
+                var lines = LayoutAnalyzer.BuildLines(frameChars, geometry);
                 if (outlined && background != null)
                 {
                     // a drawing whose words were turned into outlines (CAD export): read them with OCR,
                     // except where the page has real text
                     if (options.Status != null) options.Status.Report("Reading the drawing text of page " + (index + 1) + " with OCR");
                     var info = Info(background);
-                    page.Blocks = LayoutAnalyzer.BuildBlocks(page, lines);
+                    page.Blocks = LayoutAnalyzer.BuildBlocks(page, lines, 0, geometry);
                     var ocrLines = await OcrLinesAsync(page, background, info, options, true, ct, true).ConfigureAwait(false);
                     ocrLines = ocrLines.Where(o => !lines.Any(l => Overlaps(l.Box, o.Box))).ToList();
-                    page.Blocks = LayoutAnalyzer.BuildBlocks(page, lines.Concat(ocrLines).ToList());
+                    page.Blocks = LayoutAnalyzer.BuildBlocks(page, lines.Concat(ocrLines).ToList(), 0, geometry);
                     float scale = background.Width / page.Width;
                     foreach (var b in page.Blocks.Where(b => b.Lines.All(l => l.Chars.Count == 0)))
                     {
@@ -106,7 +109,7 @@ namespace TextX.Core.Documents
                 }
                 else
                 {
-                    page.Blocks = LayoutAnalyzer.BuildBlocks(page, lines);
+                    page.Blocks = LayoutAnalyzer.BuildBlocks(page, lines, 0, geometry);
                 }
                 if (ocrLayer && background != null)
                 {
@@ -131,6 +134,7 @@ namespace TextX.Core.Documents
                 }
             }
             page.Extracted = true;
+            page.LayoutVersion = DocPage.CurrentLayout;
             return page;
         }
 

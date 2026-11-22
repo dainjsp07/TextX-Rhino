@@ -65,6 +65,7 @@ namespace TextX.Core.Documents.Native
         [DllImport(Lib, CallingConvention = CC)] public static extern int FPDFPageObj_GetType(IntPtr pageObject);
         [DllImport(Lib, CallingConvention = CC)] public static extern int FPDFPageObj_GetBounds(IntPtr pageObject, out float left, out float bottom, out float right, out float top);
         [DllImport(Lib, CallingConvention = CC)] public static extern void FPDFPageObj_Destroy(IntPtr pageObject);
+        [DllImport(Lib, CallingConvention = CC)] public static extern int FPDFPath_CountSegments(IntPtr path);
         [DllImport(Lib, CallingConvention = CC)] public static extern void FPDFPageObj_Transform(IntPtr pageObject, double a, double b, double c, double d, double e, double f);
         [DllImport(Lib, CallingConvention = CC)] public static extern int FPDFPageObj_SetFillColor(IntPtr pageObject, uint r, uint g, uint b, uint a);
         [DllImport(Lib, CallingConvention = CC)] public static extern int FPDFFormObj_CountObjects(IntPtr formObject);

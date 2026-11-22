@@ -77,8 +77,14 @@ namespace TextX.Core.Documents
             bool number = false;
             foreach (var token in text.Split(new[] { ' ', '\t', '\n', '/', ',', ';', ':', '(', ')' }, StringSplitOptions.RemoveEmptyEntries))
             {
-                if (token.Any(char.IsDigit)) { number = true; continue; }
                 var letters = new string(token.Where(char.IsLetter).ToArray());
+                if (token.Any(char.IsDigit))
+                {
+                    number = true;
+                    // a word joined to a number ("חתך1", "Section2") is still a word
+                    if (letters.Length > 0 && !(letters.Length <= 4 && letters.All(c => c < 0x0250 && char.IsUpper(c))) && !Units.Contains(letters)) return false;
+                    continue;
+                }
                 if (letters.Length == 0) continue;
                 if (letters.Length <= 4 && letters.All(c => c < 0x0250 && char.IsUpper(c))) continue;
                 if (Units.Contains(letters)) continue;

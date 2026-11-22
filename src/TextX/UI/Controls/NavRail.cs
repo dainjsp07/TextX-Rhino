@@ -208,7 +208,7 @@ namespace TextX.UI.Controls
         public bool Compact
         {
             get { return _compact; }
-            set { _compact = value; if (value) { Height = -1; MinimumSize = new Size(0, 148); } else Height = _figure == null ? 168 : 268; Invalidate(); }
+            set { _compact = value; if (value) { Height = -1; MinimumSize = new Size(0, 136); } else Height = _figure == null ? 168 : 268; Invalidate(); }
         }
 
         public event EventHandler<EventArgs> Click;
@@ -252,11 +252,19 @@ namespace TextX.UI.Controls
             Animate();
         }
 
+        /// <summary>Room for the title and two lines of text at the foot of a compact tile.</summary>
+        private const float CompactTextHeight = 22 + 34 + 12;
+
         private RectangleF FigureRect
         {
             get
             {
-                if (_compact) return new RectangleF(8, 8, Math.Max(40, Math.Min(150, Width - 60)), 64);
+                if (_compact)
+                {
+                    // the figure grows with a taller tile; the title and text keep to the foot of the tile
+                    float fh = Math.Max(64, Math.Min(112, Height - 16 - CompactTextHeight));
+                    return new RectangleF(8, 8, Math.Max(40, Math.Min(fh * 2.3f, Width - 60)), fh);
+                }
                 return new RectangleF(10, 34, Width - 20, Height - 34 - 110);
             }
         }
@@ -340,10 +348,10 @@ namespace TextX.UI.Controls
                 var fr = FigureRect;
                 var inks = FigureInks.On(p, plate);
                 FigurePainter.Paint(g, _figure, _scene, fr, inks, Animator.Now);
-                y = fr.Bottom + 4;
-                DrawLine(g, Theme.UiFont(14f, true), ink, new RectangleF(12, y, Width - 24, 22), _title);
+                y = Math.Max(fr.Bottom + 4, Height - CompactTextHeight);
+                DrawLine(g, Theme.UiFont(14f, true), ink, new RectangleF(16, y, Width - 32, 22), _title);
                 using (var brush = new SolidBrush(muted))
-                    g.DrawText(Theme.UiFont(12f), brush, new RectangleF(12, y + 22, Width - 24, Height - y - 22 - 8), _text,
+                    g.DrawText(Theme.UiFont(12f), brush, new RectangleF(16, y + 22, Width - 32, Height - y - 22 - 12), _text,
                         FormattedTextWrapMode.Word, FormattedTextAlignment.Left, FormattedTextTrimming.WordEllipsis);
                 DrawFocus(g, r, radius);
                 return;

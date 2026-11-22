@@ -155,6 +155,13 @@ namespace TextX.Core.Documents
         public float OcrConfidence;
         public string OcrLanguages;
         public bool Extracted;
+
+        /// <summary>
+        /// How the page was read. Pages read by an older version are read again when the document is opened
+        /// (the translations come back from the translation memory), so improvements reach documents in the history.
+        /// </summary>
+        public int LayoutVersion;
+        public const int CurrentLayout = 2;
         public List<DocBlock> Blocks = new List<DocBlock>();
         public List<Box> Images = new List<Box>();
         public int TableCount;
@@ -306,7 +313,7 @@ namespace TextX.Core.Documents
                 {
                     { "i", (double)p.Index }, { "w", Box.Round(p.Width) }, { "h", Box.Round(p.Height) }, { "rot", (double)p.Rotation },
                     { "ox", Box.Round(p.OriginX) }, { "oy", Box.Round(p.OriginY) }, { "scan", p.Scanned }, { "ocrl", p.HasOcrLayer }, { "outl", p.OutlinedText },
-                    { "ocrc", Box.Round(p.OcrConfidence) }, { "ocrlang", p.OcrLanguages ?? string.Empty }, { "x", p.Extracted },
+                    { "ocrc", Box.Round(p.OcrConfidence) }, { "ocrlang", p.OcrLanguages ?? string.Empty }, { "x", p.Extracted }, { "layout", (double)p.LayoutVersion },
                     { "img", p.Images.Select(i => (object)i.ToJson()).ToList() }, { "tables", (double)p.TableCount }, { "blocks", blocks },
                 });
             }
@@ -350,7 +357,8 @@ namespace TextX.Core.Documents
                 {
                     Index = (int)Num(pd, "i"), Width = (float)Num(pd, "w"), Height = (float)Num(pd, "h"), Rotation = (int)Num(pd, "rot"),
                     OriginX = (float)Num(pd, "ox"), OriginY = (float)Num(pd, "oy"), Scanned = Bool(pd, "scan"), HasOcrLayer = Bool(pd, "ocrl"), OutlinedText = Bool(pd, "outl"),
-                    OcrConfidence = (float)Num(pd, "ocrc"), OcrLanguages = Json.GetString(pd, "ocrlang"), Extracted = Bool(pd, "x"),
+                    OcrConfidence = (float)Num(pd, "ocrc"), OcrLanguages = Json.GetString(pd, "ocrlang"),
+                    LayoutVersion = (int)Num(pd, "layout"), Extracted = Bool(pd, "x") && (int)Num(pd, "layout") >= DocPage.CurrentLayout,
                     TableCount = (int)Num(pd, "tables"),
                 };
                 foreach (var io in Json.GetList(pd, "img") ?? new List<object>()) page.Images.Add(Box.FromJson(io));

@@ -155,6 +155,98 @@ namespace TextX.Core.Text
             return ToVisual(text, o);
         }
 
+        /// <summary>
+        /// The reading order of one line of text given as it sits on a page, left to right, in clusters
+        /// (a character with its marks; spaces as their own clusters). Right-to-left text is read from the
+        /// right; numbers and Latin words inside it keep their left-to-right order, and brackets around
+        /// right-to-left text are turned back to the character the writer typed. Unlike running the
+        /// bidirectional algorithm a second time, this keeps punctuation next to numbers where it was
+        /// ("Ariel Sharon 1, Givatayim").
+        /// </summary>
+        public static string VisualLineToLogical(IList<string> clusters, bool rtlBase)
+        {
+            var parts = new List<string>(clusters);
+            if (rtlBase) return string.Concat(ReverseRtl(parts));
+            // a left-to-right line: only its right-to-left stretches are read from the right
+            var sb = new StringBuilder();
+            int i = 0;
+            while (i < parts.Count)
+            {
+                if (ClusterKind(parts[i]) != 'R') { sb.Append(parts[i]); i++; continue; }
+                int j = i, end = i;
+                while (j < parts.Count && ClusterKind(parts[j]) != 'L') { if (ClusterKind(parts[j]) == 'R') end = j; j++; }
+                foreach (var piece in ReverseRtl(parts.GetRange(i, end - i + 1))) sb.Append(piece);
+                i = end + 1;
+            }
+            return sb.ToString();
+        }
+
+        /// <summary>Visual clusters of right-to-left text, in reading order.</summary>
+        private static List<string> ReverseRtl(List<string> visual)
+        {
+            var rev = new List<string>(visual);
+            rev.Reverse();
+            var result = new List<string>(rev.Count);
+            int i = 0;
+            while (i < rev.Count)
+            {
+                char k = ClusterKind(rev[i]);
+                if (k == 'L' || k == 'N')
+                {
+                    // a number or Latin stretch: kept left to right (it was reversed with the rest)
+                    int end = i, j = i + 1;
+                    while (j < rev.Count)
+                    {
+                        char kj = ClusterKind(rev[j]);
+                        if (kj == 'R') break;
+                        if (kj == 'L' || kj == 'N') { end = j; j++; continue; }
+                        // punctuation and spaces: part of the stretch only when it goes on after them, and
+                        // spaces only between Latin words (between numbers they separate two numbers)
+                        int m = j;
+                        bool space = false;
+                        while (m < rev.Count && ClusterKind(rev[m]) == 'O') { if (IsSpaceCluster(rev[m])) space = true; m++; }
+                        if (m >= rev.Count) break;
+                        char after = ClusterKind(rev[m]);
+                        if (after == 'R') break;
+                        if (space && !(ClusterKind(rev[end]) == 'L' && after == 'L')) break;
+                        end = m;
+                        j = m + 1;
+                    }
+                    for (int n = end; n >= i; n--) result.Add(rev[n]);
+                    i = end + 1;
+                }
+                else
+                {
+                    result.Add(k == 'O' ? MirrorCluster(rev[i]) : rev[i]);
+                    i++;
+                }
+            }
+            return result;
+        }
+
+        /// <summary>R: right-to-left letter, L: other letter, N: digit, O: anything else.</summary>
+        private static char ClusterKind(string cluster)
+        {
+            if (string.IsNullOrEmpty(cluster)) return 'O';
+            int cp = CharExtensions.ConvertToUtf32IfPossible(cluster, 0);
+            if (UnicodeProps.IsStrongRtl(cp)) return 'R';
+            if (char.IsDigit(cluster, 0)) return 'N';
+            if (char.IsLetter(cluster, 0)) return 'L';
+            return 'O';
+        }
+
+        private static bool IsSpaceCluster(string cluster)
+        {
+            return cluster.Length > 0 && char.IsWhiteSpace(cluster[0]);
+        }
+
+        private static string MirrorCluster(string cluster)
+        {
+            if (cluster.Length != 1) return cluster;
+            int m = UnicodeProps.GetMirror(cluster[0]);
+            return m == cluster[0] ? cluster : char.ConvertFromUtf32(m);
+        }
+
         private static string LineToVisual(string line, RtlOptions o)
         {
             if (line.Length == 0 || !ContainsRtl(line)) return line;

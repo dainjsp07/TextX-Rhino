@@ -20,18 +20,20 @@ namespace TextX.UI.Studio
         private StackLayout _recent;
         private Label _recentEmpty;
         private FlatButton _recentManage;
-        private Panel _homeHost, _homeContent;
-        private Scrollable _homeScroll;
+        private Panel _homeHost, _homePage;
+        private Control _heroCard, _featuredTile, _tileGrid, _tileButtons;
+        private string _homeArrangement;
 
-        /// <summary>Space kept at the right of Home for its scroll bar.</summary>
-        private const int ScrollGutter = 18;
-
-        private int HomeContentWidth { get { return _homeScroll == null || _homeScroll.Width <= 0 ? 0 : Math.Max(480, _homeScroll.Width - ScrollGutter); } }
-        private Control _heroCard, _featuredTile, _tileGrid;
-        private bool? _homeWide;
-
-        /// <summary>Width of the page from which the tiles sit beside the translator (Windows "large" windows).</summary>
+        /// <summary>Width of the page from which the tiles sit beside the translator.</summary>
         private static int HomeWideFrom = 1060;
+
+        /// <summary>Width of the column of tiles beside the translator.</summary>
+        private const int SideWidth = 400;
+
+        /// <summary>Space around Home's content: the same right margin as the header, room under the Recent row.</summary>
+        private static readonly Padding HomePadding = new Padding(4, 0, 16, 12);
+
+        private const int RecentRowHeight = 28, TileRowHeight = 212;
 
         private Control BuildHome()
         {
@@ -39,10 +41,10 @@ namespace TextX.UI.Studio
             _heroCard = BuildTranslator();
 
             // what else Studio does: each tile has a line figure that answers the pointer and says what it shows
-            var translate = new BentoTile(IconKind.Translate, "Translate a PDF", "Layout kept. Compare, edit, save as PDF, Word or text.", "Documents", new PagesFigure()) { Featured = true, Height = -1, MinimumSize = new Size(0, 212) };
-            translate.Click += (s, e) => { if (_project != null) ShowTab(DocumentTab); else OpenFileDialog(); };
+            var translate = new BentoTile(IconKind.Translate, "Translate a PDF", "Layout kept. Compare, edit, save as PDF, Word or text.", "Documents", new PagesFigure()) { Featured = true, Height = -1, MinimumSize = new Size(0, 156) };
+            translate.Click += (s, e) => OpenDocumentTile();
             var schedule = new BentoTile(IconKind.Grid, "Product schedule", "Items, materials and finishes from your drawings.", "Drawings", new ScheduleFigure()) { Compact = true };
-            schedule.Click += (s, e) => { ShowTab(SchedulesTab); if (_project == null) OpenFileDialog(); };
+            schedule.Click += (s, e) => OpenSchedulesTile();
             var picture = new BentoTile(IconKind.Picture, "Picture or screenshot", "Its text is read on this computer and translated.", "Pictures", new ReadFigure()) { Compact = true };
             picture.Click += (s, e) => ShowTab(PictureTab);
             var voice = new BentoTile(IconKind.Mic, "Voice typing", "Speak into the text; the translation follows.", "Voice", new VoiceFigure()) { Compact = true };
@@ -57,66 +59,98 @@ namespace TextX.UI.Studio
             grid.Rows.Add(new TableRow(new TableCell(voice, true), new TableCell(_library, true)) { ScaleHeight = true });
             _tileGrid = grid;
 
+            // a window too short for the tiles under the translator: the same five, as buttons
+            var bPdf = new FlatButton("Translate a PDF", IconKind.Translate, ButtonKind.Secondary, 32);
+            bPdf.Click += (s, e) => OpenDocumentTile();
+            var bSchedule = new FlatButton("Product schedule", IconKind.Grid, ButtonKind.Secondary, 32);
+            bSchedule.Click += (s, e) => OpenSchedulesTile();
+            var bPicture = new FlatButton("Picture", IconKind.Picture, ButtonKind.Secondary, 32) { ToolTip = "Picture or screenshot" };
+            bPicture.Click += (s, e) => ShowTab(PictureTab);
+            var bLibrary = new FlatButton("Library", IconKind.Layers, ButtonKind.Secondary, 32);
+            bLibrary.Click += (s, e) => OpenLatest();
+            _tileButtons = Ui.Row(8, bPdf, bSchedule, bPicture, bLibrary, Ui.Spring());
+
             // documents opened before, as chips
             _recent = new StackLayout { Orientation = Orientation.Horizontal, Spacing = 8, VerticalContentAlignment = VerticalAlignment.Center };
             _recentEmpty = Ui.Label(_scope, "Documents you open appear here, with their translations and edits.", 12f, false, p => p.Muted);
+            _recentEmpty.Wrap = WrapMode.None;
             _recentManage = new FlatButton("Manage", IconKind.None, ButtonKind.Ghost, 28) { ToolTip = "Remove documents from the history", Visible = false };
             _recentManage.Click += (s, e) => ShowRecentMenu(_recentManage);
-            var recent = Ui.Row(12, Ui.Section(_scope, "Recent"), _recentEmpty, _recent, Ui.Spring(), _recentManage);
+            var recent = new TableLayout { Spacing = new Size(12, 0) };
+            // the chips get the room there is (they are clipped, never pushing the page wider)
+            recent.Rows.Add(new TableRow(new TableCell(Ui.Section(_scope, "Recent"), false), new TableCell(Ui.Row(8, _recentEmpty, _recent), true), new TableCell(_recentManage, false)));
 
             _homeHost = new Panel();
-            ArrangeHome();
-
-            var layout = new TableLayout { Spacing = new Size(0, 12), Padding = new Padding(4, 0, 16 - ScrollGutter + 2, 8) };
+            var layout = new TableLayout { Spacing = new Size(0, 12), Padding = HomePadding };
             layout.Rows.Add(new TableRow(_homeHost) { ScaleHeight = true });
             layout.Rows.Add(new TableRow(recent));
-            // the page fills the window and scrolls only when the window is shorter than its content
-            _homeContent = _scope.Bind(new Panel { Content = layout }, (x, p) => x.BackgroundColor = p.Window);
-            var scroll = new Scrollable { Content = _homeContent, Border = BorderType.None, ExpandContentWidth = true, ExpandContentHeight = true };
-            _homeScroll = scroll;
-            // The page scrolls up and down only: its width is the window's, less a gutter kept for the scroll bar
-            // (so nothing shifts when it appears), and the arrangement follows that width.
-            scroll.SizeChanged += (s, e) =>
-            {
-                int width = HomeContentWidth;
-                if (width > 0 && _homeContent.Width != width) _homeContent.Width = width;
-                ArrangeHome();
-            };
-            return _scope.Bind(scroll, (x, p) => x.BackgroundColor = p.Window);
+            // no scrolling: the arrangement follows the page's size, so nothing is ever cut off or pushed aside
+            _homePage = _scope.Bind(new Panel { Content = layout }, (x, p) => x.BackgroundColor = p.Window);
+            _homePage.SizeChanged += (s, e) => ArrangeHome();
+            ArrangeHome();
+            return _homePage;
+        }
+
+        private void OpenDocumentTile()
+        {
+            if (_project != null) ShowTab(DocumentTab); else OpenFileDialog();
+        }
+
+        private void OpenSchedulesTile()
+        {
+            ShowTab(SchedulesTab);
+            if (_project == null) OpenFileDialog();
         }
 
         /// <summary>
-        /// Wide windows: the translator on the left, Translate a PDF and the four tiles in a column on the right.
-        /// Narrower windows: the tiles move under the translator, in one row (the translator keeps its width).
+        /// Wide pages: the translator on the left, Translate a PDF and the four tiles in a column on the right.
+        /// Narrower pages: the tiles go under the translator, or, on a short page, become a row of buttons.
+        /// Every part gets an exact width, so the page never needs more room than the window has.
         /// </summary>
         private void ArrangeHome()
         {
             if (_homeHost == null) return;
-            int w = HomeContentWidth <= 0 ? 0 : HomeContentWidth - 4;
-            bool wide = w <= 0 || w >= HomeWideFrom;
-            // the translator's own width decides how compact it is (its content would keep it wide otherwise)
-            if (w > 0) FitTranslator(wide ? w - 412 : w);
-            if (_homeWide == wide) return;
-            _homeWide = wide;
-            foreach (var c in new[] { _heroCard, _featuredTile, _tileGrid }) if (c.Parent != null) c.Detach();
+            int pageW = _homePage != null && _homePage.Width > 0 ? _homePage.Width : ClientSize.Width - _tabs.Width;
+            int pageH = _homePage != null && _homePage.Height > 0 ? _homePage.Height : ClientSize.Height - 80;
+            int w = pageW - HomePadding.Horizontal;
+            int h = pageH - HomePadding.Vertical - RecentRowHeight - 12;
+            if (w <= 0) return;
+            int sideHero = w - SideWidth - 12;
+            string arrangement = w >= HomeWideFrom && sideHero >= TranslatorMinWidth ? "wide"
+                : h >= TranslatorTallEnough + 12 + TileRowHeight ? "narrow" : "short";
+            int heroW = arrangement == "wide" ? sideHero : w;
+            FitTranslator(heroW);
+            _heroCard.Width = heroW;
+            if (_homeArrangement == arrangement) return;
+            _homeArrangement = arrangement;
+            foreach (var c in new[] { _heroCard, _featuredTile, _tileGrid, _tileButtons }) if (c.Parent != null) c.Detach();
             var layout = new TableLayout { Spacing = new Size(12, 12) };
-            if (wide)
+            if (arrangement == "wide")
             {
                 var side = new TableLayout { Spacing = new Size(0, 12) };
-                side.Rows.Add(new TableRow(_featuredTile));
+                side.Rows.Add(new TableRow(_featuredTile) { ScaleHeight = true });
                 side.Rows.Add(new TableRow(_tileGrid) { ScaleHeight = true });
-                var sideBox = new Panel { Content = side, Width = 400 };
+                var sideBox = new Panel { Content = side, Width = SideWidth };
                 layout.Rows.Add(new TableRow(new TableCell(_heroCard, true), new TableCell(sideBox, false)) { ScaleHeight = true });
             }
-            else
+            else if (arrangement == "narrow")
             {
                 var row = new TableLayout { Spacing = new Size(12, 0) };
                 row.Rows.Add(new TableRow(new TableCell(_featuredTile, true), new TableCell(_tileGrid, true)));
+                var rowBox = new Panel { Content = row, Height = TileRowHeight };
                 layout.Rows.Add(new TableRow(_heroCard) { ScaleHeight = true });
-                layout.Rows.Add(new TableRow(row));
+                layout.Rows.Add(new TableRow(rowBox));
+            }
+            else
+            {
+                layout.Rows.Add(new TableRow(_heroCard) { ScaleHeight = true });
+                layout.Rows.Add(new TableRow(_tileButtons));
             }
             _homeHost.Content = layout;
         }
+
+        /// <summary>The translator's height that keeps a few lines of text in view (more than its least height).</summary>
+        private static int TranslatorTallEnough { get { return HeroMinHeight + 40; } }
 
         private List<BentoTile> _tiles = new List<BentoTile>();
         private BentoTile _library;
@@ -160,7 +194,7 @@ namespace TextX.UI.Studio
             string state = entry.TotalBlocks == 0 ? "not read yet" : entry.IsTranslated ? "translated" : pct > 0 ? pct + "% translated" : "not translated";
             string langs = (string.IsNullOrEmpty(entry.SourceLang) ? "?" : Languages.EnglishName(entry.SourceLang)) + " → " + Languages.EnglishName(entry.TargetLang);
             var name = entry.Name.Length > 28 ? entry.Name.Substring(0, 26) + "…" : entry.Name;
-            var chip = new FlatButton(name + "  ·  " + state, IconKind.File, ButtonKind.Secondary, 28)
+            var chip = new FlatButton(ShownName(name) + "  ·  " + state, IconKind.File, ButtonKind.Secondary, 28)
             {
                 ToolTip = entry.Name + "\n" + entry.PageCount + (entry.PageCount == 1 ? " page" : " pages") + "   ·   " + langs + "   ·   " + entry.Modified.ToLocalTime().ToString("g", CultureInfo.CurrentCulture),
             };

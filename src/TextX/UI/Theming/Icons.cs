@@ -35,6 +35,8 @@ namespace TextX.UI.Theming
         Prev,
         Next,
         Search,
+        Sun,
+        Moon,
     }
 
     /// <summary>
@@ -126,6 +128,24 @@ namespace TextX.UI.Theming
                 case IconKind.Chevron:
                     poly(new float[] { 6, 9, 12, 15, 18, 9 });
                     break;
+                case IconKind.Sun:
+                    circle(12, 12, 4);
+                    for (int i = 0; i < 8; i++)
+                    {
+                        double a = i * Math.PI / 4;
+                        float c = (float)Math.Cos(a), n = (float)Math.Sin(a);
+                        poly(new[] { 12 + 7f * c, 12 + 7f * n, 12 + 9.5f * c, 12 + 9.5f * n });
+                    }
+                    break;
+                case IconKind.Moon:
+                {
+                    // a crescent: three quarters of a circle, closed by a curve bowing in toward its centre
+                    path.StartFigure();
+                    var tl = P(3, 3);
+                    path.AddArc(tl.X, tl.Y, 18 * s, 18 * s, 0, 270);
+                    bez(12, 3, 11, 8.5f, 15.5f, 13, 21, 12);
+                    break;
+                }
                 case IconKind.Pointer:
                     closedPoly(new float[] { 4, 4, 11, 21, 13.5f, 13.5f, 21, 11 });
                     break;

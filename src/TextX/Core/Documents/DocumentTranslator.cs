@@ -124,7 +124,10 @@ namespace TextX.Core.Documents
             var work = new List<DocBlock>();
             foreach (var b in blocks)
             {
-                if (!LanguageGuess.HasWords(b.Source) || TextSegmenter.IsCodeLike(b.Source.Trim()) || LanguageGuess.IsReference(b.Source) || SameLanguage(src, tgt) || names.Contains(b))
+                // names in title blocks are kept as written, unless they are in another alphabet (a Hebrew name
+                // in an English drawing is written out in English letters)
+                bool keepName = names.Contains(b) && b.Source.All(ch => !char.IsLetter(ch) || ch < 0x0250);
+                if (!LanguageGuess.HasWords(b.Source) || TextSegmenter.IsCodeLike(b.Source.Trim()) || LanguageGuess.IsReference(b.Source) || SameLanguage(src, tgt) || keepName)
                 {
                     b.State = BlockState.Kept;
                     b.Translation = null;

@@ -17,12 +17,14 @@ namespace TextX.Core.Documents.Layout
     /// </summary>
     public static class LayoutAnalyzer
     {
-        private static readonly Regex ListStart = new Regex(@"^\s*(?:[•◦▪●‣⁃·∙\-–—\*]\s+|\(?(?:\d{1,3}|[a-zA-Z]|[ivxIVX]{1,4})[\.\)]\s+)", RegexOptions.Compiled);
+        // bullets may touch their text ("*Note", "•Item"); dashes and numbers need a space after them
+        private static readonly Regex ListStart = new Regex(@"^\s*(?:[•◦▪●‣⁃·∙\*]\s*(?=\S)|[\-–—]\s+|\(?(?:\d{1,3}|[a-zA-Z]|[ivxIVX]{1,4})[\.\)]\s+)", RegexOptions.Compiled);
 
         // ------------------------------------------------------------------ characters to lines
         /// <summary>Builds lines from a page's text layer. Generated characters mark spaces and line breaks.</summary>
-        public static List<DocLine> BuildLines(IList<PdfChar> chars)
+        public static List<DocLine> BuildLines(IList<PdfChar> chars, PageGeometry geometry = null)
         {
+            var geo = geometry ?? PageGeometry.Empty;
             // 1. runs of characters as the PDF gives them
             var fragments = new List<List<PdfChar>>();
             var current = new List<PdfChar>();
@@ -45,7 +47,7 @@ namespace TextX.Core.Documents.Layout
                 bool isSpace = c.Code == ' ' || c.Code == 0xA0 || c.Code == 0x3000 || c.Code == '\t';
                 if (c.Code < 32 && !isSpace) continue;
                 if (!isSpace && c.Right - c.Left <= 0 && c.Top - c.Bottom <= 0) continue;
-                if (prev.HasValue && !isSpace && current.Count > 0 && BreaksLine(prev.Value, c)) cut();
+                if (prev.HasValue && !isSpace && current.Count > 0 && (BreaksLine(prev.Value, c) || RuleBetween(geo, prev.Value, c))) cut();
                 current.Add(c);
                 if (!isSpace) prev = c;
             }
@@ -53,8 +55,24 @@ namespace TextX.Core.Documents.Layout
 
             // 2. runs on one baseline that touch (words placed one by one, right-to-left text) form one line
             var lines = new List<DocLine>();
-            foreach (var f in MergeFragments(fragments)) Flush(f.Value, lines, f.Key);
+            foreach (var f in MergeFragments(fragments, geo)) Flush(f.Value, lines, f.Key);
             return lines;
+        }
+
+        /// <summary>
+        /// A ruled line in the gap between two characters of level text (table cells, title block fields).
+        /// A line drawn through a word (a section mark over a drawing number) does not part it.
+        /// </summary>
+        private static bool RuleBetween(PageGeometry geo, PdfChar p, PdfChar c)
+        {
+            if (geo.VRules.Count == 0 || Math.Abs(Math.Sin(p.Angle)) > 0.05) return false;
+            float x1, x2;
+            if (c.Left >= p.Right - 0.01f) { x1 = p.Right; x2 = c.Left; }
+            else if (p.Left >= c.Right - 0.01f) { x1 = c.Right; x2 = p.Left; }
+            else return false;
+            float size = Math.Max(4f, Math.Max(p.FontSize, c.FontSize));
+            if (x2 - x1 < size * 0.15f) return false;
+            return geo.VerticalRuleBetween(x1 - 0.3f, x2 + 0.3f, Math.Min(p.Bottom, c.Bottom), Math.Max(p.Top, c.Top));
         }
 
         private sealed class Fragment
@@ -71,7 +89,7 @@ namespace TextX.Core.Documents.Layout
         /// direction. PDFs written word by word, or right-to-left text, come apart into such runs.
         /// The flag says the text must be rebuilt from the positions of the characters.
         /// </summary>
-        private static List<KeyValuePair<bool, List<PdfChar>>> MergeFragments(List<List<PdfChar>> fragments)
+        private static List<KeyValuePair<bool, List<PdfChar>>> MergeFragments(List<List<PdfChar>> fragments, PageGeometry geo)
         {
             var frags = new List<Fragment>();
             for (int i = 0; i < fragments.Count; i++)
@@ -109,7 +127,10 @@ namespace TextX.Core.Documents.Layout
                             double gap = f.UMin - open.UMax;
                             float ratio = Math.Max(open.Size, f.Size) / Math.Min(open.Size, f.Size);
                             bool inside = f.UMin >= open.UMin - size * 0.1 && f.UMax <= open.UMax + size * 0.1 && !Duplicates(open, f);
-                            if (((gap > -size * 0.5 && gap < size * 0.75) || inside) && ratio <= 1.25f)
+                            // a ruled line between them: two cells, not one line
+                            bool ruled = !inside && gap >= size * 0.15 && Math.Abs(Math.Sin(f.Angle)) < 0.05 && geo.VRules.Count > 0 &&
+                                         geo.VerticalRuleBetween((float)open.UMax - 0.3f, (float)f.UMin + 0.3f, (float)f.V - size * 0.2f, (float)f.V + size * 0.7f);
+                            if (((gap > -size * 0.5 && gap < size * 0.75) || inside) && ratio <= 1.25f && !ruled)
                             {
                                 open.Chars = open.Chars.Concat(new[] { new PdfChar { Code = ' ', Index = -1 } }).Concat(f.Chars).ToList();
                                 open.UMax = Math.Max(open.UMax, f.UMax);
@@ -259,7 +280,9 @@ namespace TextX.Core.Documents.Layout
             }
             var ordered = clusters.OrderBy(k => (StartAlong(k[0], cos, sin) + EndAlong(k[0], cos, sin)) / 2).ToList();
             float size = Math.Max(1f, Median(visible.Select(c => c.FontSize)));
-            var sb = new StringBuilder();
+            // the line as it sits on the page, left to right: clusters, with spaces where the gaps are
+            var parts = new List<string>();
+            bool anyRtl = false;
             for (int i = 0; i < ordered.Count; i++)
             {
                 if (i > 0)
@@ -271,14 +294,19 @@ namespace TextX.Core.Documents.Layout
                         double mid = (StartAlong(sp, cos, sin) + EndAlong(sp, cos, sin)) / 2;
                         return mid > end - size * 0.05 && mid < start + size * 0.05;
                     });
-                    if (gap > size * 0.17 || (spaceChar && gap > size * 0.05)) sb.Append(' ');
+                    if (gap > size * 0.17 || (spaceChar && gap > size * 0.05)) parts.Add(" ");
                 }
-                foreach (var c in ordered[i]) sb.Append(CharText(c.Code));
+                var cluster = new StringBuilder();
+                foreach (var c in ordered[i])
+                {
+                    cluster.Append(CharText(c.Code));
+                    if (UnicodeProps.IsStrongRtl(c.Code)) anyRtl = true;
+                }
+                parts.Add(cluster.ToString());
             }
-            var visual = sb.ToString();
-            if (!RtlText.ContainsRtl(visual)) return visual;
-            // reordering is its own inverse: visual text through the bidi algorithm gives reading order
-            return RtlText.ToVisual(visual, new RtlOptions { Direction = rtl ? BaseDirection.Rtl : BaseDirection.Ltr, ShapeArabic = false, MirrorBrackets = true });
+            if (!anyRtl) return string.Concat(parts);
+            // right-to-left text is read from the right; numbers and Latin inside it keep their order
+            return RtlText.VisualLineToLogical(parts, rtl);
         }
 
         private static double Along(PdfChar c, float angle)
@@ -308,8 +336,9 @@ namespace TextX.Core.Documents.Layout
         /// Groups lines into blocks, classifies them and sets the reading order.
         /// <paramref name="bodySize"/> is the document's usual text size (0: work it out from this page).
         /// </summary>
-        public static List<DocBlock> BuildBlocks(DocPage page, List<DocLine> lines, float bodySize = 0)
+        public static List<DocBlock> BuildBlocks(DocPage page, List<DocLine> lines, float bodySize = 0, PageGeometry geometry = null)
         {
+            var geo = geometry ?? PageGeometry.Empty;
             if (bodySize <= 0) bodySize = BodySize(lines);
             var blocks = new List<DocBlock>();
             var open = new List<DocBlock>();
@@ -327,7 +356,7 @@ namespace TextX.Core.Documents.Layout
                         float score;
                         var tail = open[i].Lines[open[i].Lines.Count - 1];
                         if (cellLike.Contains(tail) && cellLike.Contains(line)) continue; // two table rows
-                        if (CanContinue(open[i], line, out score) && score < best) { best = score; target = open[i]; }
+                        if (CanContinue(open[i], line, out score) && score < best && !RuledApart(geo, open[i], line)) { best = score; target = open[i]; }
                     }
                 }
                 if (target == null)
@@ -349,10 +378,20 @@ namespace TextX.Core.Documents.Layout
             return blocks;
         }
 
+        /// <summary>A ruled line between the block's last line and the next one (rows of a table, fields of a title block).</summary>
+        private static bool RuledApart(PageGeometry geo, DocBlock block, DocLine line)
+        {
+            if (geo.HRules.Count == 0) return false;
+            var last = block.Lines[block.Lines.Count - 1];
+            float xL = Math.Max(block.Box.L, line.Box.L), xR = Math.Min(block.Box.R, line.Box.R);
+            if (xR <= xL) { xL = Math.Min(block.Box.L, line.Box.L); xR = Math.Max(block.Box.R, line.Box.R); }
+            return geo.HorizontalRuleBetween(line.Box.T - 0.3f, last.Box.B + 0.3f, xL, xR);
+        }
+
         /// <summary>
-        /// Lines that look like table cells: short pieces of text sharing a baseline with others
-        /// (three or more on the baseline, or two that are both narrow). Two-column body text has
-        /// wider lines and is not affected.
+        /// Lines that look like table cells: short pieces of text sharing a baseline with at least two others
+        /// close by (a row of a table). Callouts of two drawings side by side, or two columns of text, are
+        /// not rows. Two-column body text has wider lines and is not affected.
         /// </summary>
         private static HashSet<DocLine> CellLikeLines(List<DocLine> lines, float pageWidth)
         {
@@ -362,12 +401,18 @@ namespace TextX.Core.Documents.Layout
             {
                 var l = horizontal[i];
                 float tol = Math.Max(1f, l.FontSize * 0.3f);
-                var same = horizontal.Where(o => Math.Abs(o.Baseline - l.Baseline) <= tol).ToList();
-                if (same.Count < 2) continue;
+                var same = horizontal.Where(o => Math.Abs(o.Baseline - l.Baseline) <= tol).OrderBy(o => o.Box.L).ToList();
+                if (same.Count < 3) continue;
                 // running prose in columns: every line on the baseline is a long run of words
                 if (same.All(o => o.Text.Length >= 28 && o.Text.Count(ch => ch == ' ') >= 4)) continue;
-                if (same.Count >= 3 || same.All(o => o.Box.W < pageWidth * 0.3f))
-                    foreach (var o in same) result.Add(o);
+                // the row: the lines chained to this one with gaps of at most a dozen characters
+                float reach = Math.Max(4f, l.FontSize) * 12f;
+                int at = same.IndexOf(l);
+                int a = at, z = at;
+                while (a > 0 && same[a].Box.L - same[a - 1].Box.R <= reach) a--;
+                while (z < same.Count - 1 && same[z + 1].Box.L - same[z].Box.R <= reach) z++;
+                if (z - a + 1 >= 3)
+                    for (int k = a; k <= z; k++) result.Add(same[k]);
             }
             return result;
         }

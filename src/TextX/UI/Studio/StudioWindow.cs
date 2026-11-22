@@ -131,8 +131,9 @@ namespace TextX.UI.Studio
             _tabs.Add("Document", IconKind.File);
             _tabs.Add("Schedules", IconKind.Grid);
             _tabs.Add("Picture or screenshot", IconKind.Picture);
-            _tabs.SetBottom("Settings (translation service, theme, updates ...)", IconKind.Gear);
-            _tabs.BottomClicked += (s, e) => OpenSettings();
+            // dark / light mode at the foot of the rail (Settings are in the translation service menu)
+            UpdateThemeButton();
+            _tabs.BottomClicked += (s, e) => ToggleTheme();
             _pages = new[] { BuildHome(), BuildDocument(), BuildSchedules(), BuildTools() };
             _page.Content = _pages[0];
             _scope.Bind(_page, (x, p) => x.BackgroundColor = p.Window);
@@ -170,7 +171,7 @@ namespace TextX.UI.Studio
             var languages = new Card(Ui.Row(4, _srcLang, swap, _tgtLang), new Padding(8, 2), p => p.Surface, p => p.Border, 16f);
             _provider.DotColor = p => Settings.ProviderId == ProviderIds.Manual ? p.Muted : TranslationEngine.InCooldown(Settings.ProviderId) ? p.Warning : p.Success;
             _provider.ToolTip = "Translation service, for every page (click to change)";
-            _provider.ExtraCommands.Add(new KeyValuePair<string, Action>("Service settings...", OpenSettings));
+            _provider.ExtraCommands.Add(new KeyValuePair<string, Action>("Settings...", OpenSettings));
             var open = new FlatButton("Open a file", IconKind.Plus, ButtonKind.Strong, 32) { ToolTip = "Open a PDF or a picture (you can also drop files on the window)" };
             open.Click += (s, e) => OpenFileDialog();
             _openFile = open;
@@ -293,6 +294,35 @@ namespace TextX.UI.Studio
             UpdateUpdateBar();
         }
 
+        /// <summary>Switches between dark and light (the choice is kept; Settings can set it back to follow Rhino).</summary>
+        /// <summary>
+        /// A file name for a label: a Hebrew or Arabic name is set right to left as a whole, so brackets and
+        /// numbers at its end stay in place ("תוכנית (1)").
+        /// </summary>
+        internal static string ShownName(string name)
+        {
+            if (string.IsNullOrEmpty(name) || !TextX.Core.Text.RtlText.ContainsRtl(name)) return name ?? string.Empty;
+            return "\u202B" + name + "\u202C";
+        }
+
+        private void ToggleTheme()
+        {
+            Settings.ThemeMode = Theme.Current.IsDark ? "Light" : "Dark";
+            if (Theme.Refresh())
+            {
+                _scope.ApplyAll(this);
+                Invalidate();
+            }
+            UpdateThemeButton();
+            RefreshQPreviews();
+        }
+
+        private void UpdateThemeButton()
+        {
+            bool dark = Theme.Current.IsDark;
+            _tabs.SetBottom(dark ? "Light mode" : "Dark mode", dark ? IconKind.Sun : IconKind.Moon);
+        }
+
         private void OpenSettings()
         {
             var before = Settings.ThemeMode;
@@ -307,6 +337,7 @@ namespace TextX.UI.Studio
                 _scope.ApplyAll(this);
                 Invalidate();
             }
+            UpdateThemeButton();
             UpdateUpdateBar();
             if (_qPrintInfo != null) UpdateQPrintInfo();
             RefreshQPreviews();
@@ -319,7 +350,7 @@ namespace TextX.UI.Studio
             _page.Content = _pages[index];
             if (_pageTitle != null)
             {
-                _pageTitle.Text = index == DocumentTab && _project != null ? _project.Name : PageTitles[index];
+                _pageTitle.Text = index == DocumentTab && _project != null ? ShownName(_project.Name) : PageTitles[index];
                 _pageHint.Text = PageHints[index];
             }
             if (index == HomeTab) { RefreshHistory(); if (Loaded) TourTiles(); }
