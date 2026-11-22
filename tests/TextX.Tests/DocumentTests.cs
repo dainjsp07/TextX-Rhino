@@ -371,6 +371,9 @@ namespace TextX.Tests
             Equal("bois de chêne massif", DocumentTranslator.ReplaceTerm("chêne massif", "chêne", "bois de chêne"), "term replaced");
             Equal("Bois de chêne massif", DocumentTranslator.ReplaceTerm("Chêne massif", "chêne", "bois de chêne"), "capital kept at sentence start");
             True(DocumentTranslator.ContainsTerm("Solid OAK door", "oak") && !DocumentTranslator.ContainsTerm("cloak", "oak"), "whole-word term match");
+            True(DocumentTranslator.ContainsTerm("כולל פח מותאם למגירת פח וסכומון", "סכומון"), "Hebrew term with a joined prefix");
+            True(!DocumentTranslator.ContainsTerm("סכומונים", "סכומון"), "Hebrew term is a whole word");
+            Equal("כולל פח ו-cutlery tray", DocumentTranslator.PutTerm("כולל פח וסכומון", "סכומון", "cutlery tray"), "term written in place, prefix kept");
         }
 
         public static void Guessing()

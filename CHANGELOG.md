@@ -35,6 +35,11 @@ into a dated section when you release.
     is never cut in two ("Descript ion"), and a smaller text stays under the ruled line above it.
   - Title-block and joinery words get draughtsman's English: Scale, Revision, Page, Sheet size, Finish
     schedule, Plinth, Soft-close, Top view, Rear elevation and more (your own glossary always wins).
+    Glossary terms are also found with a Hebrew prefix joined to them (וסכומון), and a sentence that did
+    not use the glossary's word is asked again with the word in place ("a cutlery tray", not "a watermelon").
+  - Callouts and legend texts on a drawing that line up across the sheet are no longer treated as one
+    table: they are laid out one under the other like other notes, without running over each other.
+  - A paragraph that needs more room keeps one straight edge, and starts under the ruled line above it.
   - When the free Google service is busy during a long document, Studio waits and asks again instead of
     switching to the backup service; texts too long for the backup service are sent in pieces, and any
     paragraph left untranslated is marked so **Continue** translates it (before, some stayed in Hebrew).

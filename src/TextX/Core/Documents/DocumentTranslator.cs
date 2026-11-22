@@ -245,6 +245,36 @@ namespace TextX.Core.Documents
                 }
             }
             if (needed.Count == 0) return result;
+            // first ask again with the glossary's words already written in the paragraph: the service keeps
+            // them and translates around them ("ו-cutlery tray" becomes "and cutlery tray")
+            var redo = needed.Values.SelectMany(l => l).Distinct().OrderBy(i => i).ToList();
+            var settled = new HashSet<int>();
+            try
+            {
+                var sources = redo.Select(i => needed.Where(kv => kv.Value.Contains(i)).Aggregate(blocks[i].Source, (text, kv) => PutTerm(text, kv.Key.Source, kv.Key.Target))).ToList();
+                var answers = await _engine.Provider.TranslateAsync(sources, src, tgt, ct).ConfigureAwait(false);
+                for (int k = 0; k < redo.Count && k < answers.Count; k++)
+                {
+                    int i = redo[k];
+                    var answer = answers[k];
+                    if (string.IsNullOrWhiteSpace(answer)) continue;
+                    if (needed.Where(kv => kv.Value.Contains(i)).All(kv => answer.IndexOf(kv.Key.Target, StringComparison.OrdinalIgnoreCase) >= 0))
+                    {
+                        result[i] = answer;
+                        settled.Add(i);
+                    }
+                }
+            }
+            catch (TranslationException)
+            {
+                // the service is busy: the replacement below still applies
+            }
+            foreach (var key in needed.Keys.ToList())
+            {
+                needed[key].RemoveAll(settled.Contains);
+                if (needed[key].Count == 0) needed.Remove(key);
+            }
+            if (needed.Count == 0) return result;
             // how the service translates each term on its own (cached), bypassing the glossary
             var terms = needed.Keys.ToList();
             var machine = new string[terms.Count];
@@ -289,7 +319,30 @@ namespace TextX.Core.Documents
         public static bool ContainsTerm(string text, string term)
         {
             if (string.IsNullOrEmpty(text) || string.IsNullOrWhiteSpace(term)) return false;
-            return Regex.IsMatch(text, "(?<![\\p{L}\\p{N}])" + Regex.Escape(term.Trim()) + "(?![\\p{L}\\p{N}])", RegexOptions.IgnoreCase | RegexOptions.CultureInvariant);
+            return Regex.IsMatch(text, TermPattern(term), RegexOptions.IgnoreCase | RegexOptions.CultureInvariant);
+        }
+
+        /// <summary>
+        /// A term as a whole word. Hebrew joins "and", "in", "to", "the", "from", "that" and "as" to the
+        /// next word (וסכומון, בגמר), so up to three of those letters may stand before a Hebrew term.
+        /// </summary>
+        private static string TermPattern(string term)
+        {
+            term = term.Trim();
+            bool hebrew = term.Length > 0 && term[0] >= '\u05D0' && term[0] <= '\u05EA';
+            return "(?<![\\p{L}\\p{N}])(?<pre>" + (hebrew ? "[\u05D5\u05D1\u05DB\u05DC\u05DE\u05E9\u05D4]{0,3}" : string.Empty) + ")" +
+                   Regex.Escape(term) + "(?![\\p{L}\\p{N}])";
+        }
+
+        /// <summary>The paragraph with a term written in the target language (a joined Hebrew prefix kept, with a hyphen).</summary>
+        internal static string PutTerm(string text, string term, string target)
+        {
+            if (string.IsNullOrEmpty(text) || string.IsNullOrWhiteSpace(term)) return text;
+            return Regex.Replace(text, TermPattern(term), m =>
+            {
+                var pre = m.Groups["pre"].Value;
+                return pre.Length > 0 ? pre + "-" + target : target;
+            }, RegexOptions.IgnoreCase | RegexOptions.CultureInvariant);
         }
 
         /// <summary>Replaces <paramref name="find"/> (whole words, any case) with <paramref name="replacement"/>.</summary>

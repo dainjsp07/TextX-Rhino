@@ -243,7 +243,10 @@ namespace TextX.Core.Documents.Export
         /// </summary>
         private static List<List<DocBlock>> Stacks(DocPage page, List<DocBlock> write, PageGeometry geo, HashSet<DocBlock> repeats)
         {
-            var candidates = write.Where(b => Changed(b) && !b.IsRotated && !repeats.Contains(b) && b.Kind != BlockKind.TableCell && b.Kind != BlockKind.HeaderFooter)
+            // a cell of a ruled table keeps its row; texts read as cells only because they share a baseline with
+            // others (the callouts and legend of a drawing) are stacked like any other text
+            var candidates = write.Where(b => Changed(b) && !b.IsRotated && !repeats.Contains(b) && b.Kind != BlockKind.HeaderFooter &&
+                                              (b.Kind != BlockKind.TableCell || !InOwnCell(page, b, geo)))
                                   .OrderByDescending(b => b.Box.T).ToList();
             var below = new Dictionary<DocBlock, DocBlock>();
             var hasAbove = new HashSet<DocBlock>();
@@ -279,6 +282,16 @@ namespace TextX.Core.Documents.Export
                 groups.Add(g);
             }
             return groups;
+        }
+
+        /// <summary>A text alone in a ruled cell (a title-block field, a cell of a drawn table).</summary>
+        private static bool InOwnCell(DocPage page, DocBlock b, PageGeometry geo)
+        {
+            float l, r, bo, t;
+            geo.CellAround(b.Box, out l, out r, out bo, out t);
+            if (float.IsNaN(l) || float.IsNaN(r) || float.IsNaN(bo) || float.IsNaN(t)) return false;
+            var cell = new Box(l, bo, r, t);
+            return !page.Blocks.Any(o => !ReferenceEquals(o, b) && LanguageGuess.HasWords(o.Source) && cell.Contains(o.Box.CX, o.Box.CY));
         }
 
         /// <summary>
@@ -409,6 +422,18 @@ namespace TextX.Core.Documents.Export
             float below = RoomBelow(page, b, geo, size, height, singleLine ? 1.3f : 0.6f);
             // a paragraph may grow down into free room; a label may take a second line there rather than shrink a lot
             height = Math.Max(height, below);
+            // the ruled line above the text: in tight cells the original's capitals touch it, English
+            // ascenders would cross it, so the translation starts under it
+            float firstBaseline = b.Lines[0].Baseline;
+            float rl, rr, rb, rt;
+            geo.CellAround(new Box(b.Box.L, firstBaseline, b.Box.R, firstBaseline + size * 0.5f), out rl, out rr, out rb, out rt);
+            float ceiling = float.IsNaN(rt) ? float.PositiveInfinity : rt - Math.Max(0.5f, size * 0.06f);
+            float overTop = Math.Max(0f, firstBaseline + size * 0.78f - ceiling);
+            if (overTop > 0f)
+            {
+                height = Math.Max(size, height - overTop);
+                below = Math.Max(size, below - overTop);
+            }
             // first the original's own width (or, for one line, the room on its anchored side); when the
             // translation would have to shrink much there, all the free room on its lines
             float anchored = align == BlockAlign.Right ? b.Box.R - minX : align == BlockAlign.Center ? 2f * Math.Min(b.Box.CX - minX, maxX - b.Box.CX) : maxX - b.Box.L;
@@ -430,19 +455,19 @@ namespace TextX.Core.Documents.Export
                 if (!smaller.Overflow) result = smaller;
             }
             Note(b, result, plan.Report);
-            float firstBaseline = b.Lines[0].Baseline;
-            float baseline = firstBaseline + (size - result.Size) * 0.78f;
-            // under the ruled line above the text (in tight cells the original's capitals touch it)
-            float rl, rr, rb, rt;
-            geo.CellAround(new Box(b.Box.L, firstBaseline, b.Box.R, firstBaseline + size * 0.5f), out rl, out rr, out rb, out rt);
-            if (!float.IsNaN(rt)) baseline = Math.Min(baseline, Math.Max(firstBaseline, rt - result.Size * 0.75f));
+            float baseline = Math.Min(firstBaseline + (size - result.Size) * 0.78f, ceiling - result.Size * 0.78f);
+            // the lines keep one edge: when the widest needs more room than the original had, the whole
+            // paragraph moves away from what is beside it (not each line on its own)
+            float widest = result.Lines.Count == 0 ? 0f : result.Lines.Max(l => l.Width);
+            float edgeL = Math.Max(minX, Math.Min(Math.Max(b.Box.L, minX), maxX - widest));
+            float edgeR = Math.Min(maxX, Math.Max(Math.Min(b.Box.R, maxX), minX + widest));
+            float centre = Math.Max(minX + widest / 2f, Math.Min(b.Box.CX, maxX - widest / 2f));
             foreach (var line in result.Lines)
             {
                 float x;
-                if (align == BlockAlign.Right) x = Math.Min(b.Box.R, maxX) - line.Width;
-                else if (align == BlockAlign.Center) x = b.Box.CX - line.Width / 2f;
-                else x = Math.Max(b.Box.L, minX);
-                // inside the free room: a longer text moves away from what is beside it
+                if (align == BlockAlign.Right) x = edgeR - line.Width;
+                else if (align == BlockAlign.Center) x = centre - line.Width / 2f;
+                else x = edgeL;
                 x = Math.Max(minX, Math.Min(x, maxX - line.Width));
                 plan.Ops.Add(new DrawOp { Line = line, Size = result.Size, X = x, Y = baseline, Angle = 0f, Color = color });
                 baseline -= result.Pitch;
