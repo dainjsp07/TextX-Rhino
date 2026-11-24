@@ -70,7 +70,7 @@ namespace TextX.UI.Studio
             var next = new FlatButton(string.Empty, IconKind.Next, ButtonKind.Secondary, 32) { ToolTip = "Next page (Page Down)", Backdrop = p => p.Surface };
             next.Click += (s, e) => GoToPage(_pageIndex + 1);
             _pageLabel = Ui.Label(_scope, string.Empty, 12.5f, true);
-            _viewMode.Width = 280;
+            _viewMode.Width = 236;
             _viewMode.ToolTip = "Show both pages side by side, or only one";
             _viewMode.Backdrop = p => p.Surface;
             _viewMode.SelectedIndexChanged += (s, e) => LayoutViewer();
@@ -83,7 +83,7 @@ namespace TextX.UI.Studio
             zoomIn.Click += (s, e) => ZoomPages(1.25f);
             _originalView.ViewChanged += (s, e) => FollowView(_originalView, _translatedView);
             _translatedView.ViewChanged += (s, e) => FollowView(_translatedView, _originalView);
-            var pager = new Card(Ui.Row(10, prev, _pageLabel, next, new Panel { Width = 6 }, _viewMode, new Panel { Width = 6 }, zoomOut, zoomFit, zoomIn), new Padding(6, 5, 6, 5), p => p.Surface, p => p.Border, 22f) { Backdrop = p => p.Stage };
+            var pager = new Card(Ui.Row(6, prev, _pageLabel, next, new Panel { Width = 2 }, _viewMode, new Panel { Width = 2 }, zoomOut, zoomFit, zoomIn), new Padding(6, 5, 6, 5), p => p.Surface, p => p.Border, 22f) { Backdrop = p => p.Stage };
             var pagerRow = new TableLayout { Spacing = new Size(0, 0) };
             pagerRow.Rows.Add(new TableRow(new TableCell(null, true), new TableCell(pager, false), new TableCell(null, true)));
 
