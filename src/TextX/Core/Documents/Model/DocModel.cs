@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Globalization;
 using System.Linq;
+using TextX.Core.Documents.Ocr;
 
 namespace TextX.Core.Documents
 {
@@ -162,7 +163,7 @@ namespace TextX.Core.Documents
         /// in the history. Scanned pages are not read by OCR again for this.
         /// </summary>
         public int LayoutVersion;
-        public const int CurrentLayout = 4;
+        public const int CurrentLayout = 5;
         public List<DocBlock> Blocks = new List<DocBlock>();
         public List<Box> Images = new List<Box>();
         public int TableCount;
@@ -359,7 +360,10 @@ namespace TextX.Core.Documents
                     Index = (int)Num(pd, "i"), Width = (float)Num(pd, "w"), Height = (float)Num(pd, "h"), Rotation = (int)Num(pd, "rot"),
                     OriginX = (float)Num(pd, "ox"), OriginY = (float)Num(pd, "oy"), Scanned = Bool(pd, "scan"), HasOcrLayer = Bool(pd, "ocrl"), OutlinedText = Bool(pd, "outl"),
                     OcrConfidence = (float)Num(pd, "ocrc"), OcrLanguages = Json.GetString(pd, "ocrlang"),
-                    LayoutVersion = (int)Num(pd, "layout"), Extracted = Bool(pd, "x") && ((int)Num(pd, "layout") >= DocPage.CurrentLayout || Bool(pd, "scan")),
+                    LayoutVersion = (int)Num(pd, "layout"),
+                    // read again by a newer version; a scanned page only when OCR read it with Latin models (it may be Hebrew)
+                    Extracted = Bool(pd, "x") && ((int)Num(pd, "layout") >= DocPage.CurrentLayout ||
+                                                 (Bool(pd, "scan") && !OcrLanguages.IsLatinOnly(Json.GetString(pd, "ocrlang")))),
                     TableCount = (int)Num(pd, "tables"),
                 };
                 foreach (var io in Json.GetList(pd, "img") ?? new List<object>()) page.Images.Add(Box.FromJson(io));

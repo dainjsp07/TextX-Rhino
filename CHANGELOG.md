@@ -12,6 +12,15 @@ into a dated section when you release.
 
 ## [Unreleased]
 
+## [2.0.3] - 2026-11-24
+
+### Fixed
+- **Hebrew drawing text is read and translated.** On a drawing whose Hebrew words are outlines (CAD export)
+  and whose only real text is an English title block, OCR used the English model, read the Hebrew as
+  nonsense ("PTNINW", "NINN") and the page had "nothing to translate". OCR now takes the language from the
+  drawing itself, the rest of the document and the file name, and uses the Hebrew model (which also reads
+  English). Documents read this way are read again when you open them.
+
 ## [2.0.2] - 2026-11-22
 
 ### Fixed

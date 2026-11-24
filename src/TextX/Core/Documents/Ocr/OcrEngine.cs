@@ -234,6 +234,21 @@ namespace TextX.Core.Documents.Ocr
             { "Telugu", "tel" }, { "Kannada", "kan" }, { "Malayalam", "mal" }, { "Gujarati", "guj" }, { "Gurmukhi", "pan" },
         };
 
+        private static readonly HashSet<string> NonLatin = new HashSet<string>(StringComparer.OrdinalIgnoreCase)
+        {
+            "heb", "ara", "fas", "urd", "yid", "rus", "ukr", "bul", "srp", "ell", "chi_sim", "chi_tra", "jpn", "kor", "hin", "tha",
+            "kat", "hye", "ben", "tam", "tel", "kan", "mal", "guj", "pan", "script/Cyrillic",
+        };
+
+        /// <summary>True when OCR ran with Latin-script models only (or not at all).</summary>
+        public static bool IsLatinOnly(string languages)
+        {
+            if (string.IsNullOrEmpty(languages)) return true;
+            foreach (var part in languages.Split('+'))
+                if (NonLatin.Contains(part.Trim())) return false;
+            return true;
+        }
+
         /// <summary>Tesseract data for a known source language; English is added for mixed drawings.</summary>
         public static string ForLanguage(string code)
         {

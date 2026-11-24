@@ -164,8 +164,10 @@ namespace TextX.Core.Documents
             int dpi = (int)Math.Round(scale * 72);
             var gray = background.ToGray();
             string languages = OcrLanguages.ForLanguage(options.SourceLang);
-            // auto: the page's own real text, then the rest of the document, then the script seen on the image
-            if (languages == null) languages = OcrLanguages.ForLanguage(LanguageGuess.FromScript(string.Join(" ", page.Blocks.Select(b => b.Source))));
+            // auto: the page's own real text, then the rest of the document (and its file name), then the script
+            // seen on the image. A drawing's real text is often only its English title block while the drawing's
+            // own words (outlines) are Hebrew: real text decides only when it is in a script other than Latin.
+            if (languages == null) languages = OcrLanguages.ForLanguage(LanguageGuess.FromScript(string.Join(" ", page.Blocks.Where(b => !b.FromOcr).Select(b => b.Source))));
             if (languages == null) languages = OcrLanguages.ForLanguage(options.LanguageHint);
             if (languages == null)
             {
@@ -174,10 +176,13 @@ namespace TextX.Core.Documents
                 ScriptDetection script = null;
                 try { script = OcrEngine.DetectScript(gray, background.Width, background.Height, dpi); }
                 catch (Exception) { script = null; }
-                // line drawings mislead script detection: trust it only when it is sure
+                // line drawings mislead script detection: trust it when it is sure, or when it sees a script other
+                // than Latin at all (its model also reads English, so a wrong guess costs little; reading Hebrew
+                // with the Latin model gives nonsense like "PTNINW" and nothing gets translated)
                 bool sure = script != null && (!sparse || script.ScriptConfidence >= 1.5f);
+                bool otherScript = script != null && !string.IsNullOrEmpty(script.Script) && script.Script != "Latin" && script.ScriptConfidence >= 0.3f;
                 if (options.Status != null && script != null) options.Status.Report("Script " + script.Script + " (" + script.ScriptConfidence.ToString("0.00", System.Globalization.CultureInfo.InvariantCulture) + ")");
-                languages = OcrLanguages.ForScript(sure ? script.Script : null);
+                languages = OcrLanguages.ForScript(sure || otherScript ? script.Script : null);
             }
             await OcrEngine.EnsureDataAsync(languages, Report(options, "Downloading OCR data"), ct).ConfigureAwait(false);
             ct.ThrowIfCancellationRequested();

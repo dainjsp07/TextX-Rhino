@@ -14,6 +14,8 @@ namespace TextX.Tests
 {
     public static partial class CoreTests
     {
+        private static bool OcrLanguagesLatin(string l) { return TextX.Core.Documents.Ocr.OcrLanguages.IsLatinOnly(l); }
+
         /// <summary>Right-to-left drawings, title-block checks and OCR clean-up for drawings (made-up content).</summary>
         public static void Drawings()
         {
@@ -29,6 +31,8 @@ namespace TextX.Tests
             True(pieces.Count == 2 && pieces.All(x => x.Length <= 480), "long text cut for a service limit");
             True(LanguageGuess.IsReference("A-12 3") && !LanguageGuess.IsReference("חתך1"), "a word joined to a number is translated");
             Equal("Scale", DrawingVocabulary.Lookup(TextX.Core.Translation.Glossary.Normalize("קנ\"מ:"), "he", "en"), "title block word");
+            True(OcrLanguagesLatin("script/Latin") && OcrLanguagesLatin("eng") && !OcrLanguagesLatin("heb+eng"), "OCR models by script");
+            Equal("he", LanguageGuess.FromScript("04.11 חיפוי קיר משרדים.pdf"), "a Hebrew file name hints Hebrew");
             Func<string, string> vocab = t => DrawingVocabulary.Lookup(TextX.Core.Translation.Glossary.Normalize(t), "he", "en", t);
             Equal("Scale 1:25", vocab("קנ\"מ1:25"), "scale with its ratio");
             Equal("1 Scale 1:25", vocab("1 קנ\" מ1:25"), "scale with a loose gershayim");

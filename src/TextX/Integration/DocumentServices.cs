@@ -88,6 +88,9 @@ namespace TextX.Integration
                     var old = project.Pages[i];
                     project.Pages[i] = await PageReader.ReadAsync(doc, i, options, ct).ConfigureAwait(false);
                     PageReader.CarryOver(old, project.Pages[i]);
+                    // a page read again may show another language (Hebrew where English OCR saw nonsense): detect again
+                    if (old.Blocks.Count > 0 && (string.IsNullOrEmpty(project.SourceLangSetting) || project.SourceLangSetting == TextX.Core.Languages.AutoDetect))
+                        project.SourceLang = string.Empty;
                     if (pagesDone != null) pagesDone.Report(i + 1);
                 }
             }
@@ -96,8 +99,12 @@ namespace TextX.Integration
         /// <summary>The language of the text read so far (by its script), for pages that only OCR can read.</summary>
         private static string LanguageHint(DocProject project)
         {
-            var text = string.Join(" ", project.Pages.Where(p => p.Extracted).SelectMany(p => p.Blocks).Take(400).Select(b => b.Source));
-            return LanguageGuess.FromScript(text);
+            // real text, and OCR text read with a non-Latin model (Latin OCR of Hebrew is nonsense in Latin letters)
+            var text = string.Join(" ", project.Pages.Where(p => p.Extracted)
+                .SelectMany(p => p.Blocks.Where(b => !b.FromOcr || !OcrLanguages.IsLatinOnly(p.OcrLanguages)))
+                .Take(400).Select(b => b.Source));
+            // then the file name: "חיפוי קיר משרדים.pdf" is a Hebrew drawing even when its title block is English
+            return LanguageGuess.FromScript(text) ?? LanguageGuess.FromScript(project.Name);
         }
 
         /// <summary>A small picture of the first page for the history list.</summary>
