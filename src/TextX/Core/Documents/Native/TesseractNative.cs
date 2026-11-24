@@ -33,7 +33,7 @@ namespace TextX.Core.Documents.Native
         [DllImport(Lib, CallingConvention = CC)] public static extern void TessDeleteText(IntPtr text);
 
         public const int OemTesseractOnly = 0, OemLstmOnly = 1, OemDefault = 3;
-        public const int PsmOsdOnly = 0, PsmAutoOsd = 1, PsmAuto = 3, PsmSingleBlock = 6, PsmSparseText = 11;
+        public const int PsmOsdOnly = 0, PsmAutoOsd = 1, PsmAuto = 3, PsmSingleBlock = 6, PsmSingleLine = 7, PsmSparseText = 11;
         public const int LevelBlock = 0, LevelPara = 1, LevelLine = 2, LevelWord = 3;
 
         public static byte[] Utf8Z(string s)

@@ -6,6 +6,7 @@ using System.Net.Http;
 using System.Threading;
 using System.Threading.Tasks;
 using TextX.Core.Documents.Native;
+using TextX.Core.Text;
 using T = TextX.Core.Documents.Native.TesseractNative;
 
 namespace TextX.Core.Documents.Ocr
@@ -136,6 +137,12 @@ namespace TextX.Core.Documents.Ocr
         /// </summary>
         public static OcrResult Recognize(byte[] gray, int width, int height, int dpi, string languages, bool sparse = false)
         {
+            return Recognize(gray, width, height, dpi, languages, sparse ? T.PsmSparseText : T.PsmAuto);
+        }
+
+        /// <summary>Recognises with a given page segmentation mode (7 = one line of text).</summary>
+        public static OcrResult Recognize(byte[] gray, int width, int height, int dpi, string languages, int pageSegMode)
+        {
             lock (Sync)
             {
                 NativeLibraries.EnsureTesseract();
@@ -154,7 +161,7 @@ namespace TextX.Core.Documents.Ocr
                     _api = api;
                     _apiLanguages = languages;
                 }
-                T.TessBaseAPISetPageSegMode(_api, sparse ? T.PsmSparseText : T.PsmAuto);
+                T.TessBaseAPISetPageSegMode(_api, pageSegMode);
                 T.TessBaseAPISetImage(_api, gray, width, height, 1, width);
                 T.TessBaseAPISetSourceResolution(_api, dpi);
                 var result = new OcrResult { ImageWidth = width, ImageHeight = height, Dpi = dpi, Languages = languages };
@@ -194,6 +201,66 @@ namespace TextX.Core.Documents.Ocr
                 }
                 return result;
             }
+        }
+
+        /// <summary>
+        /// On a Hebrew (or Arabic) drawing read with "heb+eng", Tesseract often takes a Hebrew word for
+        /// English ("אחת" becomes "NAN") or is unsure of it, and such words were dropped, leaving Hebrew
+        /// untranslated on the sheet. Each doubtful word in a right-to-left line is read again on its own,
+        /// enlarged, with the right-to-left model alone; the new reading is kept when it is Hebrew and surer.
+        /// Returns the number of words read again successfully.
+        /// </summary>
+        public static int RereadDoubtfulWords(OcrResult ocr, byte[] gray, int width, int height, int dpi, string languages)
+        {
+            if (ocr == null || ocr.Words.Count == 0 || string.IsNullOrEmpty(languages)) return 0;
+            var rtlModel = languages.Split('+').FirstOrDefault(l => l == "heb" || l == "ara" || l == "fas" || l == "urd" || l == "yid");
+            if (rtlModel == null || rtlModel == languages) return 0;
+            var doubtful = new List<OcrWord>();
+            foreach (var line in ocr.Words.GroupBy(w => w.Line))
+            {
+                var words = line.ToList();
+                int rtl = words.Count(w => RtlText.ContainsRtl(w.Text));
+                bool rtlLine = rtl > 0 && rtl * 3 >= words.Count;
+                foreach (var w in words)
+                {
+                    int letters = w.Text.Count(char.IsLetter);
+                    if (letters == 0) continue;
+                    bool hebrew = RtlText.ContainsRtl(w.Text);
+                    bool latin = !hebrew;
+                    // codes and brands in capitals (MDF, ECHOSHAPE) are real English when the engine is sure
+                    bool code = latin && letters >= 3 && w.Text.Where(char.IsLetter).All(char.IsUpper) && w.Confidence >= 80;
+                    if ((rtlLine && latin && !code && w.Confidence < 90) || (hebrew && w.Confidence < 60)) doubtful.Add(w);
+                }
+            }
+            if (doubtful.Count > 600) doubtful = doubtful.OrderBy(w => w.Confidence).Take(600).ToList();
+            int fixedCount = 0;
+            foreach (var w in doubtful)
+            {
+                int h = Math.Max(1, w.Bottom - w.Top), pad = Math.Max(2, (int)(h * 0.35f));
+                int l = Math.Max(0, w.Left - pad), t = Math.Max(0, w.Top - pad), r = Math.Min(width, w.Right + pad), b = Math.Min(height, w.Bottom + pad);
+                if (r - l < 4 || b - t < 4) continue;
+                int scale = h < 40 ? 2 : 1;
+                int cw = (r - l) * scale, ch = (b - t) * scale;
+                var crop = new byte[cw * ch];
+                for (int y = 0; y < ch; y++)
+                {
+                    int sy = t + y / scale;
+                    for (int x = 0; x < cw; x++) crop[y * cw + x] = gray[sy * width + l + x / scale];
+                }
+                OcrResult again;
+                try { again = Recognize(crop, cw, ch, dpi * scale, rtlModel, T.PsmSingleLine); }
+                catch (Exception) { continue; }
+                var read = again.Words.Where(x => !string.IsNullOrWhiteSpace(x.Text)).ToList();
+                if (read.Count == 0) continue;
+                var text = string.Join(" ", read.OrderByDescending(x => x.Right).Select(x => x.Text.Trim()));
+                float conf = read.Min(x => x.Confidence);
+                if (!RtlText.ContainsRtl(text) || conf < 40) continue;
+                if (RtlText.ContainsRtl(w.Text) && conf < w.Confidence + 5) continue;
+                w.Text = text;
+                w.Confidence = conf;
+                fixedCount++;
+            }
+            return fixedCount;
         }
 
         /// <summary>Releases the cached engine (frees the loaded language model).</summary>

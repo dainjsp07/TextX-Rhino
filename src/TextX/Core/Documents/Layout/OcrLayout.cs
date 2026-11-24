@@ -63,6 +63,9 @@ namespace TextX.Core.Documents.Layout
                 int letters = w.Text.Count(char.IsLetter), digits = w.Text.Count(char.IsDigit);
                 if (letters + digits == 0) return false;
                 if (letters + digits == 1 && w.Confidence < 85) return false;
+                // a Hebrew word read with some doubt is still worth translating: dropping it leaves it untranslated
+                bool rtlWord = RtlText.ContainsRtl(w.Text);
+                if (rtlWord && w.Text.Count(c => RtlText.ContainsRtl(c.ToString())) >= 2 && w.Confidence >= 25) return true;
                 if (w.Confidence < 55) return false;
                 bool latinOnly = letters > 0 && digits == 0 && !RtlText.ContainsRtl(w.Text);
                 if (rtlLine && latinOnly && w.Confidence < 85) return false;

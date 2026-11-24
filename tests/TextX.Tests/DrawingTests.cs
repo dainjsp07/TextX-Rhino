@@ -118,6 +118,9 @@ namespace TextX.Tests
             True(PageReader.LooksOutlined(new List<PdfChar>(), shapes), "outlined text detected");
             var letters = Enumerable.Range(0, 200).Select(i => new PdfChar { Code = 'a' }).ToList();
             True(!PageReader.LooksOutlined(letters, shapes), "a page with real words is read from its text");
+            var cover = Enumerable.Range(0, 60).Select(i => new PdfObjectInfo { Type = 2, Left = i * 40, Bottom = 400, Right = i * 40 + 30, Top = 440 }).ToList();
+            True(PageReader.LooksOutlined(new List<PdfChar>(), cover), "a cover sheet with a drawn title is read with OCR");
+            Equal("לקיר", string.Join(" ", OcrLayout.DrawingWords(new List<OcrWord> { new OcrWord { Text = "לקיר", Confidence = 33 } }).Select(w => w.Text)), "an unsure Hebrew word is kept");
         }
 
         public static void DocxImages()

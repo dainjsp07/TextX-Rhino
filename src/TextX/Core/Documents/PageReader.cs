@@ -146,6 +146,8 @@ namespace TextX.Core.Documents
         {
             int words = letters.Count(c => char.IsLetter(Safe(c.Code)));
             if (words >= 80) return false;
+            // no real text at all but drawn shapes (a cover sheet whose title is outlined)
+            if (words < 12 && objects.Count(o => o.IsPath) >= 20) return true;
             int glyphLike = objects.Count(o => o.IsPath && o.Width > 0.8f && o.Height > 0.8f && o.Width < 12f && o.Height < 12f);
             return glyphLike >= 600;
         }
@@ -187,6 +189,9 @@ namespace TextX.Core.Documents
             await OcrEngine.EnsureDataAsync(languages, Report(options, "Downloading OCR data"), ct).ConfigureAwait(false);
             ct.ThrowIfCancellationRequested();
             var ocr = await Task.Run(() => OcrEngine.Recognize(gray, background.Width, background.Height, dpi, languages, sparse), ct).ConfigureAwait(false);
+            // Hebrew words taken for English or read with doubt: read each again with the Hebrew model alone
+            ct.ThrowIfCancellationRequested();
+            await Task.Run(() => OcrEngine.RereadDoubtfulWords(ocr, gray, background.Width, background.Height, dpi, languages), ct).ConfigureAwait(false);
             page.OcrConfidence = ocr.MeanConfidence;
             page.OcrLanguages = languages;
             return OcrLayout.BuildLines(ocr, page, scale, 30f, info, drawing);

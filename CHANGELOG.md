@@ -12,6 +12,16 @@ into a dated section when you release.
 
 ## [Unreleased]
 
+## [2.0.4] - 2026-11-24
+
+### Fixed
+- **More of a Hebrew drawing is translated.** OCR took many Hebrew words of CAD fonts for English ("אחת"
+  read as "NAN") or was unsure of them, and those words were left out: whole phrases stayed in Hebrew on the
+  translated sheet. Each doubtful word is now read again with the Hebrew model alone, and Hebrew words read
+  with some doubt are kept and translated.
+- **Cover sheets** whose title is drawn (no real text) are read with OCR instead of "nothing to translate".
+- Documents read before are read again when you open them.
+
 ## [2.0.3] - 2026-11-24
 
 ### Fixed

@@ -163,7 +163,7 @@ namespace TextX.Core.Documents
         /// in the history. Scanned pages are not read by OCR again for this.
         /// </summary>
         public int LayoutVersion;
-        public const int CurrentLayout = 5;
+        public const int CurrentLayout = 6;
         public List<DocBlock> Blocks = new List<DocBlock>();
         public List<Box> Images = new List<Box>();
         public int TableCount;
