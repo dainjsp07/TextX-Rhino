@@ -12,6 +12,23 @@ into a dated section when you release.
 
 ## [Unreleased]
 
+## [2.0.5] - 2026-11-24
+
+### Added
+- **Zoom and move the pages** in Text X Studio: the mouse wheel zooms around the pointer (like a Rhino
+  viewport), dragging moves the page, double-click shows the whole page again; or use the new zoom out,
+  whole page and zoom in buttons next to the page number. The original and the translation move together,
+  and a sharper picture is made when you zoom in.
+
+### Fixed
+- **Comment boxes and notes added in a PDF viewer are translated.** Typed notes, comment boxes, stamps and
+  pen marks (annotations) lie above the page: their Hebrew was left untranslated and covered the English
+  written under it ("A drawi..." cut off at the box). They are now read as part of the page, exactly (no
+  OCR needed for typed notes), and the translation is drawn on top.
+- **Fewer Hebrew words left between the English** on drawings read with OCR: a word OCR could not read
+  surely no longer splits its line, and its place is covered with the translation; Hebrew misread as
+  capital-letter English ("NAN" for "אחת") is read again in Hebrew.
+
 ## [2.0.4] - 2026-11-24
 
 ### Fixed

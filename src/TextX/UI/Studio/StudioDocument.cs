@@ -74,7 +74,16 @@ namespace TextX.UI.Studio
             _viewMode.ToolTip = "Show both pages side by side, or only one";
             _viewMode.Backdrop = p => p.Surface;
             _viewMode.SelectedIndexChanged += (s, e) => LayoutViewer();
-            var pager = new Card(Ui.Row(10, prev, _pageLabel, next, new Panel { Width = 6 }, _viewMode), new Padding(6, 5, 6, 5), p => p.Surface, p => p.Border, 22f) { Backdrop = p => p.Stage };
+            // zoom: the buttons, the mouse wheel on the page, double-click for the whole page; both pages move together
+            var zoomOut = new FlatButton(string.Empty, IconKind.Minus, ButtonKind.Secondary, 32) { ToolTip = "Zoom out (or turn the mouse wheel on the page)", Backdrop = p => p.Surface };
+            zoomOut.Click += (s, e) => ZoomPages(0.8f);
+            var zoomFit = new FlatButton(string.Empty, IconKind.Fit, ButtonKind.Secondary, 32) { ToolTip = "Whole page (or double-click the page)", Backdrop = p => p.Surface };
+            zoomFit.Click += (s, e) => ZoomPages(0f);
+            var zoomIn = new FlatButton(string.Empty, IconKind.Plus, ButtonKind.Secondary, 32) { ToolTip = "Zoom in (or turn the mouse wheel on the page; drag to move)", Backdrop = p => p.Surface };
+            zoomIn.Click += (s, e) => ZoomPages(1.25f);
+            _originalView.ViewChanged += (s, e) => FollowView(_originalView, _translatedView);
+            _translatedView.ViewChanged += (s, e) => FollowView(_translatedView, _originalView);
+            var pager = new Card(Ui.Row(10, prev, _pageLabel, next, new Panel { Width = 6 }, _viewMode, new Panel { Width = 6 }, zoomOut, zoomFit, zoomIn), new Padding(6, 5, 6, 5), p => p.Surface, p => p.Border, 22f) { Backdrop = p => p.Stage };
             var pagerRow = new TableLayout { Spacing = new Size(0, 0) };
             pagerRow.Rows.Add(new TableRow(new TableCell(null, true), new TableCell(pager, false), new TableCell(null, true)));
 
@@ -436,6 +445,54 @@ namespace TextX.UI.Studio
             }
         }
 
+        private PageView ShownView { get { return _originalView.Visible ? _originalView : _translatedView; } }
+
+        /// <summary>Zooms the page(s) by a factor; 0 shows the whole page.</summary>
+        private void ZoomPages(float factor)
+        {
+            var view = _translatedView.Visible && !_originalView.Visible ? _translatedView : ShownView;
+            if (factor <= 0) view.ZoomToFit();
+            else view.ZoomBy(factor);
+        }
+
+        /// <summary>The other page shows the same part, and a sharper picture is made when zoomed in far.</summary>
+        private void FollowView(PageView from, PageView to)
+        {
+            float z, cx, cy;
+            from.GetView(out z, out cx, out cy);
+            to.SetView(z, cx, cy);
+            RequestSharperPages(z);
+        }
+
+        private float _renderedScale;
+        private UITimer _sharpenTimer;
+
+        private void RequestSharperPages(float zoom)
+        {
+            var page = CurrentPage;
+            if (page == null) return;
+            float wanted = Math.Min(MaxRenderScale(page), BaseRenderScale(page) * Math.Min(zoom, 2.5f));
+            if (wanted <= _renderedScale * 1.2f) return;
+            if (_sharpenTimer == null)
+            {
+                _sharpenTimer = new UITimer { Interval = 0.35 };
+                _sharpenTimer.Elapsed += (s, e) => { _sharpenTimer.Stop(); RenderPages(); };
+            }
+            _sharpenTimer.Stop();
+            _sharpenTimer.Start();
+        }
+
+        private static float BaseRenderScale(DocPage page)
+        {
+            return Math.Min(2.2f, Math.Max(1f, 1500f / Math.Max(page.Width, page.Height)));
+        }
+
+        /// <summary>At most about 30 million pixels per page picture.</summary>
+        private static float MaxRenderScale(DocPage page)
+        {
+            return (float)Math.Max(1.0, Math.Min(4.0, Math.Sqrt(30e6 / Math.Max(1.0, (double)page.Width * page.Height))));
+        }
+
         private void GoToPage(int index)
         {
             var p = _project;
@@ -444,6 +501,8 @@ namespace TextX.UI.Studio
             if (index == _pageIndex) return;
             _pageIndex = index;
             _pageLabel.Text = (_pageIndex + 1) + " / " + p.PageCount;
+            _originalView.SetView(1f, 0.5f, 0.5f);
+            _translatedView.SetView(1f, 0.5f, 0.5f);
             RefreshBlockList();
             RenderPages();
         }
@@ -472,9 +531,10 @@ namespace TextX.UI.Studio
             if (project == null || page == null) return;
             int id = ++_renderId;
             int index = _pageIndex;
-            float scale = Math.Min(2.2f, Math.Max(1f, 1500f / Math.Max(page.Width, page.Height)));
-            byte[] cached;
-            _originalCache.TryGetValue(index, out cached);
+            // sharper when zoomed in (the view's zoom decides; whole page: the usual size)
+            float scale = Math.Min(MaxRenderScale(page), BaseRenderScale(page) * Math.Max(1f, Math.Min(_originalView.Zoom, 2.5f)));
+            byte[] cached = null;
+            if (scale <= BaseRenderScale(page) + 0.001f) _originalCache.TryGetValue(index, out cached);
             bool translated = project.AllBlocks.Any(b => b.Page == index && (b.State == BlockState.Translated || b.State == BlockState.Edited));
             if (!translated) _translatedView.SetPlaceholder(project.TranslatedBlocks > 0 ? "This page has nothing to translate" : "Click Translate to see the translation here");
             Task.Run(() =>
@@ -505,7 +565,8 @@ namespace TextX.UI.Studio
                         return;
                     }
                     var images = t.Result;
-                    _originalCache[index] = images[0];
+                    if (scale <= BaseRenderScale(page) + 0.001f) _originalCache[index] = images[0];
+                    _renderedScale = scale;
                     _originalView.SetImage(new Bitmap(images[0]), page, scale);
                     if (images[1] != null) _translatedView.SetImage(new Bitmap(images[1]), page, scale);
                     RefreshBlockList();

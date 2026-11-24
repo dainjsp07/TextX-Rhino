@@ -16,10 +16,15 @@ namespace TextX.Core.Documents.Layout
         {
             var lines = new List<DocLine>();
             foreach (var w in ocr.Words) w.Text = StripMarks(w.Text);
+            if (drawing)
+            {
+                foreach (var group in ocr.Words.Where(w => w.Text.Length > 0).GroupBy(w => w.Line))
+                    lines.AddRange(DrawingLines(group.OrderBy(w => w.Left).ToList(), page, scale, image));
+                return lines.OrderByDescending(l => Math.Round(l.Baseline / Math.Max(2f, l.FontSize * 0.5f))).ThenBy(l => l.Box.L).ToList();
+            }
             foreach (var group in ocr.Words.Where(w => w.Text.Length > 0 && (w.Confidence >= minConfidence || w.Text.Length > 2)).GroupBy(w => w.Line))
             {
                 var words = group.OrderBy(w => w.Left).ToList();
-                if (drawing) words = DrawingWords(words);
                 if (words.Count == 0) continue;
                 if (words.Count == 0) continue;
                 // split a line at wide gaps (separate labels on a drawing)
@@ -65,7 +70,7 @@ namespace TextX.Core.Documents.Layout
                 if (letters + digits == 1 && w.Confidence < 85) return false;
                 // a Hebrew word read with some doubt is still worth translating: dropping it leaves it untranslated
                 bool rtlWord = RtlText.ContainsRtl(w.Text);
-                if (rtlWord && w.Text.Count(c => RtlText.ContainsRtl(c.ToString())) >= 2 && w.Confidence >= 25) return true;
+                if (rtlWord && w.Text.Count(c => RtlText.ContainsRtl(c.ToString())) >= 2 && w.Confidence >= 10) return true;
                 if (w.Confidence < 55) return false;
                 bool latinOnly = letters > 0 && digits == 0 && !RtlText.ContainsRtl(w.Text);
                 if (rtlLine && latinOnly && w.Confidence < 85) return false;
@@ -74,7 +79,46 @@ namespace TextX.Core.Documents.Layout
             }).ToList();
         }
 
-        private static DocLine MakeLine(List<OcrWord> words, DocPage page, float scale, RenderedImageInfo image)
+        /// <summary>
+        /// The labels of one OCR line on a drawing. A word left out (unsure, or English misread in a Hebrew
+        /// line) still holds its place: the line is not split at the hole it leaves, and its box still covers
+        /// it, so no untranslated Hebrew is left showing between the translated words.
+        /// </summary>
+        private static List<DocLine> DrawingLines(List<OcrWord> words, DocPage page, float scale, RenderedImageInfo image)
+        {
+            var result = new List<DocLine>();
+            var keep = new HashSet<OcrWord>(DrawingWords(words));
+            if (keep.Count == 0) return result;
+            float keptHeight = LayoutAnalyzer.Median(keep.Select(w => (float)Math.Max(1, w.Bottom - w.Top)));
+            Func<OcrWord, bool> holdsPlace = w =>
+            {
+                if (keep.Contains(w)) return true;
+                int h = w.Bottom - w.Top;
+                return w.Text.Count(char.IsLetterOrDigit) >= 2 && h >= keptHeight * 0.5f && h <= keptHeight * 1.8f;
+            };
+            var placed = words.Where(holdsPlace).ToList();
+            var part = new List<OcrWord>();
+            Action flush = () =>
+            {
+                var kept = part.Where(keep.Contains).ToList();
+                if (kept.Count > 0) result.Add(MakeLine(kept, page, scale, image, part));
+                part = new List<OcrWord>();
+            };
+            for (int i = 0; i < placed.Count; i++)
+            {
+                if (part.Count > 0)
+                {
+                    var prev = part[part.Count - 1];
+                    int h = Math.Max(1, Math.Max(placed[i].Bottom - placed[i].Top, prev.Bottom - prev.Top));
+                    if (placed[i].Left - prev.Right > h * 2.2) flush();
+                }
+                part.Add(placed[i]);
+            }
+            flush();
+            return result;
+        }
+
+        private static DocLine MakeLine(List<OcrWord> words, DocPage page, float scale, RenderedImageInfo image, List<OcrWord> area = null)
         {
             bool rtl = words.Count(w => RtlText.ContainsRtl(w.Text)) * 2 > words.Count;
             var ordered = rtl ? words.OrderByDescending(w => w.Right).ToList() : words;
@@ -84,7 +128,9 @@ namespace TextX.Core.Documents.Layout
                 if (sb.Length > 0 && !(LayoutAnalyzer.IsCjk(sb[sb.Length - 1]) && w.Text.Length > 0 && LayoutAnalyzer.IsCjk(w.Text[0]))) sb.Append(' ');
                 sb.Append(w.Text);
             }
-            int left = words.Min(w => w.Left), right = words.Max(w => w.Right);
+            // the box spans the words read and, on a drawing, those left out between them (to be covered too)
+            var span = area != null && area.Count > 0 ? area : words;
+            int left = span.Min(w => w.Left), right = span.Max(w => w.Right);
             int top = words.Min(w => w.Top), bottom = words.Max(w => w.Bottom);
             float x1, y1, x2, y2;
             page.DisplayToFrame(left / scale, top / scale, out x1, out y1);

@@ -201,11 +201,45 @@ namespace TextX.Core.Documents.Native
 
         public PdfPage LoadPage(int index)
         {
+            return LoadPage(index, true);
+        }
+
+        /// <summary>A page; with <paramref name="flattenAnnotations"/>, its comment boxes and markups become part of it.</summary>
+        public PdfPage LoadPage(int index, bool flattenAnnotations)
+        {
             lock (Pdfium.Sync)
             {
                 var page = N.FPDF_LoadPage(_doc, index);
                 if (page == IntPtr.Zero) throw new PdfException("Page " + (index + 1) + " could not be read.");
-                return new PdfPage(this, page, index);
+                return new PdfPage(this, flattenAnnotations ? FlattenAnnotations(page, index) : page, index);
+            }
+        }
+
+        private static bool _flattenMissing;
+
+        /// <summary>
+        /// Comment boxes, typed notes, stamps and pen marks added in a PDF viewer are annotations drawn above
+        /// the page: their text was invisible to the reader (or only seen by OCR) and covered the translation
+        /// written under them. They are made part of the page (in memory; the file is not changed), so their
+        /// text is read exactly, translated, and the translation goes on top.
+        /// </summary>
+        private IntPtr FlattenAnnotations(IntPtr page, int index)
+        {
+            if (_flattenMissing) return page;
+            try
+            {
+                if (N.FPDFPage_GetAnnotCount(page) <= 0) return page;
+                if (N.FPDFPage_Flatten(page, 0) != 1) return page;
+                // the page has new content: load it again
+                N.FPDF_ClosePage(page);
+                var again = N.FPDF_LoadPage(_doc, index);
+                if (again == IntPtr.Zero) throw new PdfException("Page " + (index + 1) + " could not be read.");
+                return again;
+            }
+            catch (EntryPointNotFoundException)
+            {
+                _flattenMissing = true;
+                return page;
             }
         }
 
@@ -318,6 +352,16 @@ namespace TextX.Core.Documents.Native
             {
                 OriginX = Math.Min(l, r);
                 OriginY = Math.Min(b, t);
+            }
+        }
+
+        /// <summary>Number of annotations (comments, markups) still on the page.</summary>
+        public int AnnotationCount
+        {
+            get
+            {
+                try { lock (Pdfium.Sync) return Math.Max(0, N.FPDFPage_GetAnnotCount(_page)); }
+                catch (EntryPointNotFoundException) { return 0; }
             }
         }
 

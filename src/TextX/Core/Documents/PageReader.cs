@@ -40,6 +40,11 @@ namespace TextX.Core.Documents
             bool scanned, ocrLayer, outlined;
             RenderedImage background = null;
             PageGeometry geometry;
+            // the page's own letters, before comment boxes become part of it: whether the drawing itself
+            // is outlined (needs OCR) does not depend on the notes someone typed over it
+            List<PdfChar> ownChars = null;
+            using (var before = file.LoadPage(index, false))
+                if (before.AnnotationCount > 0) ownChars = before.GetChars();
             using (var p = file.LoadPage(index))
             {
                 page = new DocPage { Index = index, Width = p.Width, Height = p.Height, Rotation = p.Rotation, OriginX = p.OriginX, OriginY = p.OriginY };
@@ -58,11 +63,12 @@ namespace TextX.Core.Documents
                     maxImage = Math.Max(maxImage, area / pageArea);
                     if (area / pageArea >= 0.005f) page.Images.Add(clipped);
                 }
-                var letters = chars.Where(c => !c.Generated && c.Code > 32 && c.Code < 0x10FFFF && (char.IsLetterOrDigit(Safe(c.Code)) || c.Code > 0x2E80)).ToList();
+                var letters = (ownChars ?? chars).Where(c => !c.Generated && c.Code > 32 && c.Code < 0x10FFFF && (char.IsLetterOrDigit(Safe(c.Code)) || c.Code > 0x2E80)).ToList();
                 int invisible = 0;
                 if (maxImage > 0.35f && letters.Count > 0)
                 {
-                    var objectsOfText = letters.Where(c => c.TextObject != IntPtr.Zero).GroupBy(c => c.TextObject).ToList();
+                    // (text objects of this page: the letters counted above may come from the page before its comments were added)
+                    var objectsOfText = chars.Where(c => !c.Generated && c.Code > 32 && c.TextObject != IntPtr.Zero).GroupBy(c => c.TextObject).ToList();
                     foreach (var g in objectsOfText) if (PdfPage.IsInvisibleText(g.Key)) invisible += g.Count();
                 }
                 scanned = letters.Count < 12 && maxImage > 0.35f;

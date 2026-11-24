@@ -37,6 +37,8 @@ namespace TextX.UI.Theming
         Search,
         Sun,
         Moon,
+        Minus,
+        Fit,
     }
 
     /// <summary>
@@ -152,6 +154,16 @@ namespace TextX.UI.Theming
                 case IconKind.Plus:
                     poly(new float[] { 12, 5, 12, 19 });
                     poly(new float[] { 5, 12, 19, 12 });
+                    break;
+                case IconKind.Minus:
+                    poly(new float[] { 5, 12, 19, 12 });
+                    break;
+                case IconKind.Fit:
+                    // four corners: the whole page
+                    poly(new float[] { 4, 9, 4, 4, 9, 4 });
+                    poly(new float[] { 15, 4, 20, 4, 20, 9 });
+                    poly(new float[] { 20, 15, 20, 20, 15, 20 });
+                    poly(new float[] { 9, 20, 4, 20, 4, 15 });
                     break;
                 case IconKind.Refresh:
                     {

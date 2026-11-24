@@ -22,6 +22,9 @@ namespace TextX.Core.Documents.Native
         [DllImport(Lib, CallingConvention = CC)] public static extern int FPDF_GetPageCount(IntPtr document);
         [DllImport(Lib, CallingConvention = CC)] public static extern IntPtr FPDF_LoadPage(IntPtr document, int index);
         [DllImport(Lib, CallingConvention = CC)] public static extern void FPDF_ClosePage(IntPtr page);
+        [DllImport(Lib, CallingConvention = CC)] public static extern int FPDFPage_GetAnnotCount(IntPtr page);
+        /// <summary>Draws annotations into the page content (flag 0: as shown on screen). 1 = done, 2 = nothing to do.</summary>
+        [DllImport(Lib, CallingConvention = CC)] public static extern int FPDFPage_Flatten(IntPtr page, int flag);
         [DllImport(Lib, CallingConvention = CC)] public static extern float FPDF_GetPageWidthF(IntPtr page);
         [DllImport(Lib, CallingConvention = CC)] public static extern float FPDF_GetPageHeightF(IntPtr page);
         [DllImport(Lib, CallingConvention = CC)] public static extern int FPDFPage_GetRotation(IntPtr page);

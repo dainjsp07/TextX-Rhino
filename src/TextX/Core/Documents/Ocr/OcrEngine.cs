@@ -228,7 +228,7 @@ namespace TextX.Core.Documents.Ocr
                     bool hebrew = RtlText.ContainsRtl(w.Text);
                     bool latin = !hebrew;
                     // codes and brands in capitals (MDF, ECHOSHAPE) are real English when the engine is sure
-                    bool code = latin && letters >= 3 && w.Text.Where(char.IsLetter).All(char.IsUpper) && w.Confidence >= 80;
+                    bool code = latin && letters >= 3 && w.Text.Where(char.IsLetter).All(char.IsUpper) && w.Confidence >= 93;
                     if ((rtlLine && latin && !code && w.Confidence < 90) || (hebrew && w.Confidence < 60)) doubtful.Add(w);
                 }
             }
@@ -256,6 +256,9 @@ namespace TextX.Core.Documents.Ocr
                 float conf = read.Min(x => x.Confidence);
                 if (!RtlText.ContainsRtl(text) || conf < 40) continue;
                 if (RtlText.ContainsRtl(w.Text) && conf < w.Confidence + 5) continue;
+                // a sure capital-letter word (a code like "NAN" or "MDF") turns Hebrew only when the Hebrew reading is sure too
+                bool capitals = !RtlText.ContainsRtl(w.Text) && w.Text.Where(char.IsLetter).All(char.IsUpper) && w.Confidence >= 80;
+                if (capitals && conf < 70) continue;
                 w.Text = text;
                 w.Confidence = conf;
                 fixedCount++;
