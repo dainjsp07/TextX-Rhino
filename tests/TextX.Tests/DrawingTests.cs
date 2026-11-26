@@ -33,6 +33,10 @@ namespace TextX.Tests
             Equal("Scale", DrawingVocabulary.Lookup(TextX.Core.Translation.Glossary.Normalize("קנ\"מ:"), "he", "en"), "title block word");
             True(OcrLanguagesLatin("script/Latin") && OcrLanguagesLatin("eng") && !OcrLanguagesLatin("heb+eng"), "OCR models by script");
             Equal("he", LanguageGuess.FromScript("04.11 חיפוי קיר משרדים.pdf"), "a Hebrew file name hints Hebrew");
+            True(CaseFold.IsShouting("3X3 GROOVE AS PER CLIENT") && !CaseFold.IsShouting("MDF") && !CaseFold.IsShouting("Oak veneer"), "text in capitals");
+            Equal("3X3 groove as per client", CaseFold.Fold("3X3 GROOVE AS PER CLIENT"), "sent in small letters, codes kept");
+            Equal("CUSTOM GROOVE", CaseFold.Restore("custom groove", "MAKE A GROOVE"), "capitals back in a Latin translation");
+            Equal("חריץ לפי ECHOSHAPE", CaseFold.Restore("חריץ לפי echoshape", "GROOVE AS PER ECHOSHAPE"), "English names get their capitals in Hebrew");
             Func<string, string> vocab = t => DrawingVocabulary.Lookup(TextX.Core.Translation.Glossary.Normalize(t), "he", "en", t);
             Equal("Scale 1:25", vocab("קנ\"מ1:25"), "scale with its ratio");
             Equal("1 Scale 1:25", vocab("1 קנ\" מ1:25"), "scale with a loose gershayim");

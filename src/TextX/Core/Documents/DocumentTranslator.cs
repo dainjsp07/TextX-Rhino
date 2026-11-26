@@ -387,7 +387,7 @@ namespace TextX.Core.Documents
         public async Task RetranslateAsync(DocProject project, DocBlock block, CancellationToken ct)
         {
             string src = string.IsNullOrEmpty(project.SourceLang) ? Languages.AutoDetect : project.SourceLang;
-            _engine.Cache.Remove(TranslationCache.Key(_engine.Provider.Id, src, project.TargetLang, Clean(block.Source)));
+            _engine.Cache.Remove(TranslationCache.Key(_engine.Provider.Id, src, project.TargetLang, CaseFold.CacheText(Clean(block.Source))));
             var outcome = await _engine.TranslateAsync(Clean(block.Source), src, project.TargetLang, ct).ConfigureAwait(false);
             var tr = (await EnforceGlossaryAsync(new[] { block }, outcome.Translations, src, project.TargetLang, ct).ConfigureAwait(false))[0];
             if (string.IsNullOrWhiteSpace(tr)) throw new TranslationException("No translation was returned.");
@@ -415,7 +415,7 @@ namespace TextX.Core.Documents
             block.Note = null;
             string src = string.IsNullOrEmpty(project.SourceLang) ? Languages.AutoDetect : project.SourceLang;
             var key = Clean(block.Source);
-            _engine.Cache.Set(TranslationCache.Key(_engine.Provider.Id, src, project.TargetLang, key), translation);
+            _engine.Cache.Set(TranslationCache.Key(_engine.Provider.Id, src, project.TargetLang, CaseFold.CacheText(key)), translation);
             int others = 0;
             foreach (var b in project.AllBlocks)
             {

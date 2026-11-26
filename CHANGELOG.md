@@ -12,6 +12,14 @@ into a dated section when you release.
 
 ## [Unreleased]
 
+## [2.0.6] - 2026-11-26
+
+### Fixed
+- **Text in capitals is translated.** Drawings are often lettered in capitals ("3X3 GROOVE AS PER CLIENT");
+  the translation service took words in capitals for names and left them in English ("3X3 GROOVE לפי לקוח").
+  Such text is now sent in small letters and its capitals are put back: all of it for English, French and
+  other Latin-script languages, and English names and codes kept in a Hebrew translation (ECHOSHAPE, 3X3).
+
 ## [2.0.5] - 2026-11-24
 
 ### Added

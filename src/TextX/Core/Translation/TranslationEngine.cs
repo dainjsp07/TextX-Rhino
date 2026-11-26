@@ -114,7 +114,7 @@ namespace TextX.Core.Translation
                             continue;
                         }
                         string cached;
-                        if (Cache.TryGet(TranslationCache.Key(Provider.Id, sourceLang, targetLang, core), out cached))
+                        if (Cache.TryGet(TranslationCache.Key(Provider.Id, sourceLang, targetLang, CaseFold.CacheText(core)), out cached))
                         {
                             resolved[core] = cached;
                             outcome.CachedSegments++;
@@ -132,11 +132,13 @@ namespace TextX.Core.Translation
                 {
                     ct.ThrowIfCancellationRequested();
                     IList<string> results;
+                    // capitals are sent as small letters (services keep words in capitals as names)
+                    var asked = batch.Select(CaseFold.Fold).ToList();
                     string usedProvider = Provider.Id;
                     if (hasFallback && InCooldown(Provider.Id) && !Patient)
                     {
                         outcome.Warning = Provider.DisplayName + " failed recently and is paused for a few minutes - used " + Fallback.DisplayName + ".";
-                        results = await TranslateWithFallback(batch, sourceLang, targetLang, ct).ConfigureAwait(false);
+                        results = await TranslateWithFallback(asked, sourceLang, targetLang, ct).ConfigureAwait(false);
                         usedProvider = Fallback.Id;
                         outcome.ProviderUsed = Fallback.Id;
                     }
@@ -144,25 +146,25 @@ namespace TextX.Core.Translation
                     {
                         try
                         {
-                            results = await TranslatePrimaryAsync(batch, sourceLang, targetLang, ct).ConfigureAwait(false);
+                            results = await TranslatePrimaryAsync(asked, sourceLang, targetLang, ct).ConfigureAwait(false);
                         }
                         catch (TranslationException ex)
                         {
                             if (!hasFallback) throw;
                             StartCooldown(Provider.Id);
                             outcome.Warning = ex.Message + " - used " + Fallback.DisplayName + " instead.";
-                            results = await TranslateWithFallback(batch, sourceLang, targetLang, ct).ConfigureAwait(false);
+                            results = await TranslateWithFallback(asked, sourceLang, targetLang, ct).ConfigureAwait(false);
                             usedProvider = Fallback.Id;
                             outcome.ProviderUsed = Fallback.Id;
                         }
                     }
                     for (int i = 0; i < batch.Count; i++)
                     {
-                        var r = results[i];
+                        var r = CaseFold.Restore(results[i], batch[i]);
                         if (r == null) { outcome.Complete = false; continue; }
                         resolved[batch[i]] = r;
                         outcome.ServiceSegments++;
-                        Cache.Set(TranslationCache.Key(usedProvider, sourceLang, targetLang, batch[i]), r);
+                        Cache.Set(TranslationCache.Key(usedProvider, sourceLang, targetLang, CaseFold.CacheText(batch[i])), r);
                     }
                 }
             }
