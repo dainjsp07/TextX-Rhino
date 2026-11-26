@@ -1,0 +1,69 @@
+== page 1
+p1-1    Heading1    [56,803.4 - 212.3,827.9]            22.0pt B | Cuisine – Lot 4  =>  Kitchen – Package 4
+p1-2    Heading3    [56,747 - 214.6,762.7]              14.0pt B | Description des travaux  =>  Description of works
+p1-3    Paragraph   [56,695.6 - 410.9,735.8]            11.0pt | Les caissons sont fabriqués en panneaux de particules mélaminés de 19 mm. Les façades sont en placage de chêne avec une finition laquée mate, appliquée en atelier avant la livraison.  =>  The carcasses are made of 19 mm melamine-faced particleboard. The fronts are oak veneer with a matt lacquer finish, applied in the workshop before delivery.
+p1-4    Paragraph   [56,669.6 - 428.7,681.8]            11.0pt | Toutes les quincailleries doivent être approuvées par l'architecte avant la commande.  =>  All hardware must be approved by the architect before ordering.
+p1-5    TableCell   [62,603 - 85.7,613.6]                9.5pt B t0 r0 c0 | Code
+p1-6    TableCell   [142,603 - 196.3,613.6]              9.5pt B t0 r0 c1 | Désignation  =>  Description
+p1-7    TableCell   [342,603 - 376.2,613.6]              9.5pt B t0 r0 c2 | Finition  =>  Finish
+p1-8    TableCell   [62,581 - 82.1,591.6]                9.5pt t0 r1 c0 | P-01
+p1-9    TableCell   [142,581 - 191.1,591.6]              9.5pt t0 r1 c1 | Porte haute  =>  Tall door
+p1-10   TableCell   [342,581 - 414.3,591.6]              9.5pt t0 r1 c2 | Chêne laqué mat  =>  Matt lacquered oak
+p1-11   TableCell   [62,559 - 81.5,569.6]                9.5pt t0 r2 c0 | T-02
+p1-12   TableCell   [142,559 - 163.8,569.6]              9.5pt t0 r2 c1 | Tiroir  =>  Drawer
+p1-13   TableCell   [342,559 - 410.6,569.6]              9.5pt t0 r2 c2 | Blanc RAL 9010  =>  White RAL 9010
+p1-14   HeaderFooter [270,28.3 - 315.3,37.2]              8.0pt | Page 1 sur 3  =>  Page 1 of 3
+== page 2
+p2-1    Heading3    [56,777 - 153.9,792.7]              14.0pt B | Mise en œuvre  =>  Installation
+p2-2    Paragraph   [55.2,705.6 - 222.3,759.8]          11.0pt | Le plan de travail est posé après la fixation des caissons hauts et bas. Les joints entre éléments sont réalisés au silicone transparent.  =>  The worktop is installed after the upper and lower carcasses are fixed. Joints between units are sealed with clear silicone.
+p2-3    Paragraph   [315,719.6 - 469.4,759.8]           11.0pt | Les plinthes sont clipsées sur des pieds réglables en hauteur de 100 à 150 mm.  =>  The plinths clip onto height-adjustable legs from 100 to 150 mm.
+p2-4    ListItem    [56,657.8 - 219.5,669.5]            10.5pt | • Vérifier les niveaux avant la pose.  =>  [en] • Vérifier les niveaux avant la pose.
+p2-5    ListItem    [56,641.8 - 256.2,653.5]            10.5pt | • Protéger les façades pendant les travaux.  =>  [en] • Protéger les façades pendant les travaux.
+== page 3
+p3-1    Label       [400,710.1 - 517.9,720.1]            9.0pt | PLAN DE TRAVAIL QUARTZ  =>  QUARTZ WORKTOP
+p3-2    Label       [330,518.1 - 406.4,528.2]            9.0pt | PLACAGE CHÊNE  =>  OAK VENEER
+p3-3    Label       [620,518.1 - 685.4,528.2]            9.0pt | POIGNÉE INOX  =>  STAINLESS STEEL HANDLE
+p3-4    Label       [340,477.9 - 361.1,489.1]           10.0pt B | P-01
+p3-5    Label       [640,477.9 - 660.6,489.1]           10.0pt B | T-02
+p3-6    Label       [490,278.1 - 510,288.1]              9.0pt | 2400
+p3-7    TableCell   [860,180.3 - 882.6,189.2]            8.0pt B t0 r0 c0 | Projet  =>  Project
+p3-8    TableCell   [960,180.1 - 1039.5,190.1]           9.0pt t0 r0 c1 | Résidence Les Pins  =>  Les Pins Residence
+p3-9    TableCell   [860,160.3 - 899.1,169.2]            8.0pt B t0 r1 c0 | Architecte  =>  Architect
+p3-10   TableCell   [960,160.1 - 1018.5,170.1]           9.0pt t0 r1 c1 | Atelier Moreau
+p3-11   TableCell   [860,140.3 - 905.4,149.2]            8.0pt B t0 r2 c0 | Dessiné par  =>  Drawn by
+p3-12   TableCell   [960,140.1 - 992.5,150.1]            9.0pt t0 r2 c1 | J. Smith
+p3-13   TableCell   [860,120.3 - 888,129.3]              8.0pt B t0 r3 c0 | Échelle  =>  Scale
+p3-14   TableCell   [960,120.1 - 977.5,130.1]            9.0pt t0 r3 c1 | 1:20
+p3-15   Heading2    [860,77.5 - 957.9,91]               12.0pt B | Élévation cuisine  =>  Kitchen elevation
+== page 1 (scanned, OCR fra+eng, confidence 95)
+p1-1    Heading1    [57.1,807.9 - 211.7,824]            21.7pt B | Cuisine — Lot 4  =>  [en] Cuisine — Lot 4
+          line baseline 807.9 size 21.7 B FFFFFFFF [57.1,807.9 - 211.7,824] | Cuisine — Lot 4
+p1-2    Heading2    [56.9,747 - 214.3,759.9]            14.1pt B | Description des travaux  =>  Description of works
+          line baseline 749.6 size 14.1 B FF132D52 [56.9,747 - 214.3,759.9] | Description des travaux
+p1-3    Paragraph   [56.2,709.5 - 410.7,734]            10.7pt | Les caissons sont fabriqués en panneaux de particules mélaminés de 19 mm. Les façades sont en placage de chêne avec une finition laquée mate, appliquée en  =>  [en] Les caissons sont fabriqués en panneaux de particules mélaminés de 19 mm. Les façades sont en placage de chêne avec une Finish laquée mate, appliquée en
+          line baseline 726.1 size 10.5 - FF171717 [56.2,723.7 - 410.7,734] | Les caissons sont fabriqués en panneaux de particules mélaminés de 19 mm. Les
+          line baseline 711.9 size 10.7 - FF161616 [56.4,709.5 - 394.1,719.8] | façades sont en placage de chêne avec une finition laquée mate, appliquée en
+p1-4    Paragraph   [56.2,698 - 163.7,705.9]            10.5pt | atelier avant la livraison.  =>  [en] atelier avant la livraison.
+          line baseline 698.0 size 10.5 - FF171717 [56.2,698 - 163.7,705.9] | atelier avant la livraison.
+p1-5    Paragraph   [56.2,669.7 - 427.9,680]            10.5pt | Toutes les quincailleries doivent être approuvées par l'architecte avant la commande.  =>  All hardware must be approved by the architect before ordering.
+          line baseline 672.1 size 10.5 - FF171717 [56.2,669.7 - 427.9,680] | Toutes les quincailleries doivent être approuvées par l'architecte avant la commande.
+p1-6    TableCell   [62.2,604.9 - 85.4,612.3]           10.2pt B t0 r0 c0 | Code
+          line baseline 604.9 size 10.2 B FF070707 [62.2,604.9 - 85.4,612.3] | Code
+p1-7    TableCell   [142.6,602 - 195.6,613.3]           11.9pt t0 r0 c1 | Désignation  =>  Description
+          line baseline 604.5 size 11.9 - FF060607 [142.6,602 - 195.6,613.3] | Désignation
+p1-8    TableCell   [342.5,604.9 - 375.6,612.1]         10.0pt B t0 r0 c2 | Finition  =>  Finish
+          line baseline 604.9 size 10.0 B FF050505 [342.5,604.9 - 375.6,612.1] | Finition
+p1-9    TableCell   [62.6,583 - 80.4,590]                9.7pt t0 r1 c0 | P-01
+          line baseline 583.0 size 9.7 - FF171717 [62.6,583 - 80.4,590] | P-01
+p1-10   TableCell   [142.6,583 - 190.8,590]              9.7pt t0 r1 c1 | Porte haute  =>  Tall door
+          line baseline 583.0 size 9.7 - FF141414 [142.6,583 - 190.8,590] | Porte haute
+p1-11   TableCell   [342.3,581.1 - 414.3,590.2]          9.7pt t0 r1 c2 | Chéne laqué mat  =>  [en] Chéne laqué mat
+          line baseline 583.0 size 9.7 - FF171717 [342.3,581.1 - 414.3,590.2] | Chéne laqué mat
+p1-12   TableCell   [61.9,560.7 - 81.1,567.7]            9.7pt t0 r2 c0 | T-02
+          line baseline 560.7 size 9.7 - FF151515 [61.9,560.7 - 81.1,567.7] | T-02
+p1-13   TableCell   [142.1,560.7 - 163.7,567.7]          9.7pt t0 r2 c1 | Tiroir  =>  Drawer
+          line baseline 560.7 size 9.7 - FF1B1B1B [142.1,560.7 - 163.7,567.7] | Tiroir
+p1-14   TableCell   [342.5,560.7 - 410.2,567.7]          9.7pt t0 r2 c2 | Blanc RAL 9010  =>  White RAL 9010
+          line baseline 560.7 size 9.7 - FF151515 [342.5,560.7 - 410.2,567.7] | Blanc RAL 9010
+p1-15   HeaderFooter [270.7,28.1 - 314.9,35.5]            8.0pt | Page 1 sur 3  =>  Page 1 of 3
+          line baseline 29.8 size 8.0 - FF787878 [270.7,28.1 - 314.9,35.5] | Page 1 sur 3

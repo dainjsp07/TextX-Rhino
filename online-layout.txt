@@ -1,0 +1,37 @@
+== page 1
+p1-1    Heading1    [56,803.4 - 212.3,827.9]            22.0pt B | Cuisine – Lot 4  =>  Kitchen – Lot 4
+p1-2    Heading3    [56,747 - 214.6,762.7]              14.0pt B | Description des travaux  =>  Description of work
+p1-3    Paragraph   [56,695.6 - 410.9,735.8]            11.0pt | Les caissons sont fabriqués en panneaux de particules mélaminés de 19 mm. Les façades sont en placage de chêne avec une finition laquée mate, appliquée en atelier avant la livraison.  =>  The boxes are made of 19 mm melamine particle board. The fronts are made of oak veneer with a matt lacquered finish, applied in the workshop before delivery.
+p1-4    Paragraph   [56,669.6 - 428.7,681.8]            11.0pt | Toutes les quincailleries doivent être approuvées par l'architecte avant la commande.  =>  All hardware must be approved by the architect prior to ordering.
+p1-5    TableCell   [62,603 - 85.7,613.6]                9.5pt B t0 r0 c0 | Code
+p1-6    TableCell   [142,603 - 196.3,613.6]              9.5pt B t0 r0 c1 | Désignation  =>  Designation
+p1-7    TableCell   [342,603 - 376.2,613.6]              9.5pt B t0 r0 c2 | Finition  =>  Finishing
+p1-8    TableCell   [62,581 - 82.1,591.6]                9.5pt t0 r1 c0 | P-01
+p1-9    TableCell   [142,581 - 191.1,591.6]              9.5pt t0 r1 c1 | Porte haute  =>  High door
+p1-10   TableCell   [342,581 - 414.3,591.6]              9.5pt t0 r1 c2 | Chêne laqué mat  =>  Matt lacquered oak
+p1-11   TableCell   [62,559 - 81.5,569.6]                9.5pt t0 r2 c0 | T-02
+p1-12   TableCell   [142,559 - 163.8,569.6]              9.5pt t0 r2 c1 | Tiroir  =>  Drawer
+p1-13   TableCell   [342,559 - 410.6,569.6]              9.5pt t0 r2 c2 | Blanc RAL 9010  =>  White RAL 9010
+p1-14   HeaderFooter [270,28.3 - 315.3,37.2]              8.0pt | Page 1 sur 3  =>  Page 1 of 3
+== page 2
+p2-1    Heading3    [56,777 - 153.9,792.7]              14.0pt B | Mise en œuvre  =>  Implementation
+p2-2    Paragraph   [55.2,705.6 - 222.3,759.8]          11.0pt | Le plan de travail est posé après la fixation des caissons hauts et bas. Les joints entre éléments sont réalisés au silicone transparent.  =>  The work surface is installed after fixing the upper and lower boxes. The joints between elements are made with transparent silicone.
+p2-3    Paragraph   [315,719.6 - 469.4,759.8]           11.0pt | Les plinthes sont clipsées sur des pieds réglables en hauteur de 100 à 150 mm.  =>  The plinths are clipped onto feet adjustable in height from 100 to 150 mm.
+p2-4    ListItem    [56,657.8 - 219.5,669.5]            10.5pt | • Vérifier les niveaux avant la pose.  =>  • Check the levels before installation.
+p2-5    ListItem    [56,641.8 - 256.2,653.5]            10.5pt | • Protéger les façades pendant les travaux.  =>  • Protect facades during work.
+== page 3
+p3-1    Label       [400,710.1 - 517.9,720.1]            9.0pt | PLAN DE TRAVAIL QUARTZ  =>  QUARTZ WORKTOP
+p3-2    Label       [330,518.1 - 406.4,528.2]            9.0pt | PLACAGE CHÊNE  =>  OAK VENEER
+p3-3    Label       [620,518.1 - 685.4,528.2]            9.0pt | POIGNÉE INOX  =>  STAINLESS STEEL HANDLE
+p3-4    Label       [340,477.9 - 361.1,489.1]           10.0pt B | P-01
+p3-5    Label       [640,477.9 - 660.6,489.1]           10.0pt B | T-02
+p3-6    Label       [490,278.1 - 510,288.1]              9.0pt | 2400
+p3-7    TableCell   [860,180.3 - 882.6,189.2]            8.0pt B t0 r0 c0 | Projet  =>  Project
+p3-8    TableCell   [960,180.1 - 1039.5,190.1]           9.0pt t0 r0 c1 | Résidence Les Pins  =>  Residence Les Pins
+p3-9    TableCell   [860,160.3 - 899.1,169.2]            8.0pt B t0 r1 c0 | Architecte  =>  Architect
+p3-10   TableCell   [960,160.1 - 1018.5,170.1]           9.0pt t0 r1 c1 | Atelier Moreau
+p3-11   TableCell   [860,140.3 - 905.4,149.2]            8.0pt B t0 r2 c0 | Dessiné par  =>  Drawn by
+p3-12   TableCell   [960,140.1 - 992.5,150.1]            9.0pt t0 r2 c1 | J. Smith
+p3-13   TableCell   [860,120.3 - 888,129.3]              8.0pt B t0 r3 c0 | Échelle  =>  Scale
+p3-14   TableCell   [960,120.1 - 977.5,130.1]            9.0pt t0 r3 c1 | 1:20
+p3-15   Heading2    [860,77.5 - 957.9,91]               12.0pt B | Élévation cuisine  =>  Kitchen elevation

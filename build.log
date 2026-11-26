@@ -1,0 +1,109 @@
+== Building Text X 2.0.6
+  Determining projects to restore...
+  Restored D:\a\TextX-Rhino\TextX-Rhino\src\TextX\TextX.csproj (in 4.01 sec).
+D:\a\TextX-Rhino\TextX-Rhino\src\TextX\Core\Documents\Export\PageImages.cs(20,34): warning CS1573: Parameter 'pdfPath' has no matching param tag in the XML comment for 'PageImages.PageImages(string, float)' (but other parameters do) [D:\a\TextX-Rhino\TextX-Rhino\src\TextX\TextX.csproj::TargetFramework=net48]
+D:\a\TextX-Rhino\TextX-Rhino\src\TextX\Core\Documents\Layout\OcrLayout.cs(15,58): warning CS1573: Parameter 'ocr' has no matching param tag in the XML comment for 'OcrLayout.BuildLines(OcrResult, DocPage, float, float, RenderedImageInfo, bool)' (but other parameters do) [D:\a\TextX-Rhino\TextX-Rhino\src\TextX\TextX.csproj::TargetFramework=net48]
+D:\a\TextX-Rhino\TextX-Rhino\src\TextX\Core\Documents\Layout\OcrLayout.cs(15,71): warning CS1573: Parameter 'page' has no matching param tag in the XML comment for 'OcrLayout.BuildLines(OcrResult, DocPage, float, float, RenderedImageInfo, bool)' (but other parameters do) [D:\a\TextX-Rhino\TextX-Rhino\src\TextX\TextX.csproj::TargetFramework=net48]
+D:\a\TextX-Rhino\TextX-Rhino\src\TextX\Core\Documents\Layout\OcrLayout.cs(15,96): warning CS1573: Parameter 'minConfidence' has no matching param tag in the XML comment for 'OcrLayout.BuildLines(OcrResult, DocPage, float, float, RenderedImageInfo, bool)' (but other parameters do) [D:\a\TextX-Rhino\TextX-Rhino\src\TextX\TextX.csproj::TargetFramework=net48]
+D:\a\TextX-Rhino\TextX-Rhino\src\TextX\Core\Documents\Layout\OcrLayout.cs(15,154): warning CS1573: Parameter 'drawing' has no matching param tag in the XML comment for 'OcrLayout.BuildLines(OcrResult, DocPage, float, float, RenderedImageInfo, bool)' (but other parameters do) [D:\a\TextX-Rhino\TextX-Rhino\src\TextX\TextX.csproj::TargetFramework=net48]
+D:\a\TextX-Rhino\TextX-Rhino\src\TextX\Core\Documents\Schedules\ScheduleExport.cs(199,43): warning CS1573: Parameter 's' has no matching param tag in the XML comment for 'CsvWriter.Write(Schedule, string, char)' (but other parameters do) [D:\a\TextX-Rhino\TextX-Rhino\src\TextX\TextX.csproj::TargetFramework=net48]
+D:\a\TextX-Rhino\TextX-Rhino\src\TextX\Core\Documents\Schedules\ScheduleExport.cs(199,53): warning CS1573: Parameter 'path' has no matching param tag in the XML comment for 'CsvWriter.Write(Schedule, string, char)' (but other parameters do) [D:\a\TextX-Rhino\TextX-Rhino\src\TextX\TextX.csproj::TargetFramework=net48]
+D:\a\TextX-Rhino\TextX-Rhino\src\TextX\Core\Documents\Summarizer.cs(57,55): warning CS1573: Parameter 'project' has no matching param tag in the XML comment for 'Summarizer.Summarize(DocProject, bool, int)' (but other parameters do) [D:\a\TextX-Rhino\TextX-Rhino\src\TextX\TextX.csproj::TargetFramework=net48]
+D:\a\TextX-Rhino\TextX-Rhino\src\TextX\Core\Documents\Summarizer.cs(57,92): warning CS1573: Parameter 'maxPoints' has no matching param tag in the XML comment for 'Summarizer.Summarize(DocProject, bool, int)' (but other parameters do) [D:\a\TextX-Rhino\TextX-Rhino\src\TextX\TextX.csproj::TargetFramework=net48]
+D:\a\TextX-Rhino\TextX-Rhino\src\TextX\Core\Tools\ImageText.cs(94,71): warning CS1573: Parameter 'image' has no matching param tag in the XML comment for 'ImageText.ReadAsync(GrayImage, string, IProgress<string>, CancellationToken)' (but other parameters do) [D:\a\TextX-Rhino\TextX-Rhino\src\TextX\TextX.csproj::TargetFramework=net48]
+D:\a\TextX-Rhino\TextX-Rhino\src\TextX\Core\Tools\ImageText.cs(94,113): warning CS1573: Parameter 'status' has no matching param tag in the XML comment for 'ImageText.ReadAsync(GrayImage, string, IProgress<string>, CancellationToken)' (but other parameters do) [D:\a\TextX-Rhino\TextX-Rhino\src\TextX\TextX.csproj::TargetFramework=net48]
+D:\a\TextX-Rhino\TextX-Rhino\src\TextX\Core\Tools\ImageText.cs(94,139): warning CS1573: Parameter 'ct' has no matching param tag in the XML comment for 'ImageText.ReadAsync(GrayImage, string, IProgress<string>, CancellationToken)' (but other parameters do) [D:\a\TextX-Rhino\TextX-Rhino\src\TextX\TextX.csproj::TargetFramework=net48]
+D:\a\TextX-Rhino\TextX-Rhino\src\TextX\Core\Tools\WritingCheck.cs(53,67): warning CS1573: Parameter 'text' has no matching param tag in the XML comment for 'WritingCheck.CheckAsync(string, string, CancellationToken)' (but other parameters do) [D:\a\TextX-Rhino\TextX-Rhino\src\TextX\TextX.csproj::TargetFramework=net48]
+D:\a\TextX-Rhino\TextX-Rhino\src\TextX\Core\Tools\WritingCheck.cs(53,108): warning CS1573: Parameter 'ct' has no matching param tag in the XML comment for 'WritingCheck.CheckAsync(string, string, CancellationToken)' (but other parameters do) [D:\a\TextX-Rhino\TextX-Rhino\src\TextX\TextX.csproj::TargetFramework=net48]
+D:\a\TextX-Rhino\TextX-Rhino\src\TextX\UI\Controls\HeroControls.cs(316,32): warning CS1573: Parameter 'text' has no matching param tag in the XML comment for 'LinePreview.Set(string, string, LineStyle, int)' (but other parameters do) [D:\a\TextX-Rhino\TextX-Rhino\src\TextX\TextX.csproj::TargetFramework=net48]
+D:\a\TextX-Rhino\TextX-Rhino\src\TextX\UI\Controls\HeroControls.cs(316,45): warning CS1573: Parameter 'lang' has no matching param tag in the XML comment for 'LinePreview.Set(string, string, LineStyle, int)' (but other parameters do) [D:\a\TextX-Rhino\TextX-Rhino\src\TextX\TextX.csproj::TargetFramework=net48]
+D:\a\TextX-Rhino\TextX-Rhino\src\TextX\UI\Controls\HeroControls.cs(316,61): warning CS1573: Parameter 'style' has no matching param tag in the XML comment for 'LinePreview.Set(string, string, LineStyle, int)' (but other parameters do) [D:\a\TextX-Rhino\TextX-Rhino\src\TextX\TextX.csproj::TargetFramework=net48]
+D:\a\TextX-Rhino\TextX-Rhino\src\TextX\UI\Studio\HeroArt.cs(17,42): warning CS1573: Parameter 'g' has no matching param tag in the XML comment for 'HeroArt.Draw(Graphics, RectangleF, float, RectangleF)' (but other parameters do) [D:\a\TextX-Rhino\TextX-Rhino\src\TextX\TextX.csproj::TargetFramework=net48]
+D:\a\TextX-Rhino\TextX-Rhino\src\TextX\UI\Studio\HeroArt.cs(17,68): warning CS1573: Parameter 'radius' has no matching param tag in the XML comment for 'HeroArt.Draw(Graphics, RectangleF, float, RectangleF)' (but other parameters do) [D:\a\TextX-Rhino\TextX-Rhino\src\TextX\TextX.csproj::TargetFramework=net48]
+  TextX -> D:\a\TextX-Rhino\TextX-Rhino\src\TextX\bin\Release\net48\TextX.rhp
+
+Build succeeded.
+
+D:\a\TextX-Rhino\TextX-Rhino\src\TextX\Core\Documents\Export\PageImages.cs(20,34): warning CS1573: Parameter 'pdfPath' has no matching param tag in the XML comment for 'PageImages.PageImages(string, float)' (but other parameters do) [D:\a\TextX-Rhino\TextX-Rhino\src\TextX\TextX.csproj::TargetFramework=net48]
+D:\a\TextX-Rhino\TextX-Rhino\src\TextX\Core\Documents\Layout\OcrLayout.cs(15,58): warning CS1573: Parameter 'ocr' has no matching param tag in the XML comment for 'OcrLayout.BuildLines(OcrResult, DocPage, float, float, RenderedImageInfo, bool)' (but other parameters do) [D:\a\TextX-Rhino\TextX-Rhino\src\TextX\TextX.csproj::TargetFramework=net48]
+D:\a\TextX-Rhino\TextX-Rhino\src\TextX\Core\Documents\Layout\OcrLayout.cs(15,71): warning CS1573: Parameter 'page' has no matching param tag in the XML comment for 'OcrLayout.BuildLines(OcrResult, DocPage, float, float, RenderedImageInfo, bool)' (but other parameters do) [D:\a\TextX-Rhino\TextX-Rhino\src\TextX\TextX.csproj::TargetFramework=net48]
+D:\a\TextX-Rhino\TextX-Rhino\src\TextX\Core\Documents\Layout\OcrLayout.cs(15,96): warning CS1573: Parameter 'minConfidence' has no matching param tag in the XML comment for 'OcrLayout.BuildLines(OcrResult, DocPage, float, float, RenderedImageInfo, bool)' (but other parameters do) [D:\a\TextX-Rhino\TextX-Rhino\src\TextX\TextX.csproj::TargetFramework=net48]
+D:\a\TextX-Rhino\TextX-Rhino\src\TextX\Core\Documents\Layout\OcrLayout.cs(15,154): warning CS1573: Parameter 'drawing' has no matching param tag in the XML comment for 'OcrLayout.BuildLines(OcrResult, DocPage, float, float, RenderedImageInfo, bool)' (but other parameters do) [D:\a\TextX-Rhino\TextX-Rhino\src\TextX\TextX.csproj::TargetFramework=net48]
+D:\a\TextX-Rhino\TextX-Rhino\src\TextX\Core\Documents\Schedules\ScheduleExport.cs(199,43): warning CS1573: Parameter 's' has no matching param tag in the XML comment for 'CsvWriter.Write(Schedule, string, char)' (but other parameters do) [D:\a\TextX-Rhino\TextX-Rhino\src\TextX\TextX.csproj::TargetFramework=net48]
+D:\a\TextX-Rhino\TextX-Rhino\src\TextX\Core\Documents\Schedules\ScheduleExport.cs(199,53): warning CS1573: Parameter 'path' has no matching param tag in the XML comment for 'CsvWriter.Write(Schedule, string, char)' (but other parameters do) [D:\a\TextX-Rhino\TextX-Rhino\src\TextX\TextX.csproj::TargetFramework=net48]
+D:\a\TextX-Rhino\TextX-Rhino\src\TextX\Core\Documents\Summarizer.cs(57,55): warning CS1573: Parameter 'project' has no matching param tag in the XML comment for 'Summarizer.Summarize(DocProject, bool, int)' (but other parameters do) [D:\a\TextX-Rhino\TextX-Rhino\src\TextX\TextX.csproj::TargetFramework=net48]
+D:\a\TextX-Rhino\TextX-Rhino\src\TextX\Core\Documents\Summarizer.cs(57,92): warning CS1573: Parameter 'maxPoints' has no matching param tag in the XML comment for 'Summarizer.Summarize(DocProject, bool, int)' (but other parameters do) [D:\a\TextX-Rhino\TextX-Rhino\src\TextX\TextX.csproj::TargetFramework=net48]
+D:\a\TextX-Rhino\TextX-Rhino\src\TextX\Core\Tools\ImageText.cs(94,71): warning CS1573: Parameter 'image' has no matching param tag in the XML comment for 'ImageText.ReadAsync(GrayImage, string, IProgress<string>, CancellationToken)' (but other parameters do) [D:\a\TextX-Rhino\TextX-Rhino\src\TextX\TextX.csproj::TargetFramework=net48]
+D:\a\TextX-Rhino\TextX-Rhino\src\TextX\Core\Tools\ImageText.cs(94,113): warning CS1573: Parameter 'status' has no matching param tag in the XML comment for 'ImageText.ReadAsync(GrayImage, string, IProgress<string>, CancellationToken)' (but other parameters do) [D:\a\TextX-Rhino\TextX-Rhino\src\TextX\TextX.csproj::TargetFramework=net48]
+D:\a\TextX-Rhino\TextX-Rhino\src\TextX\Core\Tools\ImageText.cs(94,139): warning CS1573: Parameter 'ct' has no matching param tag in the XML comment for 'ImageText.ReadAsync(GrayImage, string, IProgress<string>, CancellationToken)' (but other parameters do) [D:\a\TextX-Rhino\TextX-Rhino\src\TextX\TextX.csproj::TargetFramework=net48]
+D:\a\TextX-Rhino\TextX-Rhino\src\TextX\Core\Tools\WritingCheck.cs(53,67): warning CS1573: Parameter 'text' has no matching param tag in the XML comment for 'WritingCheck.CheckAsync(string, string, CancellationToken)' (but other parameters do) [D:\a\TextX-Rhino\TextX-Rhino\src\TextX\TextX.csproj::TargetFramework=net48]
+D:\a\TextX-Rhino\TextX-Rhino\src\TextX\Core\Tools\WritingCheck.cs(53,108): warning CS1573: Parameter 'ct' has no matching param tag in the XML comment for 'WritingCheck.CheckAsync(string, string, CancellationToken)' (but other parameters do) [D:\a\TextX-Rhino\TextX-Rhino\src\TextX\TextX.csproj::TargetFramework=net48]
+D:\a\TextX-Rhino\TextX-Rhino\src\TextX\UI\Controls\HeroControls.cs(316,32): warning CS1573: Parameter 'text' has no matching param tag in the XML comment for 'LinePreview.Set(string, string, LineStyle, int)' (but other parameters do) [D:\a\TextX-Rhino\TextX-Rhino\src\TextX\TextX.csproj::TargetFramework=net48]
+D:\a\TextX-Rhino\TextX-Rhino\src\TextX\UI\Controls\HeroControls.cs(316,45): warning CS1573: Parameter 'lang' has no matching param tag in the XML comment for 'LinePreview.Set(string, string, LineStyle, int)' (but other parameters do) [D:\a\TextX-Rhino\TextX-Rhino\src\TextX\TextX.csproj::TargetFramework=net48]
+D:\a\TextX-Rhino\TextX-Rhino\src\TextX\UI\Controls\HeroControls.cs(316,61): warning CS1573: Parameter 'style' has no matching param tag in the XML comment for 'LinePreview.Set(string, string, LineStyle, int)' (but other parameters do) [D:\a\TextX-Rhino\TextX-Rhino\src\TextX\TextX.csproj::TargetFramework=net48]
+D:\a\TextX-Rhino\TextX-Rhino\src\TextX\UI\Studio\HeroArt.cs(17,42): warning CS1573: Parameter 'g' has no matching param tag in the XML comment for 'HeroArt.Draw(Graphics, RectangleF, float, RectangleF)' (but other parameters do) [D:\a\TextX-Rhino\TextX-Rhino\src\TextX\TextX.csproj::TargetFramework=net48]
+D:\a\TextX-Rhino\TextX-Rhino\src\TextX\UI\Studio\HeroArt.cs(17,68): warning CS1573: Parameter 'radius' has no matching param tag in the XML comment for 'HeroArt.Draw(Graphics, RectangleF, float, RectangleF)' (but other parameters do) [D:\a\TextX-Rhino\TextX-Rhino\src\TextX\TextX.csproj::TargetFramework=net48]
+    19 Warning(s)
+    0 Error(s)
+
+Time Elapsed 00:00:05.37
+== Native libraries
+   downloading bblanchon.PDFium.Win32 160.0.8165
+   downloading Tesseract 5.2.0
+   pdfium : bblanchon.PDFium.Win32 160.0.8165
+   tesseract : Tesseract 5.2.0
+::notice title=Native libraries::pdfium = bblanchon.PDFium.Win32 160.0.8165, tesseract = Tesseract 5.2.0
+   downloading OCR data eng
+   downloading OCR data osd
+   textx_pdfium.dll              7,846,912 bytes
+   x64\leptonica-1.82.0.dll      4,168,192 bytes
+   x64\tesseract50.dll           2,788,352 bytes
+== Testing
+Note: BidiTest.txt / BidiCharacterTest.txt not found in 'D:\a\TextX-Rhino\TextX-Rhino\tests\data' - conformance suites will fail to load.
+== Unicode bidi conformance
+  skipped (BidiTest.txt / BidiCharacterTest.txt not found in D:\a\TextX-Rhino\TextX-Rhino\tests\data)
+== Unit tests
+== Document engine (PDFium, Tesseract)
+  Smoke 174 ms
+Warning. Invalid resolution 0 dpi. Using 70 instead.
+  Ocr 812 ms
+  Pipeline 2966 ms
+  ONLINE detected language: fr
+  ONLINE translated 34 of 34 blocks in 303 ms
+  ONLINE summary: 3 pages, about 116 words, 2 tables, 1 image. Language: English.
+ / 
+ / Key points
+ / • The boxes are made of 19 mm melamine particle board.
+ / • The fronts are made of oak veneer with a matt lacquered finish, applied in the workshop before delivery.
+ / • The joints between elements are made with transparent silicone.
+ / 
+ / Contents
+ / Kitchen – Lot 4  (p. 1)
+ /     Description of work  (p. 1)
+ /     Implementation  (p. 2)
+ /   Kitchen elevation  (p. 3)
+  ONLINE writing check (en-GB): Spelling mistake -> cabinet
+  ONLINE corrected: The cabinet doors is made from oak.
+  Online 2124 ms
+== Unit assertions: 556 passed, 0 failed
+ALL TESTS PASSED
+== Packaging
+Package contents:
+           501  manifest.yml
+       937,984  TextX.rhp
+        15,950  icon.png
+         8,704  misc/README.md
+        17,425  misc/CHANGELOG.md
+         1,089  misc/LICENSE.txt
+         1,189  misc/glossary-sample-he.csv
+         2,661  misc/THIRD-PARTY-NOTICES.txt
+     7,846,912  textx_pdfium.dll
+     4,168,192  x64/leptonica-1.82.0.dll
+     2,788,352  x64/tesseract50.dll
+
+Text X 2.0.6 packaged in D:\a\TextX-Rhino\TextX-Rhino\dist\v2.0.6
+  latest.json                                     857 bytes
+  release-notes.md                                585 bytes
+  SHA256SUMS.txt                                  347 bytes
+  textx-2.0.6-rh8_0-win.yak                 7,545,192 bytes
+  TextX-2.0.6-Windows.zip                   7,548,390 bytes
